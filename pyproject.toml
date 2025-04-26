@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "computacaografica"
+version = "0.1.0"
+description = "tamos ai na via mota jr na casa yauu pirukamc boy"
+authors = ["MiguelDzn o designer dessa mrd"]
+license = "A minha mae deixou"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+PyOpenGL = "3.1.9"
+PyOpenGL-accelerate = "3.1.9"
+numpy = "2.2.3"
+pygame = "2.6.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

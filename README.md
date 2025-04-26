@@ -55,13 +55,56 @@ The project is organized into several key directories:
 
 ## How to Run
 
-*(Instructions on how to install dependencies and run the project would go here. You might need to specify Python version and required libraries.)*
+Here are a few ways to set up and run the project:
 
-```python
-# Example placeholder
-pip install -r requirements.txt
-python projeto.py
-```
+**1. Using Poetry:**
+
+   If you have [Poetry](https://python-poetry.org/) installed:
+
+   ```bash
+   # Navigate to the project directory
+   cd path/to/ProjetoCG
+
+   # Install dependencies
+   poetry install
+
+   # Run the application
+   poetry run python projeto.py
+   ```
+
+**2. Using an IDE (like PyCharm, VS Code):**
+
+   *   Open the project folder (`ProjetoCG`) in your IDE.
+   *   Ensure you have a Python 3.x interpreter configured for the project.
+   *   Install the required dependencies. You might need a `requirements.txt` file for this, or use the IDE's package management tools. If using `pip`:
+
+     ```bash
+     pip install -r requirements.txt
+     ```
+
+   *   Run the `projeto.py` file directly from your IDE.
+
+**3. Using Standard Pip:**
+
+   Assuming you have Python 3.x and pip installed:
+
+   ```bash
+   # Navigate to the project directory
+   cd path/to/ProjetoCG
+
+   # (Optional but recommended) Create and activate a virtual environment
+   python -m venv venv
+   # On Windows: .\venv\Scripts\activate
+   # On macOS/Linux: source venv/bin/activate
+
+   # Install dependencies (assuming requirements.txt exists)
+   pip install -r requirements.txt
+
+   # Run the application
+   python projeto.py
+   ```
+
+*(Note: You may need to create a `requirements.txt` file listing the necessary packages like Pyglet, NumPy, PyOpenGL if one doesn't already exist.)*
 
 ## Dependencies
 
