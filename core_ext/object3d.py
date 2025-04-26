@@ -1,4 +1,3 @@
-import numpy as np
 from core.matrix import Matrix
 
 
@@ -38,10 +37,7 @@ class Object3D:
 
     @property
     def global_matrix(self):
-        """
-        Calculate the transformation of this Object3D
-        relative to the root Object3D of the scene graph
-        """
+        """ Calculate the transformation of this Object3D relative to the root Object3D of the scene graph """
         if self._parent is None:
             return self._matrix
         else:
@@ -50,23 +46,18 @@ class Object3D:
     @property
     def global_position(self):
         """ Return the global or world position of the object """
-        return [self.global_matrix.item((0, 3)),
-                self.global_matrix.item((1, 3)),
-                self.global_matrix.item((2, 3))]
+        global_matrix = self.global_matrix
+        return [global_matrix.item((0, 3)),
+                global_matrix.item((1, 3)),
+                global_matrix.item((2, 3))]
 
     @property
     def local_matrix(self):
         return self._matrix
 
-    @local_matrix.setter
-    def local_matrix(self, matrix):
-        self._matrix = matrix
-
     @property
     def local_position(self):
-        """
-        Return the local position of the object (with respect to its parent)
-        """
+        """ Return the local position of the object (with respect to its parent) """
         # The position of an object can be determined from entries in the
         # last column of the transform matrix
         return [self._matrix.item((0, 3)),
@@ -80,23 +71,6 @@ class Object3D:
     @parent.setter
     def parent(self, parent):
         self._parent = parent
-
-    @property
-    def rotation_matrix(self):
-        """
-        Returns 3x3 submatrix with rotation data.
-        3x3 top-left submatrix contains only rotation data.
-        """
-        return np.array(
-            [self._matrix[0][0:3],
-             self._matrix[1][0:3],
-             self._matrix[2][0:3]]
-        ).astype(float)
-
-    @property
-    def direction(self):
-        forward = np.array([0, 0, -1]).astype(float)
-        return list(self.rotation_matrix @ forward)
 
     def add(self, child):
         self._children_list.append(child)
@@ -134,22 +108,8 @@ class Object3D:
     def scale(self, s, local=True):
         m = Matrix.make_scale(s)
         self.apply_matrix(m, local)
-
     def set_position(self, position):
         """ Set the local position of the object """
-        self._matrix[0][3] = position[0]
-        self._matrix[1][3] = position[1]
-        self._matrix[2][3] = position[2]
-
-    def look_at(self, target_position):
-        self._matrix = Matrix.make_look_at(self.global_position, target_position)
-
-    def set_direction(self, direction):
-        position = self.local_position
-        target_position = [
-            position[0] + direction[0],
-            position[1] + direction[1],
-            position[2] + direction[2]
-        ]
-        self.look_at(target_position)
-
+        self._matrix[0, 3] = position[0]
+        self._matrix[1, 3] = position[1]
+        self._matrix[2, 3] = position[2]
