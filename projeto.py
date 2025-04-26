@@ -21,6 +21,7 @@ from core_ext.texture import Texture
 from material.texture import TextureMaterial
 from core.obj_reader2 import my_obj_reader2
 from core.matrix import Matrix
+from geometry.rectangle import RectangleGeometry
 
 class GamePhase(Enum):
     SELECTION = auto()
@@ -85,6 +86,15 @@ class Example(Base):
         brandon_texture = Texture(file_name="images/brandonJPG.jpg") # Assuming this filename
         brandon_material = TextureMaterial(texture=brandon_texture)
         
+        # Create geometry, texture, material, and mesh for the title image
+        title_geometry = RectangleGeometry(width=16, height=4)  # Adjust width/height as needed
+        title_texture = Texture(file_name="images/game_title_transparent.png")
+        title_material = TextureMaterial(texture=title_texture, property_dict={"doubleSide": True}) # Ensure it's visible from the back if needed
+        self.title_mesh = Mesh(title_geometry, title_material)
+        self.title_rig = MovementRig()
+        self.title_rig.add(self.title_mesh)
+        # Title rig is added to the scene and positioned in setup_selection_phase
+
         # Load Miguel's object 
         positions_miguel, uvs_miguel = my_obj_reader2("geometry/miguelOBJ.obj") 
         geometry_miguel = MiguelGeometry(1, 1, 1, positions_miguel, uvs_miguel)
@@ -146,6 +156,12 @@ class Example(Base):
         self.scene.add(grid)
         
     def setup_selection_phase(self):
+        # Add the title rig to the scene
+        self.scene.add(self.title_rig)
+        # Position title rig (adjust coordinates as needed)
+        # Camera Y is 105, objects Y is 100. Place title above. Centered X, same Z as objects.
+        self.title_rig.set_position([0, 110, 0])
+
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
         # Position camera high up and facing "backwards" and see all objects
@@ -167,6 +183,10 @@ class Example(Base):
         self.highlight_selected_object()
     
     def setup_gameplay_phase(self):
+        # Remove the title rig from the scene
+        if self.title_rig in self.scene.descendant_list:
+            self.scene.remove(self.title_rig)
+
         # Position camera to face "forward"
         # Reset camera transform before setting position
         self.camera_rig._matrix = Matrix.make_identity()
