@@ -139,12 +139,13 @@ class Example(Base):
     def setup_selection_phase(self):
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
-        # Position camera to face "backwards" and see all objects
-        self.camera_rig.set_position([0.5, 1, -15]) # Move further back
-        self.camera_rig.rotate_y(math.pi)  # Face backwards
+        # Position camera high up and facing "backwards" and see all objects
+        objects_y = 100 # Set the Y coordinate for the objects
+        camera_y = objects_y + 5 # Position camera slightly above objects
+        self.camera_rig.set_position([0.5, camera_y, 15]) # Use camera_y for camera, move closer (Z=15)
         
-        # Reset all objects to their original positions and rotations
-        positions = [[-3, 0, 0], [-1, 0, 0], [1, 0, 0], [3, 0, 0]]
+        # Reset all objects to their original positions and rotations with increased spacing, high up
+        positions = [[-4.5, objects_y, 0], [-1.5, objects_y, 0], [1.5, objects_y, 0], [4.5, objects_y, 0]] # Use objects_y for objects
         for i, rig in enumerate(self.object_rigs):
             # Reset the transformation matrix to identity
             rig._matrix = Matrix.make_identity()
@@ -169,21 +170,22 @@ class Example(Base):
         # Reset transform before setting position
         self.active_object_rig._matrix = Matrix.make_identity()
         self.active_object_rig.set_position([0, 0, 0])
-        
-        # Move other objects behind the selected one
+
+        # Move other objects behind the selected one, centered and more separated
         behind_z = -5  # Z position behind the selected object
-        side_positions = [[-3, 0, behind_z], [-1, 0, behind_z], [1, 0, behind_z], [3, 0, behind_z]]
-        
-        # Keep track of which position to use
+        side_positions = [[-5, 0, behind_z], [0, 0, behind_z], [5, 0, behind_z]] # Increased separation
+
+        # Keep track of which position to use for non-active objects
         pos_index = 0
-        
+
         # Position the non-selected objects
         for rig in self.object_rigs:
             if rig != self.active_object_rig:
                 # Reset transform before setting position
                 rig._matrix = Matrix.make_identity()
+                # Assign one of the predefined side positions
                 rig.set_position(side_positions[pos_index])
-                pos_index += 1
+                pos_index += 1 # Move to the next position for the next non-active object
     
     def highlight_selected_object(self):
         # Simple highlighting by scaling up the selected object

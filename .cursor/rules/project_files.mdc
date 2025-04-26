@@ -1,0 +1,29 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Key Project Files
+
+This rule provides quick access to important project source files.
+
+## Main Application
+
+@projeto.py
+
+## Instrument Geometry Files
+
+@geometry/miguelinstrument.py
+@geometry/zeinstrument.py
+@geometry/anainstrument.py
+@geometry/brandoninstrument.py
+
+## Framework Files
+
+@core/base.py
+@core/matrix.py
+@core_ext/camera.py
+@core_ext/renderer.py
+@core_ext/scene.py
+@extras/movement_rig.py
+
