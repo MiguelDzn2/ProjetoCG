@@ -72,41 +72,50 @@ class Example(Base):
         self.camera_rig.add(self.camera)
         self.scene.add(self.camera_rig)
 
-        # Common texture for now
-        metal_texture = Texture(file_name="images/miguelJPG.jpg")
-        material = TextureMaterial(texture=metal_texture)
+        # Load textures and materials for each instrument
+        miguel_texture = Texture(file_name="images/miguelJPG.jpg")
+        miguel_material = TextureMaterial(texture=miguel_texture)
+
+        ze_texture = Texture(file_name="images/zeJPG.jpg") # Assuming this filename
+        ze_material = TextureMaterial(texture=ze_texture)
+
+        ana_texture = Texture(file_name="images/anaJPG.jpg") # Assuming this filename
+        ana_material = TextureMaterial(texture=ana_texture)
+
+        brandon_texture = Texture(file_name="images/brandonJPG.jpg") # Assuming this filename
+        brandon_material = TextureMaterial(texture=brandon_texture)
         
-        # Load Miguel's object (using the same OBJ for now)
+        # Load Miguel's object 
         positions_miguel, uvs_miguel = my_obj_reader2("geometry/miguelOBJ.obj") 
         geometry_miguel = MiguelGeometry(1, 1, 1, positions_miguel, uvs_miguel)
-        self.mesh_miguel = Mesh(geometry_miguel, material)
+        self.mesh_miguel = Mesh(geometry_miguel, miguel_material) # Use Miguel's material
         self.object_rig_miguel = MovementRig()
         self.object_rig_miguel.add(self.mesh_miguel)
         self.object_rig_miguel.set_position([-3, 0, 0]) # Position Miguel
         self.scene.add(self.object_rig_miguel)
 
-        # Load Ze's object (using the same OBJ for now)
-        positions_ze, uvs_ze = my_obj_reader2("geometry/miguelOBJ.obj") # TODO: Replace with zeOBJ.obj later
+        # Load Ze's object 
+        positions_ze, uvs_ze = my_obj_reader2("geometry/zeOBJ.obj") # TODO: Replace with zeOBJ.obj later
         geometry_ze = ZeGeometry(1, 1, 1, positions_ze, uvs_ze) # Use ZeGeometry
-        self.mesh_ze = Mesh(geometry_ze, material)
+        self.mesh_ze = Mesh(geometry_ze, ze_material) # Use Ze's material
         self.object_rig_ze = MovementRig()
         self.object_rig_ze.add(self.mesh_ze)
         self.object_rig_ze.set_position([-1, 0, 0]) # Position Ze
         self.scene.add(self.object_rig_ze)
 
-        # Load Ana's object (using the same OBJ for now)
-        positions_ana, uvs_ana = my_obj_reader2("geometry/miguelOBJ.obj") # TODO: Replace with anaOBJ.obj later
+        # Load Ana's object 
+        positions_ana, uvs_ana = my_obj_reader2("geometry/anaOBJ.obj") # TODO: Replace with anaOBJ.obj later
         geometry_ana = AnaGeometry(1, 1, 1, positions_ana, uvs_ana) # Use AnaGeometry
-        self.mesh_ana = Mesh(geometry_ana, material)
+        self.mesh_ana = Mesh(geometry_ana, ana_material) # Use Ana's material
         self.object_rig_ana = MovementRig()
         self.object_rig_ana.add(self.mesh_ana)
         self.object_rig_ana.set_position([1, 0, 0]) # Position Ana
         self.scene.add(self.object_rig_ana)
 
-        # Load Brandon's object (using the same OBJ for now)
-        positions_brandon, uvs_brandon = my_obj_reader2("geometry/miguelOBJ.obj") # TODO: Replace with brandonOBJ.obj later
+        # Load Brandon's object 
+        positions_brandon, uvs_brandon = my_obj_reader2("geometry/brandonOBJ.obj") # TODO: Replace with brandonOBJ.obj later
         geometry_brandon = BrandonGeometry(1, 1, 1, positions_brandon, uvs_brandon) # Use BrandonGeometry
-        self.mesh_brandon = Mesh(geometry_brandon, material)
+        self.mesh_brandon = Mesh(geometry_brandon, brandon_material) # Use Brandon's material
         self.object_rig_brandon = MovementRig()
         self.object_rig_brandon.add(self.mesh_brandon)
         self.object_rig_brandon.set_position([3, 0, 0]) # Position Brandon
