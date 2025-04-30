@@ -24,6 +24,7 @@ from core.obj_reader2 import my_obj_reader2
 from core.matrix import Matrix
 from geometry.rectangle import RectangleGeometry
 from geometry.arrow import Arrow
+from geometry.nightClub import NightClubGeometry
 
 class GamePhase(Enum):
     SELECTION = auto()
@@ -157,7 +158,18 @@ class Example(Base):
         )
         grid.rotate_x(-math.pi / 2)
         self.setup_arrow_spawning(2.0)
-        self.scene.add(grid)
+        
+        # Load the club object
+        nightclub_texture = Texture(file_name="images/crate.jpg")  # Altere o nome se necessário
+        nightclub_material = TextureMaterial(texture=nightclub_texture)
+        positions_nightclub, uvs_nightclub = my_obj_reader2("geometry/nightClub.obj")  # Certifique-se que o ficheiro existe
+        geometry_nightclub = NightClubGeometry(1, 1, 1, positions_nightclub, uvs_nightclub)
+        self.mesh_nightclub = Mesh(geometry_nightclub, nightclub_material)
+        self.object_rig_nightclub = MovementRig()
+        self.object_rig_nightclub.add(self.mesh_nightclub)
+        self.object_rig_nightclub.set_position([0, -2.5, 10])  # Ajuste a posição conforme necessário
+        self.object_rig_nightclub.scale(3)  # Ajuste o tamanho conforme necessário
+        self.scene.add(self.object_rig_nightclub)
 
     def setup_selection_phase(self):
         # Add the title rig to the scene
@@ -310,7 +322,7 @@ class Example(Base):
         arrow.rotate(math.radians(angle), 'z')
         
         # Posição inicial ajustada para compensar offset
-        arrow.set_position([-5 + 0.5, 0, 6])  # Adiciona 0.5 para compensar offset X
+        arrow.set_position([-10 + 0.5, -2, 3.5])  # Adiciona 0.5 para compensar offset X
 
         return arrow
 
