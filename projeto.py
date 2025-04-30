@@ -1,9 +1,10 @@
-import numpy as np
 import math
+from nt import remove
 import pathlib
 import sys
 from enum import Enum, auto
-
+# Add parent directory to sys.path
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 from core.base import Base
 from core_ext.camera import Camera
 from core_ext.mesh import Mesh
@@ -22,6 +23,7 @@ from material.texture import TextureMaterial
 from core.obj_reader2 import my_obj_reader2
 from core.matrix import Matrix
 from geometry.rectangle import RectangleGeometry
+from geometry.arrow import Arrow
 
 class GamePhase(Enum):
     SELECTION = auto()
@@ -83,7 +85,7 @@ class Example(Base):
         ana_texture = Texture(file_name="images/anaJPG.jpg") # Assuming this filename
         ana_material = TextureMaterial(texture=ana_texture)
 
-        brandon_texture = Texture(file_name="images/brandonJPG.jpg") # Assuming this filename
+        brandon_texture = Texture(file_name="images/brandonPNG.png") # Assuming this filename
         brandon_material = TextureMaterial(texture=brandon_texture)
         
         # Create geometry, texture, material, and mesh for the title image
@@ -95,8 +97,8 @@ class Example(Base):
         self.title_rig.add(self.title_mesh)
         # Title rig is added to the scene and positioned in setup_selection_phase
 
-        # Load Miguel's object 
-        positions_miguel, uvs_miguel = my_obj_reader2("geometry/miguelOBJ.obj") 
+        # Load Miguel's object
+        positions_miguel, uvs_miguel = my_obj_reader2("geometry/miguelOBJ.obj")
         geometry_miguel = MiguelGeometry(1, 1, 1, positions_miguel, uvs_miguel)
         self.mesh_miguel = Mesh(geometry_miguel, miguel_material) # Use Miguel's material
         self.object_rig_miguel = MovementRig()
@@ -104,7 +106,7 @@ class Example(Base):
         self.object_rig_miguel.set_position([-3, 0, 0]) # Position Miguel
         self.scene.add(self.object_rig_miguel)
 
-        # Load Ze's object 
+        # Load Ze's object
         positions_ze, uvs_ze = my_obj_reader2("geometry/zeOBJ.obj") # TODO: Replace with zeOBJ.obj later
         geometry_ze = ZeGeometry(1, 1, 1, positions_ze, uvs_ze) # Use ZeGeometry
         self.mesh_ze = Mesh(geometry_ze, ze_material) # Use Ze's material
@@ -124,7 +126,7 @@ class Example(Base):
 
         # Load Brandon's object 
         positions_brandon, uvs_brandon = my_obj_reader2("geometry/brandonOBJ.obj") # TODO: Replace with brandonOBJ.obj later
-        geometry_brandon = BrandonGeometry(1, 1, 1, positions_brandon, uvs_brandon) # Use BrandonGeometry
+        geometry_brandon = BrandonGeometry(2, 2, 1, positions_brandon, uvs_brandon) # Use BrandonGeometry
         self.mesh_brandon = Mesh(geometry_brandon, brandon_material) # Use Brandon's material
         self.object_rig_brandon = MovementRig()
         self.object_rig_brandon.add(self.mesh_brandon)
@@ -145,6 +147,7 @@ class Example(Base):
         # Set up the camera for the selection phase
         self.setup_selection_phase()
         
+        behind_z = -5
         axes = AxesHelper(axis_length=2)
         self.scene.add(axes)
         grid = GridHelper(
@@ -153,8 +156,9 @@ class Example(Base):
             center_color=[1, 1, 0]
         )
         grid.rotate_x(-math.pi / 2)
+        self.setup_arrow_spawning(2.0)
         self.scene.add(grid)
-        
+
     def setup_selection_phase(self):
         # Add the title rig to the scene
         self.scene.add(self.title_rig)
@@ -170,7 +174,7 @@ class Example(Base):
         self.camera_rig.set_position([0.5, camera_y, 15]) # Use camera_y for camera, move closer (Z=15)
         
         # Reset all objects to their original positions and rotations with increased spacing, high up
-        positions = [[-4.5, objects_y, 0], [-1.5, objects_y, 0], [1.5, objects_y, 0], [4.5, objects_y, 0]] # Use objects_y for objects
+        positions = [[-4.5, objects_y, 0], [-1.5, objects_y, 0], [1.5, objects_y, 0], [4.5, objects_y, 1.5]] # Use objects_y for objects
         for i, rig in enumerate(self.object_rigs):
             # Reset the transformation matrix to identity
             rig._matrix = Matrix.make_identity()
@@ -181,40 +185,27 @@ class Example(Base):
         
         # Apply highlighting to the currently selected object
         self.highlight_selected_object()
-    
+
+
     def setup_gameplay_phase(self):
         # Remove the title rig from the scene
         if self.title_rig in self.scene.descendant_list:
             self.scene.remove(self.title_rig)
-
         # Position camera to face "forward"
-        # Reset camera transform before setting position
         self.camera_rig._matrix = Matrix.make_identity()
         self.camera_rig.set_position([0.5, 1, 10])
-        
-        # Remove highlighting before moving objects
         self.remove_highlighting()
-        
-        # Move selected object to center
-        # Reset transform before setting position
         self.active_object_rig._matrix = Matrix.make_identity()
         self.active_object_rig.set_position([0, 0, 0])
-
-        # Move other objects behind the selected one, centered and more separated
-        behind_z = -5  # Z position behind the selected object
-        side_positions = [[-5, 0, behind_z], [0, 0, behind_z], [5, 0, behind_z]] # Increased separation
-
-        # Keep track of which position to use for non-active objects
+        behind_z = -5
+        side_positions = [[-5, 0, behind_z], [0, 0, behind_z], [5, 0, behind_z]]
         pos_index = 0
-
-        # Position the non-selected objects
         for rig in self.object_rigs:
             if rig != self.active_object_rig:
-                # Reset transform before setting position
                 rig._matrix = Matrix.make_identity()
-                # Assign one of the predefined side positions
                 rig.set_position(side_positions[pos_index])
-                pos_index += 1 # Move to the next position for the next non-active object
+                pos_index += 1
+
     
     def highlight_selected_object(self):
         # Simple highlighting by scaling up the selected object
@@ -240,17 +231,15 @@ class Example(Base):
         if self.current_phase == GamePhase.SELECTION:
             # Handle input for selection phase
             self.handle_selection_input()
-            
             # Render scene with current camera
             self.renderer.render(self.scene, self.camera)
-            
         elif self.current_phase == GamePhase.GAMEPLAY:
             # Handle input for gameplay phase
             self.handle_gameplay_input()
-            
-            # Render scene with current camera
-            self.renderer.render(self.scene, self.camera)
-    
+            self.handle_arrows(self.delta_time)
+        
+        self.renderer.render(self.scene, self.camera)
+
     def handle_selection_input(self):
         # Check if left/right arrow keys are pressed to change selection
         key_pressed = False
@@ -286,6 +275,7 @@ class Example(Base):
         move_amount = 2 * self.delta_time
         rotate_amount = 1 * self.delta_time
         
+        
         # Translation with arrow keys affects the active object
         if self.input.is_key_pressed('left'):
             self.active_object_rig.translate(-move_amount, 0, 0)
@@ -295,17 +285,65 @@ class Example(Base):
             self.active_object_rig.translate(0, 0, -move_amount)
         if self.input.is_key_pressed('down'):
             self.active_object_rig.translate(0, 0, move_amount)
-            
+
         # Rotation with UO affects the active object
         if self.input.is_key_pressed('u'):
             self.active_object_rig.rotate_y(rotate_amount)
         if self.input.is_key_pressed('o'):
             self.active_object_rig.rotate_y(-rotate_amount)
-            
+
         # Tilt with KL affects the active object
         if self.input.is_key_pressed('k'):
             self.active_object_rig.rotate_x(rotate_amount)
         if self.input.is_key_pressed('l'):
             self.active_object_rig.rotate_x(-rotate_amount)
+
+
+    def create_single_arrow(self):
+        """Cria uma única seta com orientação aleatória, considerando offset de origem"""
+        import random
+        possible_angles = [0, 90, 180, 270, 360, 90, 270]
+        angle = random.choice(possible_angles)
+        
+        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[-0.5, 0, 0])  # Offset para compensar origem não central
+        arrow.add_to_scene(self.scene)
+        arrow.rotate(math.radians(angle), 'z')
+        
+        # Posição inicial ajustada para compensar offset
+        arrow.set_position([-5 + 0.5, 0, 6])  # Adiciona 0.5 para compensar offset X
+
+        return arrow
+
+    def setup_arrow_spawning(self, interval=2.0):
+        """Configura o spawn automático de setas a cada intervalo"""
+        self.arrows = []
+        self.arrow_spawn_timer = 0
+        self.arrow_spawn_interval = interval
+
+    def update_arrow_spawning(self, delta_time):
+        """Atualiza o timer e cria novas setas quando necessário"""
+        self.arrow_spawn_timer += delta_time
+        if self.arrow_spawn_timer >= self.arrow_spawn_interval:
+            self.arrow_spawn_timer = 0
+            self.arrows.append(self.create_single_arrow())
+
+    def handle_arrows(self, delta_time):
+            # Atualiza spawn de setas
+            self.update_arrow_spawning(self.delta_time)
+
+            # Atualiza todas as setas
+            arrows_to_remove = []
+            for i, arrow in enumerate(self.arrows):
+                arrow.update()  # Atualiza primeiro
+                if not arrow.isVisible():  # Verifica visibilidade depois da atualização
+                    arrows_to_remove.append(i)
+
+            # Remove setas marcadas em ordem reversa
+            for i in sorted(arrows_to_remove, reverse=True):
+                if i < len(self.arrows):  # Verificação adicional de segurança
+                    arrow = self.arrows.pop(i)  # Remove da lista
+                    arrow.rig.parent.remove(arrow.rig)  # Remove da cena
+                    del arrow  # Remove da memória
+
 
 Example(screen_size=[1280, 720]).run()

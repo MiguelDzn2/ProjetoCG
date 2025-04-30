@@ -8,8 +8,8 @@ class BrandonGeometry(Geometry):
 
         # Cada lado consiste em dois triângulos
         position_data = verticesAgogo
-        
+
         # Usa as coordenadas UV fornecidas
         self.add_attribute("vec3", "vertexPosition", position_data)
         self.add_attribute("vec2", "vertexUV", uv_data)
-        self.count_vertices() 
+        self.count_vertices()
