@@ -1,182 +1,378 @@
-# Blender 4.3.2 MTL File: 'None'
-# www.blender.org
-
-newmtl M_BarShelves
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
+# MTL file - created by a modified js OBJExporter
 
 newmtl M_BarTop
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd M_BarTop.png
+map_Pm metalnessMap1.png
+map_Pr metalnessMap1.png
+map_Pscm /../images/club/specularColorMap1.png
 
 newmtl M_BarWood
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_BenchEnd
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_BenchLowerandBack
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_BenchSeatandPicture
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_DJControlerandPainting
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_DJStandLower
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_DJstandUpper
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_DoorAndStool
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_Floor
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_LargeSpeakerandGlasses
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_LightsMediumProps
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_Screens
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 1.000000 1.000000 1.000000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_Table
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
-
-newmtl M_Wall
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd /../images/club/M_BarWood.png
 
 newmtl M_WallFloorTrim
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 1.000000 1.000000 1.000000
-Ni 1000.000000
-d 1.000000
-illum 2
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_WallFloorTrim.png
+map_Ke /../images/club/emissiveMap3.png
+
+newmtl M_DoorAndStool
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd /../images/club/M_DoorAndStool.png
+map_Pm /../images/club/metalnessMap4.png
+map_Pr /../images/club/metalnessMap4.png
+map_Pscm /../images/club/specularColorMap4.png
+
+newmtl M_BenchEnd
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_BenchEnd.png
+map_Ke /../images/club/emissiveMap5.png
+map_Pm /../images/club/metalnessMap5.png
+map_Pr /../images/club/metalnessMap5.png
+map_Pscm /../images/club/specularColorMap5.png
+
+newmtl M_BenchLowerandBack
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_BenchLowerandBack.png
+map_Ke /../images/club/emissiveMap6.png
+
+newmtl M_BenchSeatandPicture
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0 0 0
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_BenchSeatandPicture.png
+map_Ke /../images/club/emissiveMap7.png
+
+newmtl M_Screens
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Ke /../images/club/emissiveMap8.png
+
+newmtl M_BarShelves
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd /../images/club/M_BarShelves.png
+map_Pm /../images/club/metalnessMap9.png
+map_Pr /../images/club/metalnessMap9.png
+map_Pscm /../images/club/specularColorMap9.png
+
+newmtl M_DJStandLower
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_DJStandLower.png
+map_Ke /../images/club/emissiveMap10.png
+map_Pm /../images/club/metalnessMap10.png
+map_Pr /../images/club/metalnessMap10.png
+map_Pscm /../images/club/specularColorMap10.png
+
+newmtl M_DJstandUpper
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_DJstandUpper.png
+map_Ke /../images/club/emissiveMap11.png
+map_Pm /../images/club/metalnessMap11.png
+map_Pr /../images/club/metalnessMap11.png
+map_Pscm /../images/club/specularColorMap11.png
+
+newmtl M_Floor
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd M_Floor.png
+map_Pm /../images/club/metalnessMap12.png
+map_Pr /../images/club/metalnessMap12.png
+map_Pscm /../images/club/specularColorMap12.png
+
+newmtl M_LargeSpeakerandGlasses
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd /../images/club/M_LargeSpeakerandGlasses.png
+map_Pm /../images/club/metalnessMap13.png
+map_Pr /../images/club/metalnessMap13.png
+map_Pscm /../images/club/specularColorMap13.png
+
+newmtl M_LightsMediumProps
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_LightsMediumProps.png
+map_Ke /../images/club/emissiveMap14.png
+
+newmtl M_DJControlerandPainting
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0 0 0
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_DJControlerandPainting.png
+map_Ke /../images/club/emissiveMap15.png
 
 newmtl lambert1
-Ns 159.999985
-Ka 1.000000 1.000000 1.000000
-Kd 0.500000 0.500000 0.500000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1000.000000
-d 1.000000
-illum 2
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 0.5 0.5 0.5
+Ke 0 0 0
+
+newmtl M_Table
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 1
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 1 1 1
+map_Kd /../images/club/M_Table.png
+map_Ke /../images/club/emissiveMap17.png
+map_Pm /../images/club/metalnessMap17.png
+map_Pr /../images/club/metalnessMap17.png
+map_Pscm /../images/club/specularColorMap17.png
+
+newmtl M_Wall
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pr 0.6000000238418579
+Pds 1
+Pl 1
+Pccns 1-1
+Prfl 1
+Pior 1000
+Pshc 0 0 0
+Pshr 1
+Psi 1
+Psc 0.05000000074505806 0.05000000074505806 0.05000000074505806
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd /../images/club/M_Wall.png
