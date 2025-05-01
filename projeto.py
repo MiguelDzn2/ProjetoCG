@@ -24,11 +24,10 @@ from core.obj_reader2 import my_obj_reader2
 from core.matrix import Matrix
 from geometry.rectangle import RectangleGeometry
 from geometry.arrow import Arrow
-# Removido: from geometry.nightClub import NightClubGeometry # Não é mais necessário importar a classe específica aqui
-# Adiciona a importação da função de carregamento e Geometry genérica
-from geometry.nightClub import load_nightclub_multimaterial
+from core.obj_reader2 import my_obj_reader2 # <--- ALTERADO AQUI
 from geometry.geometry import Geometry
-import os # Para verificar caminhos
+import os 
+import geometry.nightClub as nightclub # <--- ALTERADO AQUI
 
 class GamePhase(Enum):
     SELECTION = auto()
@@ -162,8 +161,8 @@ class Example(Base):
         )
         grid.rotate_x(-math.pi / 2)
         self.setup_arrow_spawning(2.0)
-        
-        self._setup_nightclub()
+        self.handle_nightClub()
+
 
     def setup_selection_phase(self):
         # Add the title rig to the scene
@@ -352,94 +351,10 @@ class Example(Base):
                     del arrow  # Remove da memória
 
 
-
-    def _setup_nightclub(self):
-            """Carrega e configura o objeto nightclub com múltiplos materiais."""
-            print("Setting up nightclub object...")
-            # Cria um rig específico para o nightclub
-            self.object_rig_nightclub = MovementRig()
-            self.scene.add(self.object_rig_nightclub)
-
-            # --- Carga do Nightclub ---
-            # Certifica-te que o caminho para o ficheiro OBJ está correto
-            obj_file_path = "geometry/nightClub.obj" # VERIFICA ESTE CAMINHO!
-
-            # Verifica se o ficheiro OBJ existe
-            if not os.path.exists(obj_file_path):
-                print(f"Error: OBJ file not found at {os.path.abspath(obj_file_path)}")
-                # Considera não adicionar o rig à cena se o ficheiro não for encontrado
-                self.scene.remove(self.object_rig_nightclub)
-                return
-
-            # Chama a função de carregamento multi-material
-            nightclub_parts = load_nightclub_multimaterial(obj_file_path)
-
-            if not nightclub_parts:
-                print(f"Error: Could not load nightclub parts from {obj_file_path}.")
-                # Considera não adicionar o rig à cena se não houver partes
-                if self.object_rig_nightclub in self.scene.descendant_list:
-                    self.scene.remove(self.object_rig_nightclub)
-            else:
-                print(f"Loaded {len(nightclub_parts)} parts for the nightclub.")
-                parts_loaded_successfully = 0
-                for part_data in nightclub_parts:
-                    try:
-                        material_name = part_data.get('material_name', 'Unknown')
-                        texture_path = part_data.get('texture_path')
-                        geometry_data = part_data.get('geometry_data')
-
-                        if not texture_path or not geometry_data:
-                            print(f"  Warning: Skipping part '{material_name}' due to missing texture or geometry data.")
-                            continue
-
-                        print(f"  Processing part with material: {material_name}")
-
-                        # Verificar se o ficheiro de textura existe
-                        if not os.path.exists(texture_path):
-                            print(f"    Warning: Texture file not found at {os.path.abspath(texture_path)}. Skipping mesh part.")
-                            continue # Saltar esta parte se a textura não existe
-
-                        # Criar Geometria para esta parte
-                        # !!! IMPORTANTE: A função load_nightclub_multimaterial precisa gerar
-                        # listas planas de vértices e UVs na ordem correta.
-                        geometry = Geometry()
-                        geometry.add_attribute("vec3", "vertexPosition", geometry_data['vertices'])
-                        geometry.add_attribute("vec2", "vertexUV", geometry_data['uvs'])
-                        geometry.count_vertices() # Importante!
-
-                        # Check if geometry has vertices using the correct attribute
-                        if geometry.vertex_count == 0: # Changed from geometry.count
-                            print(f"    Warning: Geometry for material '{material_name}' has 0 vertices. Skipping mesh part.")
-                            continue
-
-                        # Criar Material e Textura para esta parte
-                        print(f"    Loading texture: {texture_path}")
-                        # Adiciona doubleSide=True se necessário (ex: paredes interiores visíveis)
-                        material = TextureMaterial(texture=Texture(file_name=texture_path), property_dict={"doubleSide": True})
-
-                        # Criar Mesh e adicioná-lo ao Rig do nightclub
-                        mesh = Mesh(geometry, material)
-                        self.object_rig_nightclub.add(mesh)
-                        print(f"    Added mesh part for material {material_name} to rig.")
-                        parts_loaded_successfully += 1
-
-                    except Exception as e:
-                        print(f"  Error processing part for material {part_data.get('material_name', 'Unknown')}: {e}")
-                        import traceback
-                        traceback.print_exc()
-
-                if parts_loaded_successfully > 0:
-                    # Configurar a posição/escala do rig completo apenas se algo foi carregado
-                    self.object_rig_nightclub.set_position([0, -2.5, 10]) # Ajusta a posição inicial
-                    self.object_rig_nightclub.scale(3) # Ajusta a escala
-                    print(f"Nightclub setup complete. {parts_loaded_successfully} parts added.")
-                else:
-                    print("Nightclub setup failed: No parts were loaded successfully.")
-                    # Remove o rig da cena se nenhuma parte foi carregada
-                    if self.object_rig_nightclub in self.scene.descendant_list:
-                        self.scene.remove(self.object_rig_nightclub)
-
-
+    def handle_nightClub(self):
+        self.nightClub = nightclub.NightClub(self.scene,"geometry/nightClub.obj", [0, -2.5, 10], 3)
+        self.nightClub_rig = self.nightClub.get_rig()
+        self.scene.add(self.nightClub_rig)
 
 Example(screen_size=[1280, 720]).run()
 
