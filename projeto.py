@@ -2,6 +2,7 @@ import math
 from nt import remove
 import pathlib
 import sys
+import pygame
 from enum import Enum, auto
 # Add parent directory to sys.path
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
@@ -29,6 +30,7 @@ from geometry.geometry import Geometry
 import os 
 import geometry.nightClub as nightclub # <--- ALTERADO AQUI
 from geometry.ring import RingGeometry
+from extras.text_texture import TextTexture
 
 class GamePhase(Enum):
     SELECTION = auto()
@@ -67,6 +69,9 @@ class Example(Base):
         self.current_phase = GamePhase.SELECTION
         self.highlighted_index = 0
         
+        # Initialize score
+        self.score = 0
+        
         # Camera animation properties - initial setup for gameplay phase
         self.camera_hardcoded_position = [0, 1.2, 7]  # X, Y, Z
         self.camera_hardcoded_rotation = [0, -math.pi/2, 0]  # X, Y, Z rotations in radians
@@ -80,6 +85,37 @@ class Example(Base):
         self.camera_rig = MovementRig()
         self.camera_rig.add(self.camera)
         self.scene.add(self.camera_rig)
+
+        # Create score text display
+        score_texture = TextTexture(
+            text="Score: 0",
+            system_font_name="Arial",
+            font_size=36,
+            font_color=(255, 255, 255),  # White text
+            background_color=(0, 0, 0, 128),  # Semi-transparent black background
+            transparent=True,
+            image_width=300,
+            image_height=100,
+            align_horizontal=0.0,  # Left-aligned
+            align_vertical=0.5,    # Vertically centered
+            image_border_width=0,  # Remove border
+            image_border_color=(255, 255, 255)  # White border
+        )
+        score_material = TextureMaterial(texture=score_texture, property_dict={"doubleSide": True})
+        score_geometry = RectangleGeometry(width=2, height=0.6)
+        self.score_mesh = Mesh(score_geometry, score_material)
+        
+        # Create the score rig but don't add to scene directly - will be added to camera
+        self.score_rig = MovementRig()
+        self.score_rig.add(self.score_mesh)
+        # Position score relative to camera view
+        self.score_rig.set_position([2.6, 1.3, -3])
+        
+        # Store the score texture for updates
+        self.score_texture = score_texture
+        
+        # Initially hide the score display in selection phase
+        # self.score_mesh.visible = False
 
         # Load textures and materials for each instrument
         miguel_texture = Texture(file_name="images/miguelJPG.jpg")
@@ -175,6 +211,10 @@ class Example(Base):
         self.scene.add(self.target_ring)
 
     def setup_selection_phase(self):
+        # Hide score by removing from camera if it's present
+        if self.score_rig in self.camera.descendant_list:
+            self.camera.remove(self.score_rig)
+            
         # Add the title rig to the scene
         self.scene.add(self.title_rig)
         # Position title rig (adjust coordinates as needed)
@@ -201,8 +241,11 @@ class Example(Base):
         # Apply highlighting to the currently selected object
         self.highlight_selected_object()
 
-
     def setup_gameplay_phase(self):
+        # Show score by adding to camera if not already there
+        if self.score_rig not in self.camera.descendant_list:
+            self.camera.add(self.score_rig)
+        
         # Remove the title rig from the scene
         if self.title_rig in self.scene.descendant_list:
             self.scene.remove(self.title_rig)
@@ -223,6 +266,12 @@ class Example(Base):
             
         # Reset the animation time for future camera animation
         self.camera_animation_time = 0
+        
+        # Reset score to 0 for new game
+        self.score = 0
+        print(f"Score: {self.score}")
+        # Update score display text
+        self.score_texture.update_text(f"Score: {self.score}")
         
         self.remove_highlighting()
         self.active_object_rig._matrix = Matrix.make_identity()
@@ -473,7 +522,13 @@ class Example(Base):
             self.active_object_rig.rotate_x(rotate_amount)
         if self.input.is_key_pressed('l'):
             self.active_object_rig.rotate_x(-rotate_amount)
-
+            
+        # Increment score by 100 when pressing A
+        if self.input.is_key_down('a'):
+            self.score += 100
+            print(f"Score: {self.score}")
+            # Update score display text
+            self.score_texture.update_text(f"Score: {self.score}")
 
     def create_single_arrow(self):
         """Cria uma única seta com orientação aleatória, considerando offset de origem"""
@@ -528,7 +583,6 @@ class Example(Base):
                 arrow = self.arrows.pop(i)  # Remove da lista
                 arrow.rig.parent.remove(arrow.rig)  # Remove da cena
                 del arrow  # Remove da memória
-
 
     def handle_nightClub(self):
         self.nightClub = nightclub.NightClub(self.scene,"geometry/nightClub.obj", [0, -2.5, 10], 3)
