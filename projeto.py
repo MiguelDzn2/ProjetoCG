@@ -28,6 +28,7 @@ from core.obj_reader2 import my_obj_reader2 # <--- ALTERADO AQUI
 from geometry.geometry import Geometry
 import os 
 import geometry.nightClub as nightclub # <--- ALTERADO AQUI
+from geometry.ring import RingGeometry
 
 class GamePhase(Enum):
     SELECTION = auto()
@@ -164,6 +165,14 @@ class Example(Base):
         self.setup_arrow_spawning(2.0)
         self.handle_nightClub()
 
+        # Ring (target circle)
+        ring_geometry = RingGeometry(inner_radius=0.4, outer_radius=0.5, segments=32) # Adjust radii as needed
+        self.target_ring = Mesh(ring_geometry, SurfaceMaterial(property_dict={"baseColor": [0, 1, 0], "doubleSide": True}))
+        self.target_ring.scale(1.5) # Scale the ring up by 50%
+        self.target_ring.translate(1.3, -0.03, 5) # Place slightly above the ground plane
+        self.target_ring.rotate_x(0) # Rotate to lie flat on XZ plane
+
+        self.scene.add(self.target_ring)
 
     def setup_selection_phase(self):
         # Add the title rig to the scene
