@@ -40,6 +40,7 @@ class Arrow:
         body_mesh = Mesh(body_geometry, body_material)
         body_mesh.set_position([0, -total_height/2 + body_height/2, 0])
         self.rig.add(body_mesh)
+        self.body_mesh = body_mesh  # Save reference to body
         
         # Posiciona a ponta (triângulo) na parte superior
         tip_geometry = PolygonGeometry(sides=3, radius=tip_radius)
@@ -54,6 +55,7 @@ class Arrow:
         triangle_center_offset = tip_radius * math.cos(math.pi/6)  # Altura do triângulo equilátero
         tip_mesh.set_position([0, body_height/2 + triangle_center_offset/3, 0])
         self.rig.add(tip_mesh)
+        self.tip_mesh = tip_mesh  # Save reference to tip
 
         # Initialize movement attributes
         self.direction = 1  # Movement direction (1 for right, -1 for left)
@@ -91,8 +93,8 @@ class Arrow:
         """Atualiza o movimento da seta"""
         current_pos = self.rig.local_position
         
-        # Define the absolute stopping X-coordinate
-        arrow_stop_x = 2.5
+        # Define the absolute stopping X-coordinate (moved further to allow arrows to pass through the ring)
+        arrow_stop_x = 4.0
         
         # Only update position if the arrow hasn't reached the stopping point
         if current_pos[0] < arrow_stop_x:
@@ -125,5 +127,17 @@ class Arrow:
         
     def isVisible(self):
         return self.is_visible
+        
+    def change_color(self, color):
+        """Changes the color of both parts of the arrow"""
+        # Change body color
+        if hasattr(self, 'body_mesh') and self.body_mesh:
+            # Update the existing material's color property using set_properties (note: plural)
+            self.body_mesh.material.set_properties({"baseColor": color})
+            
+        # Change tip color
+        if hasattr(self, 'tip_mesh') and self.tip_mesh:
+            # Update the existing material's color property using set_properties (note: plural)
+            self.tip_mesh.material.set_properties({"baseColor": color})
 
 

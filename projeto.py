@@ -105,9 +105,38 @@ class Example(Base):
         score_geometry = RectangleGeometry(width=2, height=0.6)
         self.score_mesh = Mesh(score_geometry, score_material)
         
+        # Create collision status display
+        collision_texture = TextTexture(
+            text="Status: --",
+            system_font_name="Arial",
+            font_size=36,
+            font_color=(255, 255, 255),  # White text
+            background_color=(0, 0, 0, 128),  # Semi-transparent black background
+            transparent=True,
+            image_width=300,
+            image_height=100,
+            align_horizontal=0.0,  # Left-aligned
+            align_vertical=0.5,    # Vertically centered
+            image_border_width=0,  # Remove border
+            image_border_color=(255, 255, 255)  # White border
+        )
+        collision_material = TextureMaterial(texture=collision_texture, property_dict={"doubleSide": True})
+        collision_geometry = RectangleGeometry(width=2, height=0.6)
+        self.collision_mesh = Mesh(collision_geometry, collision_material)
+        
+        # Create the collision status rig
+        self.collision_rig = MovementRig()
+        self.collision_rig.add(self.collision_mesh)
+        # Position collision status below score
+        self.collision_rig.set_position([2.6, 0.7, -3])
+        
+        # Store the collision texture for updates
+        self.collision_texture = collision_texture
+        
         # Create the score rig but don't add to scene directly - will be added to camera
         self.score_rig = MovementRig()
         self.score_rig.add(self.score_mesh)
+        self.score_rig.add(self.collision_mesh)
         # Position score relative to camera view
         self.score_rig.set_position([2.6, 1.3, -3])
         
@@ -562,6 +591,56 @@ class Example(Base):
             self.arrow_spawn_timer = 0
             self.arrows.append(self.create_single_arrow())
 
+    def check_arrow_ring_collision(self, arrow):
+        """
+        Checks if an arrow is inside the ring.
+        Returns:
+        - 1: Arrow is exactly in the center of the ring
+        - 0.5: Arrow is partially inside the ring
+        - 0: Arrow is outside the ring
+        """
+        # Get positions of arrow and ring
+        arrow_pos = arrow.rig.local_position
+        ring_pos = self.target_ring.global_position
+        
+        # First check if arrow has passed the ring without colliding
+        # If the arrow is already more than 0.5 units past the ring on the X axis, it can no longer collide
+        if arrow_pos[0] > ring_pos[0] + 0.5:
+            # If arrow is marked as scored, it collided at some point
+            if hasattr(arrow, 'scored') and arrow.scored:
+                # Return the previously determined score
+                return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
+            else:
+                # Arrow passed without colliding
+                return 0
+        
+        # Calculate distance between arrow and ring center
+        dx = arrow_pos[0] - ring_pos[0]
+        dy = arrow_pos[1] - ring_pos[1]
+        dz = arrow_pos[2] - ring_pos[2]
+        
+        # Calculate flat distance (considering only X and Z planes, as the game is essentially planar)
+        flat_distance = math.sqrt(dx*dx + dz*dz)
+        
+        # Get the inner and outer radius of the ring, adjusted by the scale factor
+        inner_radius = 0.4 * 1.5  # Original inner_radius * scale
+        outer_radius = 0.5 * 1.5  # Original outer_radius * scale
+        
+        # Consider the arrow's dimensions (approximate as a circle for collision purposes)
+        arrow_radius = 0.2  # Approximate arrow width (considering the body width)
+        
+        # Determine scoring based on distance
+        if flat_distance <= inner_radius * 0.3:  # Center hit (30% of inner radius)
+            # Store the collision value
+            arrow.collision_value = 1
+            return 1
+        elif flat_distance <= outer_radius + arrow_radius:  # Partially inside (allow for arrow's size)
+            # Store the collision value
+            arrow.collision_value = 0.5
+            return 0.5
+        else:  # Outside
+            return 0
+    
     def handle_arrows(self, delta_time):
         # Atualiza spawn de setas
         self.update_arrow_spawning(self.delta_time)
@@ -572,6 +651,38 @@ class Example(Base):
         for i, arrow in enumerate(self.arrows):
             # Update arrow position
             arrow.update()
+            
+            # Check for collision with ring
+            collision_result = self.check_arrow_ring_collision(arrow)
+            if collision_result > 0:
+                # Print the collision state
+                print(f"Arrow collision: {collision_result}")
+                
+                # Update the collision status display
+                if collision_result == 1:
+                    status_text = "Status: 1.0 (Perfect!)"
+                    # Change arrow color to gold for perfect hit
+                    arrow.change_color([1.0, 0.84, 0.0])
+                else:
+                    status_text = "Status: 0.5 (Partial)"
+                    # Change arrow color to green for partial hit
+                    arrow.change_color([0.0, 1.0, 0.0])
+                
+                self.collision_texture.update_text(status_text)
+                
+                # Update score only once per arrow
+                if not hasattr(arrow, 'scored') or not arrow.scored:
+                    # Add score based on collision level
+                    self.score += collision_result * 100
+                    # Update score display
+                    self.score_texture.update_text(f"Score: {self.score}")
+                    # Mark arrow as scored so we don't count it multiple times
+                    arrow.scored = True
+            else:
+                # If no collision and arrow is far enough to be past the ring
+                if arrow.rig.local_position[0] > self.target_ring.global_position[0] + 0.5:
+                    # Update status to show miss
+                    self.collision_texture.update_text("Status: 0 (Miss)")
             
             # Check if arrow should be removed
             if not arrow.isVisible():
