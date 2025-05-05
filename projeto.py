@@ -591,12 +591,12 @@ class Example(Base):
             self.arrow_spawn_timer = 0
             self.arrows.append(self.create_single_arrow())
 
-    def check_arrow_ring_collision(self, arrow):
+    def check_arrow_ring_collision(self, arrow, arrow_index):
         """
         Checks if an arrow is inside the ring.
         Returns:
-        - 1: Arrow is exactly in the center of the ring
-        - 0.5: Arrow is partially inside the ring
+        - 1: Arrow is completely inside the ring (both body and tip)
+        - 0.5: Arrow is partially inside the ring (only part of body or tip)
         - 0: Arrow is outside the ring
         """
         # Get positions of arrow and ring
@@ -614,7 +614,7 @@ class Example(Base):
                 # Arrow passed without colliding
                 return 0
         
-        # Calculate distance between arrow and ring center
+        # Calculate distance between arrow center and ring center
         dx = arrow_pos[0] - ring_pos[0]
         dy = arrow_pos[1] - ring_pos[1]
         dz = arrow_pos[2] - ring_pos[2]
@@ -626,15 +626,37 @@ class Example(Base):
         inner_radius = 0.4 * 1.5  # Original inner_radius * scale
         outer_radius = 0.5 * 1.5  # Original outer_radius * scale
         
-        # Consider the arrow's dimensions (approximate as a circle for collision purposes)
-        arrow_radius = 0.2  # Approximate arrow width (considering the body width)
+        # Get dimensions of arrow parts
+        # These values should match those in the Arrow class
+        body_width = 0.2 * 0.8  # width * size from Arrow class
+        body_height = 0.6 * 0.8  # height * size from Arrow class
+        tip_radius = 0.3 * 0.8   # radius * size from Arrow class
         
-        # Store the arrow's potential collision value without registering the collision yet
-        if flat_distance <= inner_radius * 0.3:  # Center hit (30% of inner radius)
+        # Maximum extent of arrow from its center point
+        # This is half the width of the body and the radius of the tip
+        arrow_max_extent = max(body_width/2, tip_radius)
+        
+        # Calculate arrow bounds for debugging
+        arrow_min_x = arrow_pos[0] - arrow_max_extent
+        arrow_max_x = arrow_pos[0] + arrow_max_extent
+        arrow_min_z = arrow_pos[2] - arrow_max_extent
+        arrow_max_z = arrow_pos[2] + arrow_max_extent
+        
+        # Calculate ring bounds for debugging
+        ring_min_x = ring_pos[0] - outer_radius
+        ring_max_x = ring_pos[0] + outer_radius
+        ring_min_z = ring_pos[2] - outer_radius
+        ring_max_z = ring_pos[2] + outer_radius
+        
+        # Calculate potential collision value
+        if flat_distance + arrow_max_extent <= inner_radius:
+            # Arrow is completely inside the inner ring (full interception)
             arrow.potential_collision_value = 1
-        elif flat_distance <= outer_radius + arrow_radius:  # Partially inside (allow for arrow's size)
+        elif flat_distance <= outer_radius:
+            # Arrow is at least partially inside the ring (partial interception)
             arrow.potential_collision_value = 0.5
-        else:  # Outside
+        else:
+            # Arrow is completely outside the ring
             arrow.potential_collision_value = 0
             
         # Check if any arrow key is pressed
@@ -643,15 +665,35 @@ class Example(Base):
                                self.input.is_key_pressed('left') or 
                                self.input.is_key_pressed('right'))
         
-        # Only register a collision if both conditions are met:
+        # Initialize collision checked flag if it doesn't exist
+        if not hasattr(arrow, 'collision_checked'):
+            arrow.collision_checked = False
+            
+        # Only register a collision if all conditions are met:
         # 1. Arrow has a potential collision value > 0
         # 2. An arrow key is pressed
-        if arrow.potential_collision_value > 0 and is_arrow_key_pressed:
+        # 3. Collision has not been checked while the key is pressed
+        if arrow.potential_collision_value > 0 and is_arrow_key_pressed and not arrow.collision_checked:
+            # Debug print only essential collision information
+            print(f"COLLISION DETECTED - Arrow[{arrow_index}]: Value {arrow.potential_collision_value}")
+            print(f"  Arrow X,Z: ({arrow_pos[0]:.2f}, {arrow_pos[2]:.2f}), Ring X,Z: ({ring_pos[0]:.2f}, {ring_pos[2]:.2f})")
+            print(f"  Distance: {flat_distance:.2f}, Arrow extent: {arrow_max_extent:.2f}, Ring radius: {outer_radius:.2f}")
+            
+            # Mark that collision has been checked while key is pressed
+            arrow.collision_checked = True
             # Store the collision value for scoring
             arrow.collision_value = arrow.potential_collision_value
             return arrow.collision_value
         else:
-            # No collision registered yet
+            # Only print if potential collision exists
+            if arrow.potential_collision_value > 0:
+                # Simple non-registration reason, abbreviated
+                if is_arrow_key_pressed and arrow.collision_checked:
+                    print(f"Arrow[{arrow_index}]: Waiting for key release (already checked)")
+                elif arrow.potential_collision_value > 0 and not is_arrow_key_pressed:
+                    print(f"Arrow[{arrow_index}]: Waiting for key press (value: {arrow.potential_collision_value})")
+            
+            # No collision registered
             return 0
     
     def handle_arrows(self, delta_time):
@@ -667,17 +709,53 @@ class Example(Base):
                                self.input.is_key_pressed('left') or 
                                self.input.is_key_pressed('right'))
         
+        # Debug print when key state changes
+        if not hasattr(self, 'prev_key_state'):
+            self.prev_key_state = False
+        
+        if is_arrow_key_pressed != self.prev_key_state:
+            print(f"Arrow key state changed: {'PRESSED' if is_arrow_key_pressed else 'RELEASED'}")
+            self.prev_key_state = is_arrow_key_pressed
+        
+        # First update all arrows and find two nearest to ring
+        ring_pos = self.target_ring.global_position
+        arrow_distances = []
+        
         for i, arrow in enumerate(self.arrows):
             # Update arrow position
             arrow.update()
             
+            # Reset collision_checked flag when no arrow keys are pressed
+            if not is_arrow_key_pressed and hasattr(arrow, 'collision_checked'):
+                arrow.collision_checked = False
+            
+            # Calculate distance to ring
+            arrow_pos = arrow.rig.local_position
+            dx = arrow_pos[0] - ring_pos[0]
+            dz = arrow_pos[2] - ring_pos[2]
+            distance = math.sqrt(dx*dx + dz*dz)
+            
+            # Store arrow index and distance
+            arrow_distances.append((i, distance))
+            
+            # Check if arrow should be removed
+            if not arrow.isVisible():
+                arrows_to_remove.append(i)
+        
+        # Sort arrows by distance to ring
+        arrow_distances.sort(key=lambda x: x[1])
+        
+        # Only process the two nearest arrows
+        nearest_arrows = arrow_distances[:2] if len(arrow_distances) >= 2 else arrow_distances
+        
+        # Process only the nearest arrows
+        for idx, distance in nearest_arrows:
+            arrow = self.arrows[idx]
+            
             # Check for collision with ring
-            collision_result = self.check_arrow_ring_collision(arrow)
+            collision_result = self.check_arrow_ring_collision(arrow, idx)
             
             if collision_result > 0:
-                # Print the collision state
-                print(f"Arrow collision: {collision_result}")
-                
                 # Update the collision status display
                 if collision_result == 1:
                     status_text = "Status: 1.0 (Perfect!)"
@@ -698,23 +776,21 @@ class Example(Base):
                     self.score_texture.update_text(f"Score: {self.score}")
                     # Mark arrow as scored so we don't count it multiple times
                     arrow.scored = True
+                    print(f"Arrow[{idx}] scored: {collision_result * 100} points, total: {self.score}")
             else:
                 # If no collision and arrow is far enough to be past the ring
-                if arrow.rig.local_position[0] > self.target_ring.global_position[0] + 0.5:
+                if arrow.rig.local_position[0] > ring_pos[0] + 0.5:
                     # Update status to show miss
                     self.collision_texture.update_text("Status: 0 (Miss)")
                 # If we have a potential collision but no arrow key is pressed
                 elif hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value > 0 and not is_arrow_key_pressed:
                     # Show that an arrow key needs to be pressed
                     self.collision_texture.update_text("Status: Press Arrow Key!")
-            
-            # Check if arrow should be removed
-            if not arrow.isVisible():
-                arrows_to_remove.append(i)
 
         # Remove setas marcadas em ordem reversa
         for i in sorted(arrows_to_remove, reverse=True):
             if i < len(self.arrows):  # Verificação adicional de segurança
+                print(f"Removing Arrow[{i}] from scene")
                 arrow = self.arrows.pop(i)  # Remove da lista
                 arrow.rig.parent.remove(arrow.rig)  # Remove da cena
                 del arrow  # Remove da memória
