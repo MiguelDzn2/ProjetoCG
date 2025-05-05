@@ -56,19 +56,20 @@ class Example(Base):
         print("- Setas Esquerda/Direita: Selecionar objeto")
         print("- Enter: Confirmar seleção e passar para fase de jogo")
         print("\nFase de Jogo:")
-        print("Controlo da Câmara:")
-        print("- WASD: Mover a câmara para a frente/esquerda/trás/direita")
-        print("- RF: Mover a câmara para cima/para baixo")
-        print("- QE: Virar a câmara para a esquerda/direita")
-        print("- TG: Olhar para cima/para baixo")
-        print("\nControlo dos Objectos:")
+        print("Controlo dos Objectos:")
         print("- Setas: Mover o objecto para a frente/esquerda/trás/direita")
         print("- UO: Rodar o objecto para a esquerda/direita")
         print("- KL: Inclinar o objecto para cima/para baixo")
+        print("\nNota: A câmara está agora em modo automático.")
 
         # Initialize game phase
         self.current_phase = GamePhase.SELECTION
         self.highlighted_index = 0
+        
+        # Camera animation properties - initial setup for gameplay phase
+        self.camera_hardcoded_position = [0, 1.2, 7]  # X, Y, Z
+        self.camera_hardcoded_rotation = [0, -math.pi/2, 0]  # X, Y, Z rotations in radians
+        self.camera_animation_time = 0  # Track elapsed time for future animation
         
         self.renderer = Renderer()
         self.scene = Scene()
@@ -151,7 +152,7 @@ class Example(Base):
         # Set up the camera for the selection phase
         self.setup_selection_phase()
         
-        behind_z = -5
+        # behind_z = -5
         axes = AxesHelper(axis_length=2)
         self.scene.add(axes)
         grid = GridHelper(
@@ -196,22 +197,116 @@ class Example(Base):
         # Remove the title rig from the scene
         if self.title_rig in self.scene.descendant_list:
             self.scene.remove(self.title_rig)
-        # Position camera to face "forward"
+            
+        # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
-        self.camera_rig.set_position([0.5, 1, 10])
+        
+        # Apply hardcoded position and rotation for camera
+        self.camera_rig.set_position(self.camera_hardcoded_position)
+        
+        # Apply rotations if needed
+        if self.camera_hardcoded_rotation[0] != 0:
+            self.camera_rig.rotate_x(self.camera_hardcoded_rotation[0])
+        if self.camera_hardcoded_rotation[1] != 0:
+            self.camera_rig.rotate_y(self.camera_hardcoded_rotation[1])
+        if self.camera_hardcoded_rotation[2] != 0:
+            self.camera_rig.rotate_z(self.camera_hardcoded_rotation[2])
+            
+        # Reset the animation time for future camera animation
+        self.camera_animation_time = 0
+        
         self.remove_highlighting()
         self.active_object_rig._matrix = Matrix.make_identity()
         self.active_object_rig.set_position([0, 0, 0])
-        behind_z = -5
-        side_positions = [[-5, 0, behind_z], [0, 0, behind_z], [5, 0, behind_z]]
-        pos_index = 0
-        for rig in self.object_rigs:
+        
+        # Get the index of the selected instrument
+        selected_index = self.object_rigs.index(self.active_object_rig)
+        
+        # Define positions and rotations based on which instrument was selected
+        # Format: [positions for instrument 0, positions for instrument 1, positions for instrument 2, positions for instrument 3]
+        # Each "positions for instrument X" is a list of 3 [x,y,z] positions for the other instruments
+        positions_by_selection = [
+            # Positions when Miguel's instrument (index 0) is selected
+            [
+                None,                   # No position for Miguel (selected)
+                [10, -0.45, 10.5],        # Position for Ze's instrument
+                [12, -0.45, 7.2],        # Position for Ana's instrument
+                [10, -1, 4.5]         # Position for Brandon's instrument
+            ],
+            # Positions when Ze's instrument (index 1) is selected
+            [
+                [10, -0.45, 10.5],        # Position for Miguel's instrument
+                None,                   # No position for Ze (selected)
+                [12, -0.45, 7.2],        # Position for Ana's instrument
+                [10, -1, 4.5]         # Position for Brandon's instrument
+            ],
+            # Positions when Ana's instrument (index 2) is selected
+            [
+                [10, -0.45, 10.5],        # Position for Miguel's instrument
+                [12, -0.45, 7.2],        # Position for Ze's instrument
+                None,                   # No position for Ana (selected)
+                [10, -1, 4.5]         # Position for Brandon's instrument
+            ],
+            # Positions when Brandon's instrument (index 3) is selected
+            [
+                [10, -0.45, 10.5],        # Position for Miguel's instrument
+                [12, -0.45, 7.2],        # Position for Ze's instrument
+                [10, -1, 4.5],        # Position for Ana's instrument
+                None                    # No position for Brandon (selected)
+            ]
+        ]
+        
+        # Define rotations based on which instrument was selected
+        # Format similar to positions_by_selection
+        rotations_by_selection = [
+            # Rotations when Miguel's instrument (index 0) is selected
+            # the rotation axis are (x,y,z)
+            [
+                None,                       # No rotation for Miguel (selected)
+                [math.pi/4, math.pi/6, 0],          # Rotation for Ze's instrument
+                [math.pi/10, math.pi/2, 0],         # Rotation for Ana's instrument
+                [-math.pi/4, -math.pi/8, -math.pi/4]          # Rotation for Brandon's instrument
+            ],
+            # Rotations when Ze's instrument (index 1) is selected
+            [
+                [math.pi/4, math.pi/6, 0],          # Rotation for Miguel's instrument
+                None,                       # No rotation for Ze (selected)
+                [math.pi/10, math.pi/2, 0],         # Rotation for Ana's instrument
+                [-math.pi/4, -math.pi/8, -math.pi/4]          # Rotation for Brandon's instrument
+            ],
+            # Rotations when Ana's instrument (index 2) is selected
+            [
+                [math.pi/4, math.pi/6, 0],          # Rotation for Miguel's instrument
+                [math.pi/4, math.pi/6, 0],          # Rotation for Ze's instrument
+                None,                       # No rotation for Ana (selected)
+                [-math.pi/4, -math.pi/8, -math.pi/4]          # Rotation for Brandon's instrument
+            ],
+            # Rotations when Brandon's instrument (index 3) is selected
+            [
+                [math.pi/4, math.pi/6, 0],          # Rotation for Miguel's instrument
+                [math.pi/4, math.pi/6, 0],          # Rotation for Ze's instrument
+                [math.pi/10, math.pi/2, 0],         # Rotation for Ana's instrument
+                None                        # No rotation for Brandon (selected)
+            ]
+        ]
+        
+        # Apply positions and rotations based on selection
+        for i, rig in enumerate(self.object_rigs):
             if rig != self.active_object_rig:
                 rig._matrix = Matrix.make_identity()
-                rig.set_position(side_positions[pos_index])
-                pos_index += 1
+                
+                # Get position and rotation for this instrument based on which one was selected
+                position = positions_by_selection[selected_index][i]
+                rotation = rotations_by_selection[selected_index][i]
+                
+                if position:
+                    rig.set_position(position)
+                
+                if rotation:
+                    rig.rotate_y(rotation[1])
+                    rig.rotate_x(rotation[0])
+                    rig.rotate_z(rotation[2])
 
-    
     def highlight_selected_object(self):
         # Simple highlighting by scaling up the selected object
         for i, rig in enumerate(self.object_rigs):
@@ -232,6 +327,70 @@ class Example(Base):
             rig.set_position(current_pos) # Reapply position
             rig.scale(1) # Ensure scale is 1
 
+    def update_camera_animation(self):
+        """
+        Updates camera position and rotation based on elapsed time.
+        Moves the camera from initial position to final position over 10 seconds,
+        then stays at the final position indefinitely.
+        """
+        # Initial position and rotation (hardcoded)
+        initial_position = self.camera_hardcoded_position  # [0, 1.2, 7]
+        initial_rotation = self.camera_hardcoded_rotation  # [0, -math.pi/2, 0]
+        
+        # Final position and rotation
+        final_position = [-3, 1.2, 12.5]
+        final_rotation = [0, -math.pi/4, 0]
+        
+        # Time to reach final position (in seconds)
+        transition_time = 4.0
+        
+        # If animation time is less than 0.1, use initial position without interpolation
+        if self.camera_animation_time < 0.1:
+            self.camera_rig._matrix = Matrix.make_identity()
+            self.camera_rig.set_position(initial_position)
+            self.apply_camera_rotation(initial_rotation)
+            return
+        
+        # If animation time is greater than transition time, use final position
+        if self.camera_animation_time >= transition_time + 0.1:
+            self.camera_rig._matrix = Matrix.make_identity()
+            self.camera_rig.set_position(final_position)
+            self.apply_camera_rotation(final_rotation)
+            return
+        
+        # During transition, interpolate between initial and final positions
+        t = (self.camera_animation_time - 0.1) / transition_time  # Normalized time (0 to 1)
+        
+        # Interpolate position (linear)
+        new_position = [
+            initial_position[0] + (final_position[0] - initial_position[0]) * t,
+            initial_position[1] + (final_position[1] - initial_position[1]) * t,
+            initial_position[2] + (final_position[2] - initial_position[2]) * t
+        ]
+        
+        # Interpolate rotation (linear)
+        new_rotation = [
+            initial_rotation[0] + (final_rotation[0] - initial_rotation[0]) * t,
+            initial_rotation[1] + (final_rotation[1] - initial_rotation[1]) * t,
+            initial_rotation[2] + (final_rotation[2] - initial_rotation[2]) * t
+        ]
+        
+        # Apply new transforms
+        self.camera_rig._matrix = Matrix.make_identity()
+        self.camera_rig.set_position(new_position)
+        
+        # Apply rotations
+        self.apply_camera_rotation(new_rotation)
+
+    def apply_camera_rotation(self, rotation):
+        """Helper method to apply rotation in the correct order"""
+        if rotation[0] != 0:
+            self.camera_rig.rotate_x(rotation[0])
+        if rotation[1] != 0:
+            self.camera_rig.rotate_y(rotation[1])
+        if rotation[2] != 0:
+            self.camera_rig.rotate_z(rotation[2])
+
     def update(self):
         if self.current_phase == GamePhase.SELECTION:
             # Handle input for selection phase
@@ -241,6 +400,8 @@ class Example(Base):
         elif self.current_phase == GamePhase.GAMEPLAY:
             # Handle input for gameplay phase
             self.handle_gameplay_input()
+            # Update camera animation
+            self.update_camera_animation()
             self.handle_arrows(self.delta_time)
         
         self.renderer.render(self.scene, self.camera)
@@ -273,13 +434,14 @@ class Example(Base):
             self.current_phase = GamePhase.GAMEPLAY
     
     def handle_gameplay_input(self):
-        # Camera movement with WASDRF, QE, TG
-        self.camera_rig.update(self.input, self.delta_time)
+        # Camera is now hardcoded and no longer controlled manually
+        
+        # Update camera animation time for future use in time-based camera animation
+        self.camera_animation_time += self.delta_time
         
         # Object movement with arrow keys and other controls
         move_amount = 2 * self.delta_time
         rotate_amount = 1 * self.delta_time
-        
         
         # Translation with arrow keys affects the active object
         if self.input.is_key_pressed('left'):
@@ -314,9 +476,17 @@ class Example(Base):
         arrow.add_to_scene(self.scene)
         arrow.rotate(math.radians(angle), 'z')
         
-        # Posição inicial ajustada para compensar offset
-        arrow.set_position([-10 + 0.5, -2, 3.5])  # Adiciona 0.5 para compensar offset X
-
+        # Get camera position to calculate arrow position relative to the camera
+        camera_pos = self.camera_rig.global_position
+        
+        # Position the arrow in front of the camera (fixed distance)
+        arrow_distance = 10  # Distance in front of the camera
+        arrow_height = -2   # Height relative to camera
+        arrow_offset_x = -10  # Starting X offset to the left
+        
+        # Calculate position relative to camera view direction
+        arrow.set_position([camera_pos[0] + arrow_offset_x, camera_pos[1] + arrow_height, camera_pos[2] - arrow_distance])
+        
         return arrow
 
     def setup_arrow_spawning(self, interval=2.0):
@@ -333,22 +503,42 @@ class Example(Base):
             self.arrows.append(self.create_single_arrow())
 
     def handle_arrows(self, delta_time):
-            # Atualiza spawn de setas
-            self.update_arrow_spawning(self.delta_time)
+        # Atualiza spawn de setas
+        self.update_arrow_spawning(self.delta_time)
 
-            # Atualiza todas as setas
-            arrows_to_remove = []
-            for i, arrow in enumerate(self.arrows):
-                arrow.update()  # Atualiza primeiro
-                if not arrow.isVisible():  # Verifica visibilidade depois da atualização
-                    arrows_to_remove.append(i)
+        # Atualiza todas as setas
+        arrows_to_remove = []
+        
+        # Get current camera position for reference
+        camera_pos = self.camera_rig.global_position
+        
+        for i, arrow in enumerate(self.arrows):
+            # Update arrow position first
+            arrow.update()
+            
+            # Get arrow's current position
+            current_pos = arrow.rig.local_position
+            
+            # Reposition arrow if camera has moved significantly
+            if abs(current_pos[2] - (camera_pos[2] - 10)) > 0.5:  # Check if Z position needs updating
+                # Keep the arrow's X position but update Y and Z relative to camera
+                new_pos = [
+                    current_pos[0],  # Keep current X position (for movement)
+                    camera_pos[1] - 2,  # Keep consistent Y offset from camera
+                    camera_pos[2] - 10  # Keep consistent Z distance from camera
+                ]
+                arrow.rig.set_position(new_pos)
+            
+            # Check if arrow should be removed
+            if not arrow.isVisible():
+                arrows_to_remove.append(i)
 
-            # Remove setas marcadas em ordem reversa
-            for i in sorted(arrows_to_remove, reverse=True):
-                if i < len(self.arrows):  # Verificação adicional de segurança
-                    arrow = self.arrows.pop(i)  # Remove da lista
-                    arrow.rig.parent.remove(arrow.rig)  # Remove da cena
-                    del arrow  # Remove da memória
+        # Remove setas marcadas em ordem reversa
+        for i in sorted(arrows_to_remove, reverse=True):
+            if i < len(self.arrows):  # Verificação adicional de segurança
+                arrow = self.arrows.pop(i)  # Remove da lista
+                arrow.rig.parent.remove(arrow.rig)  # Remove da cena
+                del arrow  # Remove da memória
 
 
     def handle_nightClub(self):

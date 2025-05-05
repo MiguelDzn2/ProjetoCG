@@ -92,10 +92,11 @@ class Arrow:
         current_pos = self.rig.local_position
         new_x = current_pos[0] + self.SPEED * self.direction
 
-        # Verifica se a seta saiu da tela
-        if new_x > self.RESET_POSITION:  # Limite direito
+        # Verifica se a seta saiu da tela (relative to its own position, not fixed boundaries)
+        relative_reset_position = self.RESET_POSITION
+        if new_x > current_pos[0] + relative_reset_position:  # Limite direito relativo
             self.is_visible = False
-        elif new_x < -self.RESET_POSITION:  # Limite esquerdo
+        elif new_x < current_pos[0] - relative_reset_position:  # Limite esquerdo relativo
             self.direction *= -1  # Inverte direção
 
         # Atualiza posição
