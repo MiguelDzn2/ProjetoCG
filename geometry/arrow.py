@@ -90,17 +90,19 @@ class Arrow:
     def update(self):
         """Atualiza o movimento da seta"""
         current_pos = self.rig.local_position
-        new_x = current_pos[0] + self.SPEED * self.direction
-
-        # Verifica se a seta saiu da tela (relative to its own position, not fixed boundaries)
-        relative_reset_position = self.RESET_POSITION
-        if new_x > current_pos[0] + relative_reset_position:  # Limite direito relativo
+        
+        # Define the absolute stopping X-coordinate
+        arrow_stop_x = 2.5
+        
+        # Only update position if the arrow hasn't reached the stopping point
+        if current_pos[0] < arrow_stop_x:
+            new_x = current_pos[0] + self.SPEED * self.direction
+            # Ensure the arrow doesn't overshoot the arrow_stop_x
+            new_x = min(new_x, arrow_stop_x)
+            self.rig.set_position([new_x, current_pos[1], current_pos[2]])
+        else:
+            # Mark the arrow as not visible once it reaches or passes arrow_stop_x
             self.is_visible = False
-        elif new_x < current_pos[0] - relative_reset_position:  # Limite esquerdo relativo
-            self.direction *= -1  # Inverte direção
-
-        # Atualiza posição
-        self.rig.set_position([new_x, current_pos[1], current_pos[2]])
 
     def get_rotation_angle(self):
         """Obtém o ângulo de rotação atual da seta em graus"""

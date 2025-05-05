@@ -478,8 +478,8 @@ class Example(Base):
         
         # Hardcoded position for arrows
         arrow_x = -3 # Starting X position (left side)
-        arrow_y = 2    # Fixed Y position
-        arrow_z = 5    # Fixed Z position
+        arrow_y = 0    # Fixed Y position
+        arrow_z = 8    # Fixed Z position
         # Set arrow at hardcoded position
         arrow.set_position([arrow_x, arrow_y, arrow_z])
         
