@@ -629,16 +629,29 @@ class Example(Base):
         # Consider the arrow's dimensions (approximate as a circle for collision purposes)
         arrow_radius = 0.2  # Approximate arrow width (considering the body width)
         
-        # Determine scoring based on distance
+        # Store the arrow's potential collision value without registering the collision yet
         if flat_distance <= inner_radius * 0.3:  # Center hit (30% of inner radius)
-            # Store the collision value
-            arrow.collision_value = 1
-            return 1
+            arrow.potential_collision_value = 1
         elif flat_distance <= outer_radius + arrow_radius:  # Partially inside (allow for arrow's size)
-            # Store the collision value
-            arrow.collision_value = 0.5
-            return 0.5
+            arrow.potential_collision_value = 0.5
         else:  # Outside
+            arrow.potential_collision_value = 0
+            
+        # Check if any arrow key is pressed
+        is_arrow_key_pressed = (self.input.is_key_pressed('up') or 
+                               self.input.is_key_pressed('down') or 
+                               self.input.is_key_pressed('left') or 
+                               self.input.is_key_pressed('right'))
+        
+        # Only register a collision if both conditions are met:
+        # 1. Arrow has a potential collision value > 0
+        # 2. An arrow key is pressed
+        if arrow.potential_collision_value > 0 and is_arrow_key_pressed:
+            # Store the collision value for scoring
+            arrow.collision_value = arrow.potential_collision_value
+            return arrow.collision_value
+        else:
+            # No collision registered yet
             return 0
     
     def handle_arrows(self, delta_time):
@@ -648,12 +661,19 @@ class Example(Base):
         # Atualiza todas as setas
         arrows_to_remove = []
         
+        # Check if any arrow key is pressed (will be used for status display)
+        is_arrow_key_pressed = (self.input.is_key_pressed('up') or 
+                               self.input.is_key_pressed('down') or 
+                               self.input.is_key_pressed('left') or 
+                               self.input.is_key_pressed('right'))
+        
         for i, arrow in enumerate(self.arrows):
             # Update arrow position
             arrow.update()
             
             # Check for collision with ring
             collision_result = self.check_arrow_ring_collision(arrow)
+            
             if collision_result > 0:
                 # Print the collision state
                 print(f"Arrow collision: {collision_result}")
@@ -683,6 +703,10 @@ class Example(Base):
                 if arrow.rig.local_position[0] > self.target_ring.global_position[0] + 0.5:
                     # Update status to show miss
                     self.collision_texture.update_text("Status: 0 (Miss)")
+                # If we have a potential collision but no arrow key is pressed
+                elif hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value > 0 and not is_arrow_key_pressed:
+                    # Show that an arrow key needs to be pressed
+                    self.collision_texture.update_text("Status: Press Arrow Key!")
             
             # Check if arrow should be removed
             if not arrow.isVisible():
