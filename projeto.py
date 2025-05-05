@@ -476,16 +476,12 @@ class Example(Base):
         arrow.add_to_scene(self.scene)
         arrow.rotate(math.radians(angle), 'z')
         
-        # Get camera position to calculate arrow position relative to the camera
-        camera_pos = self.camera_rig.global_position
-        
-        # Position the arrow in front of the camera (fixed distance)
-        arrow_distance = 10  # Distance in front of the camera
-        arrow_height = -2   # Height relative to camera
-        arrow_offset_x = -10  # Starting X offset to the left
-        
-        # Calculate position relative to camera view direction
-        arrow.set_position([camera_pos[0] + arrow_offset_x, camera_pos[1] + arrow_height, camera_pos[2] - arrow_distance])
+        # Hardcoded position for arrows
+        arrow_x = -3 # Starting X position (left side)
+        arrow_y = 2    # Fixed Y position
+        arrow_z = 5    # Fixed Z position
+        # Set arrow at hardcoded position
+        arrow.set_position([arrow_x, arrow_y, arrow_z])
         
         return arrow
 
@@ -509,25 +505,9 @@ class Example(Base):
         # Atualiza todas as setas
         arrows_to_remove = []
         
-        # Get current camera position for reference
-        camera_pos = self.camera_rig.global_position
-        
         for i, arrow in enumerate(self.arrows):
-            # Update arrow position first
+            # Update arrow position
             arrow.update()
-            
-            # Get arrow's current position
-            current_pos = arrow.rig.local_position
-            
-            # Reposition arrow if camera has moved significantly
-            if abs(current_pos[2] - (camera_pos[2] - 10)) > 0.5:  # Check if Z position needs updating
-                # Keep the arrow's X position but update Y and Z relative to camera
-                new_pos = [
-                    current_pos[0],  # Keep current X position (for movement)
-                    camera_pos[1] - 2,  # Keep consistent Y offset from camera
-                    camera_pos[2] - 10  # Keep consistent Z distance from camera
-                ]
-                arrow.rig.set_position(new_pos)
             
             # Check if arrow should be removed
             if not arrow.isVisible():
