@@ -66,6 +66,26 @@ class Example(Base):
         "right": ARROW_TYPE_RIGHT
     }
 
+    # Music and keyframe configurations for each instrument
+    INSTRUMENT_TRACKS = {
+        0: {  # Miguel's instrument
+            "music": "music/fitnessgram.mp3",
+            "keyframes": "keyframes/keyframes_1.json"
+        },
+        1: {  # Ze's instrument
+            "music": "music/track2.mp3",
+            "keyframes": "keyframes/keyframes_2.json"
+        },
+        2: {  # Ana's instrument
+            "music": "music/track3.mp3",
+            "keyframes": "keyframes/keyframes_3.json"
+        },
+        3: {  # Brandon's instrument
+            "music": "music/track4.mp3",
+            "keyframes": "keyframes/keyframes_4.json"
+        }
+    }
+
     def initialize(self):
         print("Initializing program...")
         print("\nInstruções de Controlo:")
@@ -86,24 +106,15 @@ class Example(Base):
         self.score = 0
         
         # Initialize timing adjustment for calibration
-        self.timing_adjustment = 0.9  # <-- ADD THIS LINE (Hardcode your desired delay here, e.g., -0.1 for 100ms later spawn)
+        self.timing_adjustment = 0.9
         
         # Initialize music and keyframes
         self.initialize_music()
         self.keyframes = []
         self.current_keyframe_index = 0
         
-        # Attempt to load default music and keyframes
-        # These files should be created by the user.
-        if self.load_music("music/fitnessgram.mp3"): # Placeholder path
-            print("Default music loaded.")
-        else:
-            print("Default music file not found or error loading. Please ensure 'music/fitnessgram.mp3' exists.")
-            
-        if self.load_keyframes("keyframes.json"):
-            print("Keyframes loaded.")
-        else:
-            print("Keyframes file not found or error loading. Please ensure 'keyframes.json' exists and is valid.")
+        # No need to load music/keyframes here as they'll be loaded when an instrument is selected
+        print("Music and keyframe system initialized. Tracks will be loaded upon instrument selection.")
         
         # Initialize perfect hit streak counter
         self.perfect_streak = 0
@@ -431,24 +442,35 @@ class Example(Base):
             print("Warning: arrow_travel_time not properly set. Recalculating...")
             self.calculate_arrow_travel_time()
         
-        # Start music playback if a song is loaded (OR SIMULATE FOR TESTING)
-        if hasattr(self, 'music_loaded') and self.music_loaded:
-            print("Attempting to play music for gameplay phase...")
-            self.play_music() # This will set self.music_playing = True if successful
-        else:
-            print("Music not loaded. SIMULATING music start for testing keyframe spawning.")
-            # Simulate music start for testing keyframe spawning even without a loaded file
-            self.music_playing = True
-            self.music_start_time = time.time() # Set a start time for get_music_time()
-            print(f"Music playback SIMULATED. music_playing: {self.music_playing}, music_start_time: {self.music_start_time:.2f}")
-
         self.remove_highlighting()
         self.active_object_rig._matrix = Matrix.make_identity()
         self.active_object_rig.set_position([0, 0, 0])
         
-        # Get the index of the selected instrument
+        # Get the index of the selected instrument and load its music/keyframes
         selected_index = self.object_rigs.index(self.active_object_rig)
+        track_info = self.INSTRUMENT_TRACKS.get(selected_index)
         
+        if track_info:
+            # First load the music and keyframes
+            music_loaded = self.load_music(track_info["music"])
+            keyframes_loaded = self.load_keyframes(track_info["keyframes"])
+            
+            if music_loaded and keyframes_loaded:
+                print(f"Loaded music track and keyframes for instrument {selected_index}")
+                # Now start the music playback
+                if self.play_music():
+                    print("Music playback started successfully")
+                else:
+                    print("Failed to start music playback")
+            else:
+                print(f"Failed to load music or keyframes for instrument {selected_index}")
+                # Set up simulation mode if loading failed
+                self.music_playing = True
+                self.music_start_time = time.time()
+                print(f"Music playback SIMULATED. music_playing: {self.music_playing}, music_start_time: {self.music_start_time:.2f}")
+        else:
+            print(f"No track information found for instrument {selected_index}")
+
         # Define positions and rotations based on which instrument was selected
         # Format: [positions for instrument 0, positions for instrument 1, positions for instrument 2, positions for instrument 3]
         # Each "positions for instrument X" is a list of 3 [x,y,z] positions for the other instruments
@@ -1171,22 +1193,28 @@ class Example(Base):
     # Music Playback Methods
     def initialize_music(self):
         """Initialize pygame mixer"""
-        pygame.mixer.init()
-        self.music_loaded = False
-        self.music_playing = False
-        self.music_start_time = 0
-        self.music_file = None # Store the name of the loaded music file
+        try:
+            pygame.mixer.init()
+            print("Pygame mixer initialized successfully")
+            self.music_loaded = False
+            self.music_playing = False
+            self.music_start_time = 0
+            self.music_file = None
+        except Exception as e:
+            print(f"Error initializing pygame mixer: {e}")
 
     def load_music(self, music_file):
         """Load a specific music file"""
         import pygame
         try:
+            print(f"Attempting to load music file: {music_file}")
             pygame.mixer.music.load(music_file)
             pygame.mixer.music.set_volume(0.3)  # Set volume to 30%
             self.music_loaded = True
             self.music_file = music_file
+            print(f"Successfully loaded music file: {music_file}")
             return True
-        except pygame.error as e: # More specific exception for pygame
+        except pygame.error as e:
             print(f"Error loading music '{music_file}': {e}")
             self.music_loaded = False
             self.music_file = None
@@ -1197,13 +1225,17 @@ class Example(Base):
         import pygame
         import time
         if self.music_loaded:
-            pygame.mixer.music.play()
-            self.music_playing = True
-            self.music_start_time = time.time()  # Use time.time() for consistency
-            # Reset keyframe index when starting new music playback
-            self.current_keyframe_index = 0  
-            print(f"Music playback started. Start time: {self.music_start_time}")
-            return True
+            try:
+                print(f"Attempting to play music: {self.music_file}")
+                pygame.mixer.music.play()
+                self.music_playing = True
+                self.music_start_time = time.time()
+                self.current_keyframe_index = 0
+                print(f"Music playback started. Start time: {self.music_start_time}")
+                return True
+            except Exception as e:
+                print(f"Error playing music: {e}")
+                return False
         print("Music not loaded, cannot play.")
         return False
 
