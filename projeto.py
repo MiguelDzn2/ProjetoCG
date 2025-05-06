@@ -3,6 +3,8 @@ from nt import remove
 import pathlib
 import sys
 import pygame
+import json
+import time
 from enum import Enum, auto
 # Add parent directory to sys.path
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
@@ -51,6 +53,19 @@ class Example(Base):
     - Camera: WASDRF(move), QE(turn), TG(look)
     - Object: Arrow keys(move), UO(turn), KL(tilt)
     """
+
+    # Arrow Type Constants
+    ARROW_TYPE_UP = 0
+    ARROW_TYPE_LEFT = 90
+    ARROW_TYPE_DOWN = 180
+    ARROW_TYPE_RIGHT = 270
+    ARROW_TYPE_NAMES = {
+        "up": ARROW_TYPE_UP,
+        "left": ARROW_TYPE_LEFT,
+        "down": ARROW_TYPE_DOWN,
+        "right": ARROW_TYPE_RIGHT
+    }
+
     def initialize(self):
         print("Initializing program...")
         print("\nInstruções de Controlo:")
@@ -69,6 +84,23 @@ class Example(Base):
         
         # Initialize score
         self.score = 0
+        
+        # Initialize music and keyframes
+        self.initialize_music()
+        self.keyframes = []
+        self.current_keyframe_index = 0
+        
+        # Attempt to load default music and keyframes
+        # These files should be created by the user.
+        if self.load_music("music/default_song.mp3"): # Placeholder path
+            print("Default music loaded.")
+        else:
+            print("Default music file not found or error loading. Please ensure 'music/default_song.mp3' exists.")
+            
+        if self.load_keyframes("keyframes.json"):
+            print("Keyframes loaded.")
+        else:
+            print("Keyframes file not found or error loading. Please ensure 'keyframes.json' exists and is valid.")
         
         # Initialize perfect hit streak counter
         self.perfect_streak = 0
@@ -248,15 +280,65 @@ class Example(Base):
 
         # Ring (target circle)
         ring_geometry = RingGeometry(inner_radius=self.RING_INNER_RADIUS, outer_radius=self.RING_OUTER_RADIUS, segments=32)
-        self.target_ring = Mesh(ring_geometry, SurfaceMaterial(property_dict={"baseColor": [0, 1, 0], "doubleSide": True}))
-        self.target_ring.scale(self.RING_SCALE)  # Scale the ring based on configuration
-        self.target_ring.translate(self.RING_POSITION[0], self.RING_POSITION[1], self.RING_POSITION[2])  # Position based on configuration
-        self.target_ring.rotate_x(0) # Rotate to lie flat on XZ plane
-
+        ring_material = SurfaceMaterial(property_dict={"baseColor": [0, 1, 0], "doubleSide": True})  # Green color for the ring, ensure doubleSided
+        self.target_ring = Mesh(ring_geometry, ring_material)
+        self.target_ring.set_position(self.RING_POSITION) # Use global variable for ring position
+        self.target_ring.rotate_x(0)  # Rotated to be vertical
+        self.target_ring.scale(self.RING_SCALE) # Apply scaling
         self.scene.add(self.target_ring)
+        
+        # Create collision text display (similar to score)
+        collision_texture = TextTexture(
+            text=" ",  # Initially empty
+            system_font_name="Arial",
+            font_size=48,
+            font_color=(255, 255, 0),  # Yellow text
+            background_color=(0, 0, 0, 128),
+            transparent=True,
+            image_width=300,
+            image_height=100,
+            align_horizontal=0.5,
+            align_vertical=0.5,
+            image_border_width=0
+        )
+        collision_material = TextureMaterial(texture=collision_texture, property_dict={"doubleSide": True})
+        collision_geometry = RectangleGeometry(width=2, height=0.6)
+        self.collision_mesh = Mesh(collision_geometry, collision_material)
+        self.collision_rig = MovementRig()
+        self.collision_rig.add(self.collision_mesh)
+        self.collision_rig.set_position([-2.6, 1.3, -3]) # Position collision status display
+        self.collision_texture = collision_texture
 
         # Initialize arrow manager
         self.arrow_manager = ArrowManager(self.scene, self.target_ring)
+
+        # Calculate arrow travel time (needs Arrow class to be defined/imported)
+        self.calculate_arrow_travel_time()
+
+    def calculate_arrow_travel_time(self):
+        """Calculate how long it takes an arrow to travel from spawn to ring."""
+        # ARROW_START_POSITION is imported from config.py [x, y, z]
+        # self.RING_POSITION is defined in initialize as [x, z, y] but used by target_ring.set_position([x,y,z])
+        # So, for consistency, let's use the X-coordinates directly as movement is along X.
+        arrow_start_x = ARROW_START_POSITION[0]  # Expected to be -3
+        ring_x = self.RING_POSITION[0]           # Expected to be 1
+        
+        distance = abs(ring_x - arrow_start_x)
+        
+        # Arrow.SPEED_UNITS_PER_SECOND is defined in geometry/arrow.py
+        speed_per_second = Arrow.SPEED_UNITS_PER_SECOND 
+        
+        if speed_per_second == 0:
+            print("Error: Arrow.SPEED_UNITS_PER_SECOND is 0, cannot calculate travel time.")
+            self.arrow_travel_time = float('inf') # Avoid division by zero
+        else:
+            self.arrow_travel_time = distance / speed_per_second
+        
+        print(f"Arrow start X: {arrow_start_x}, Ring X: {ring_x}")
+        print(f"Calculated arrow travel distance: {distance:.2f} units")
+        print(f"Arrow speed: {speed_per_second:.2f} units/sec")
+        print(f"Calculated arrow travel time: {self.arrow_travel_time:.2f} seconds")
+        return self.arrow_travel_time
 
     def setup_selection_phase(self):
         # Hide score by removing from camera if it's present
@@ -332,6 +414,27 @@ class Example(Base):
         self.processed_arrow_uuids = []
         print("Cleared processed arrow list for new game")
         
+        # Initialize/reset arrow-related tracking for keyframe system
+        self.arrows = [] # Clear existing arrows from previous game/selection phase
+        self.current_keyframe_index = 0
+        print(f"Keyframe index reset to {self.current_keyframe_index}")
+
+        # Ensure arrow_travel_time is calculated (it should be from initialize, but good check)
+        if not hasattr(self, 'arrow_travel_time') or self.arrow_travel_time == float('inf'):
+            print("Warning: arrow_travel_time not properly set. Recalculating...")
+            self.calculate_arrow_travel_time()
+        
+        # Start music playback if a song is loaded (OR SIMULATE FOR TESTING)
+        if hasattr(self, 'music_loaded') and self.music_loaded:
+            print("Attempting to play music for gameplay phase...")
+            self.play_music() # This will set self.music_playing = True if successful
+        else:
+            print("Music not loaded. SIMULATING music start for testing keyframe spawning.")
+            # Simulate music start for testing keyframe spawning even without a loaded file
+            self.music_playing = True
+            self.music_start_time = time.time() # Set a start time for get_music_time()
+            print(f"Music playback SIMULATED. music_playing: {self.music_playing}, music_start_time: {self.music_start_time:.2f}")
+
         self.remove_highlighting()
         self.active_object_rig._matrix = Matrix.make_identity()
         self.active_object_rig.set_position([0, 0, 0])
@@ -519,7 +622,14 @@ class Example(Base):
             self.handle_gameplay_input()
             # Update camera animation
             self.update_camera_animation()
-            self.handle_arrows(self.delta_time)
+            # self.handle_arrows(self.delta_time) # Old call, will be modified
+            
+            # New keyframe-based arrow spawning and handling
+            if self.music_playing:
+                self.update_keyframe_arrows()
+            
+            # Continue handling movement and removal of existing arrows
+            self.handle_arrows(self.delta_time) # Pass delta_time for arrow.update
         
         self.renderer.render(self.scene, self.camera)
 
@@ -581,50 +691,82 @@ class Example(Base):
             # Update score display text
             self.score_texture.update_text(f"Score: {int(self.score)}")
 
-    def create_single_arrow(self):
-        """Cria uma única seta com orientação aleatória, considerando offset de origem"""
+    def create_single_arrow(self, arrow_type_str=None): # Modified to accept arrow_type_str
+        """Cria uma única seta com orientação especificada ou aleatória."""
         import random
         import uuid
         
-        possible_angles = [0, 90, 180, 270]
-        # 0 is UP
-        # 90 is LEFT
-        # 180 is DOWN
-        # 270 is RIGHT
+        angle = 0 # Default angle
+        
+        if arrow_type_str:
+            arrow_type_str_lower = arrow_type_str.lower()
+            if arrow_type_str_lower in self.ARROW_TYPE_NAMES:
+                angle = self.ARROW_TYPE_NAMES[arrow_type_str_lower]
+            else:
+                print(f"Warning: Unknown arrow_type_str '{arrow_type_str}' in create_single_arrow. Defaulting to UP (0 degrees).")
+                angle = self.ARROW_TYPE_UP # Default to UP if type is unknown
+        else:
+            # If no type specified, choose a random one (optional, consider if this case is still needed)
+            possible_angles = [self.ARROW_TYPE_UP, self.ARROW_TYPE_LEFT, self.ARROW_TYPE_DOWN, self.ARROW_TYPE_RIGHT]
+            angle = random.choice(possible_angles)
+            print(f"Warning: create_single_arrow called without arrow_type_str. Spawning random arrow (angle: {angle}).")
 
-        angle = random.choice(possible_angles)
-        
-        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0])  # Offset removed
+        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0])
         arrow.add_to_scene(self.scene)
-        arrow.rotate(math.radians(angle), 'z')
+        arrow.rotate(math.radians(angle), 'z') # Rotate based on the determined angle
         
-        # Hardcoded position for arrows
-        arrow_x = -3 # Starting X position (left side)
-        arrow_y = 0    # Fixed Y position
-        arrow_z = 8    # Fixed Z position
-        # Set arrow at hardcoded position
-        arrow.set_position([arrow_x, arrow_y, arrow_z])
+        # ARROW_START_POSITION is imported from config.py
+        arrow.set_position(ARROW_START_POSITION) 
         
-        # Generate a unique ID for this arrow
         arrow.unique_id = str(uuid.uuid4())
         
         return arrow
 
-    def setup_arrow_spawning(self, interval=2.0):
-        """Configura o spawn automático de setas a cada intervalo"""
-        self.arrows = []
-        self.arrow_spawn_timer = 0
-        self.arrow_spawn_interval = interval
+    def setup_arrow_spawning(self, interval=2.0): # This method might become obsolete or repurposed
+        """Configura o spawn automático de setas a cada intervalo (OLD METHOD - TO BE REPLACED)"""
+        self.arrows = [] # Ensure arrows list is initialized here if not elsewhere for gameplay phase start
+        # self.arrow_spawn_timer = 0 # Not needed for keyframe system
+        # self.arrow_spawn_interval = interval # Not needed for keyframe system
         
         # Initialize the current waiting arrow ID
         self.current_waiting_arrow_id = None
+        print("INFO: setup_arrow_spawning called. Ensure this is intended if using keyframe system.")
 
-    def update_arrow_spawning(self, delta_time):
-        """Atualiza o timer e cria novas setas quando necessário"""
-        self.arrow_spawn_timer += delta_time
-        if self.arrow_spawn_timer >= self.arrow_spawn_interval:
-            self.arrow_spawn_timer = 0
-            self.arrows.append(self.create_single_arrow())
+    def update_arrow_spawning(self, delta_time): # THIS ENTIRE METHOD IS NOW OBSOLETE
+        """Atualiza o timer e cria novas setas quando necessário (OLD METHOD - OBSOLETE)"""
+        # This logic is replaced by update_keyframe_arrows
+        # self.arrow_spawn_timer += delta_time
+        # if self.arrow_spawn_timer >= self.arrow_spawn_interval:
+        #     self.arrow_spawn_timer = 0
+        #     self.arrows.append(self.create_single_arrow()) # Old random spawning
+        pass # Does nothing now
+
+    def update_keyframe_arrows(self):
+        """Check if it's time to spawn arrows according to keyframes and music time."""
+        if not hasattr(self, 'keyframes') or not self.keyframes or self.current_keyframe_index >= len(self.keyframes):
+            return # No keyframes loaded or all keyframes processed
+
+        if not hasattr(self, 'arrow_travel_time'):
+            print("Error: arrow_travel_time not calculated. Cannot spawn keyframe arrows accurately.")
+            return
+
+        current_music_time = self.get_music_time()
+
+        # Process all keyframes that should have spawned by now
+        while (self.current_keyframe_index < len(self.keyframes) and
+               current_music_time >= (self.keyframes[self.current_keyframe_index]['time'] - self.arrow_travel_time)):
+            
+            keyframe = self.keyframes[self.current_keyframe_index]
+            arrow_type_to_spawn = keyframe.get('arrow_type') # Already validated in load_keyframes
+
+            print(f"Spawning arrow for keyframe {self.current_keyframe_index}: time {keyframe['time']:.2f}s, type '{arrow_type_to_spawn}', music_time: {current_music_time:.2f}s")
+            
+            new_arrow = self.create_single_arrow(arrow_type_str=arrow_type_to_spawn)
+            if not hasattr(self, 'arrows'): # Ensure self.arrows exists
+                self.arrows = []
+            self.arrows.append(new_arrow)
+            
+            self.current_keyframe_index += 1
 
     def check_arrow_ring_collision(self, arrow):
         """
@@ -795,8 +937,7 @@ class Example(Base):
             return 0
     
     def handle_arrows(self, delta_time):
-        # Atualiza spawn de setas
-        self.update_arrow_spawning(self.delta_time)
+        # self.update_arrow_spawning(self.delta_time) # REMOVE THIS LINE - Old timer-based spawning
 
         # Atualiza todas as setas
         arrows_to_remove = []
@@ -825,7 +966,7 @@ class Example(Base):
         
         for i, arrow in enumerate(self.arrows):
             # Update arrow position
-            arrow.update()
+            arrow.update(delta_time)
             
             # Reset collision_checked flag when no arrow keys are pressed
             if not is_arrow_key_pressed and hasattr(arrow, 'collision_checked'):
@@ -1019,6 +1160,93 @@ class Example(Base):
         self.nightClub = nightclub.NightClub(self.scene,"geometry/nightClub.obj", [0, -2.5, 10], 3)
         self.nightClub_rig = self.nightClub.get_rig()
         self.scene.add(self.nightClub_rig)
+
+    # Music Playback Methods
+    def initialize_music(self):
+        """Initialize pygame mixer"""
+        pygame.mixer.init()
+        self.music_loaded = False
+        self.music_playing = False
+        self.music_start_time = 0
+        self.music_file = None # Store the name of the loaded music file
+
+    def load_music(self, music_file):
+        """Load a specific music file"""
+        try:
+            pygame.mixer.music.load(music_file)
+            self.music_loaded = True
+            self.music_file = music_file
+            print(f"Music '{music_file}' loaded successfully.")
+            return True
+        except pygame.error as e: # More specific exception for pygame
+            print(f"Error loading music '{music_file}': {e}")
+            self.music_loaded = False
+            self.music_file = None
+            return False
+            
+    def play_music(self):
+        """Start music playback and record start time"""
+        if self.music_loaded and not self.music_playing: # Check if not already playing
+            pygame.mixer.music.play()
+            self.music_playing = True
+            self.music_start_time = time.time()
+            print(f"Playing music: {self.music_file}")
+            return True
+        elif not self.music_loaded:
+            print("Cannot play music: No music loaded.")
+        elif self.music_playing:
+            print("Music is already playing.")
+        return False
+        
+    def get_music_time(self):
+        """Get current music playback position in seconds"""
+        if not self.music_playing:
+            return 0
+        return time.time() - self.music_start_time
+
+    # Keyframe Loading Method
+    def load_keyframes(self, keyframe_file):
+        """Load keyframe data from JSON file"""
+        try:
+            with open(keyframe_file, 'r') as file:
+                keyframes_data = json.load(file)
+            
+            # Validate and process keyframes
+            self.keyframes = []
+            for i, keyframe in enumerate(keyframes_data):
+                if 'time' not in keyframe:
+                    raise ValueError(f"Keyframe {i} in '{keyframe_file}' missing 'time' field.")
+                if 'arrow_type' not in keyframe:
+                    # Making arrow_type a required field
+                    raise ValueError(f"Keyframe {i} in '{keyframe_file}' missing 'arrow_type' field.")
+                if not isinstance(keyframe['arrow_type'], str) or keyframe['arrow_type'].lower() not in self.ARROW_TYPE_NAMES:
+                    valid_types = ", ".join(self.ARROW_TYPE_NAMES.keys())
+                    raise ValueError(f"Keyframe {i} in '{keyframe_file}' has invalid 'arrow_type': '{keyframe['arrow_type']}'. Valid types are: {valid_types}.")
+                
+                # Store the original string type for now, will be resolved at creation
+                self.keyframes.append({'time': float(keyframe['time']), 'arrow_type': keyframe['arrow_type']})
+                   
+            # Sort keyframes by time
+            self.keyframes.sort(key=lambda k: k['time'])
+            self.current_keyframe_index = 0 # Reset index when new keyframes are loaded
+            print(f"Keyframes from '{keyframe_file}' loaded and sorted successfully ({len(self.keyframes)} keyframes).")
+            return True
+        except FileNotFoundError:
+            print(f"Error loading keyframes: File '{keyframe_file}' not found.")
+            self.keyframes = [] # Ensure keyframes list is empty on error
+            return False
+        except json.JSONDecodeError as e:
+            print(f"Error loading keyframes: JSON decoding error in '{keyframe_file}': {e}")
+            self.keyframes = []
+            return False
+        except ValueError as e: # Catch our custom validation errors
+            print(f"Error loading keyframes: Data validation error in '{keyframe_file}': {e}")
+            self.keyframes = []
+            return False
+        except Exception as e:
+            print(f"Error loading keyframes from '{keyframe_file}': {e}")
+            self.keyframes = []
+            return False
 
 Example(screen_size=SCREEN_SIZE).run()
 

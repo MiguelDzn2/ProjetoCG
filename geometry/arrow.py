@@ -7,7 +7,7 @@ from extras.movement_rig import MovementRig
 from core.matrix import Matrix
 
 class Arrow:
-    SPEED = 0.01
+    SPEED_UNITS_PER_SECOND = 2.0
     RESET_POSITION=10
     
     def __init__(
@@ -99,7 +99,7 @@ class Arrow:
         else:  # Por defecto rotación en Z
             self.inner_rig.rotate_z(angle)
 
-    def update(self):
+    def update(self, delta_time):
         """Atualiza o movimento da seta"""
         current_pos = self.rig.local_position
         
@@ -108,7 +108,7 @@ class Arrow:
         
         # Only update position if the arrow hasn't reached the stopping point
         if current_pos[0] < arrow_stop_x:
-            new_x = current_pos[0] + self.SPEED * self.direction
+            new_x = current_pos[0] + self.SPEED_UNITS_PER_SECOND * self.direction * delta_time
             # Ensure the arrow doesn't overshoot the arrow_stop_x
             new_x = min(new_x, arrow_stop_x)
             self.rig.set_position([new_x, current_pos[1], current_pos[2]])
@@ -125,11 +125,11 @@ class Arrow:
 
     def set_speed(self, speed):
         """Define a velocidade da seta"""
-        self.SPEED = speed
+        self.SPEED_UNITS_PER_SECOND = speed
         
     def increment_speed(self, increment):
         """Incrementa a velocidade da seta"""
-        self.SPEED += increment
+        self.SPEED_UNITS_PER_SECOND += increment
 
     def set_reset_position(self, position):
         """Define a posição de reset da seta"""

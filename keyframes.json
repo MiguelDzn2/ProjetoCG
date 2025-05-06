@@ -1,0 +1,10 @@
+[
+    {"time": 2.0, "arrow_type": "up"},
+    {"time": 3.0, "arrow_type": "left"},
+    {"time": 4.0, "arrow_type": "down"},
+    {"time": 5.0, "arrow_type": "right"},
+    {"time": 6.0, "arrow_type": "up"},
+    {"time": 6.5, "arrow_type": "up"},
+    {"time": 7.0, "arrow_type": "left"},
+    {"time": 8.0, "arrow_type": "down"}
+] 
