@@ -85,6 +85,9 @@ class Example(Base):
         # Initialize score
         self.score = 0
         
+        # Initialize timing adjustment for calibration
+        self.timing_adjustment = 0.9  # <-- ADD THIS LINE (Hardcode your desired delay here, e.g., -0.1 for 100ms later spawn)
+        
         # Initialize music and keyframes
         self.initialize_music()
         self.keyframes = []
@@ -1191,23 +1194,41 @@ class Example(Base):
             
     def play_music(self):
         """Start music playback and record start time"""
-        if self.music_loaded and not self.music_playing: # Check if not already playing
+        import pygame
+        import time
+        if self.music_loaded:
             pygame.mixer.music.play()
             self.music_playing = True
-            self.music_start_time = time.time()
-            print(f"Playing music: {self.music_file}")
+            self.music_start_time = time.time()  # Use time.time() for consistency
+            # Reset keyframe index when starting new music playback
+            self.current_keyframe_index = 0  
+            print(f"Music playback started. Start time: {self.music_start_time}")
             return True
-        elif not self.music_loaded:
-            print("Cannot play music: No music loaded.")
-        elif self.music_playing:
-            print("Music is already playing.")
+        print("Music not loaded, cannot play.")
         return False
-        
+
+    def apply_timing_adjustment(self, time_value):
+        """Apply timing adjustment to a given time value"""
+        return time_value + self.timing_adjustment
+
+    def calibrate_arrow_timing(self, adjustment_seconds):
+        """Adjust arrow timing by specified amount in seconds"""
+        self.timing_adjustment = adjustment_seconds
+        print(f"Timing adjustment set to: {self.timing_adjustment} seconds")
+           
     def get_music_time(self):
-        """Get current music playback position in seconds"""
-        if not self.music_playing:
+        """Get current music playback position in seconds with calibration adjustment"""
+        import time
+        if not self.music_playing or not hasattr(self, 'music_start_time'): # Added check for music_start_time
             return 0
-        return time.time() - self.music_start_time
+        
+        # Calculate raw music time
+        current_raw_time = time.time() - self.music_start_time
+        
+        # Apply calibration adjustment
+        adjusted_time = self.apply_timing_adjustment(current_raw_time)
+        # print(f"Raw music time: {current_raw_time:.2f}s, Adjusted music time: {adjusted_time:.2f}s") # Optional: for debugging
+        return adjusted_time
 
     # Keyframe Loading Method
     def load_keyframes(self, keyframe_file):
