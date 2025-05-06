@@ -72,6 +72,12 @@ class Example(Base):
         # Initialize score
         self.score = 0
         
+        # Define ring configuration constants
+        self.RING_INNER_RADIUS = 0.4
+        self.RING_OUTER_RADIUS = 0.5
+        self.RING_SCALE = 1.7
+        self.RING_POSITION = [1.3, -0.025, 5]  # [x, y, z]
+        
         # Camera animation properties - initial setup for gameplay phase
         self.camera_hardcoded_position = [0, 1.2, 7]  # X, Y, Z
         self.camera_hardcoded_rotation = [0, -math.pi/2, 0]  # X, Y, Z rotations in radians
@@ -231,10 +237,10 @@ class Example(Base):
         self.handle_nightClub()
 
         # Ring (target circle)
-        ring_geometry = RingGeometry(inner_radius=0.4, outer_radius=0.5, segments=32) # Adjust radii as needed
+        ring_geometry = RingGeometry(inner_radius=self.RING_INNER_RADIUS, outer_radius=self.RING_OUTER_RADIUS, segments=32)
         self.target_ring = Mesh(ring_geometry, SurfaceMaterial(property_dict={"baseColor": [0, 1, 0], "doubleSide": True}))
-        self.target_ring.scale(1.5) # Scale the ring up by 50%
-        self.target_ring.translate(1.3, -0.03, 5) # Place slightly above the ground plane
+        self.target_ring.scale(self.RING_SCALE)  # Scale the ring based on configuration
+        self.target_ring.translate(self.RING_POSITION[0], self.RING_POSITION[1], self.RING_POSITION[2])  # Position based on configuration
         self.target_ring.rotate_x(0) # Rotate to lie flat on XZ plane
 
         self.scene.add(self.target_ring)
@@ -603,17 +609,6 @@ class Example(Base):
         arrow_pos = arrow.rig.local_position
         ring_pos = self.target_ring.global_position
         
-        # First check if arrow has passed the ring without colliding
-        # If the arrow is already more than 0.5 units past the ring on the X axis, it can no longer collide
-        if arrow_pos[0] > ring_pos[0] + 0.5:
-            # If arrow is marked as scored, it collided at some point
-            if hasattr(arrow, 'scored') and arrow.scored:
-                # Return the previously determined score
-                return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
-            else:
-                # Arrow passed without colliding
-                return 0
-        
         # Calculate distance between arrow center and ring center
         dx = arrow_pos[0] - ring_pos[0]
         dy = arrow_pos[1] - ring_pos[1]
@@ -623,8 +618,8 @@ class Example(Base):
         flat_distance = math.sqrt(dx*dx + dz*dz)
         
         # Get the inner and outer radius of the ring, adjusted by the scale factor
-        inner_radius = 0.4 * 1.5  # Original inner_radius * scale
-        outer_radius = 0.5 * 1.5  # Original outer_radius * scale
+        inner_radius = self.RING_INNER_RADIUS * self.RING_SCALE
+        outer_radius = self.RING_OUTER_RADIUS * self.RING_SCALE
         
         # Get dimensions of arrow parts
         # These values should match those in the Arrow class
@@ -648,17 +643,42 @@ class Example(Base):
         ring_min_z = ring_pos[2] - outer_radius
         ring_max_z = ring_pos[2] + outer_radius
         
+        # Check if arrow has passed the ring completely
+        has_passed_ring = arrow_min_x > ring_max_x
+        
+        # Reset waiting state if arrow has passed the ring completely
+        if has_passed_ring and hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
+            arrow.waiting_for_keypress = False
+            print(f"Arrow[{arrow_index}]: Stopped waiting - passed ring completely")
+        
+        # First check if arrow has passed the ring without colliding
+        if has_passed_ring:
+            # If arrow is marked as scored, it collided at some point
+            if hasattr(arrow, 'scored') and arrow.scored:
+                # Return the previously determined score
+                return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
+            else:
+                # Arrow passed without colliding
+                return 0
+        
         # Calculate potential collision value
-        if flat_distance + arrow_max_extent <= inner_radius:
+        # Modified condition to detect fully inside inner ring - arrow center must be within inner radius
+        if flat_distance < inner_radius:
             # Arrow is completely inside the inner ring (full interception)
+            # Check if the value changed from 0.5 to 1
+            if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value == 0.5:
+                print(f"Arrow[{arrow_index}]: Now fully inside ring (value: 1.0)")
             arrow.potential_collision_value = 1
         elif flat_distance <= outer_radius:
             # Arrow is at least partially inside the ring (partial interception)
             arrow.potential_collision_value = 0.5
         else:
             # Arrow is completely outside the ring
+            # If arrow was previously waiting, log that it's now outside ring
+            if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value > 0:
+                print(f"Arrow[{arrow_index}]: Now outside ring (value: 0)")
             arrow.potential_collision_value = 0
-            
+        
         # Check if any arrow key is pressed
         is_arrow_key_pressed = (self.input.is_key_pressed('up') or 
                                self.input.is_key_pressed('down') or 
@@ -675,7 +695,8 @@ class Example(Base):
         # 3. Collision has not been checked while the key is pressed
         if arrow.potential_collision_value > 0 and is_arrow_key_pressed and not arrow.collision_checked:
             # Debug print only essential collision information
-            print(f"COLLISION DETECTED - Arrow[{arrow_index}]: Value {arrow.potential_collision_value}")
+            collision_type = "PERFECT" if arrow.potential_collision_value == 1 else "PARTIAL"
+            print(f"COLLISION DETECTED - Arrow[{arrow_index}]: {collision_type} (Value {arrow.potential_collision_value})")
             print(f"  Arrow X,Z: ({arrow_pos[0]:.2f}, {arrow_pos[2]:.2f}), Ring X,Z: ({ring_pos[0]:.2f}, {ring_pos[2]:.2f})")
             print(f"  Distance: {flat_distance:.2f}, Arrow extent: {arrow_max_extent:.2f}, Ring radius: {outer_radius:.2f}")
             
@@ -687,11 +708,28 @@ class Example(Base):
         else:
             # Only print if potential collision exists
             if arrow.potential_collision_value > 0:
+                # Initialize waiting_for_keypress flag if it doesn't exist
+                if not hasattr(arrow, 'waiting_for_keypress'):
+                    arrow.waiting_for_keypress = False
+                    arrow.last_collision_value = 0
+                
                 # Simple non-registration reason, abbreviated
                 if is_arrow_key_pressed and arrow.collision_checked:
-                    print(f"Arrow[{arrow_index}]: Waiting for key release (already checked)")
+                    if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
+                        arrow.waiting_for_keypress = False
+                        print(f"Arrow[{arrow_index}]: No longer waiting - already checked")
                 elif arrow.potential_collision_value > 0 and not is_arrow_key_pressed:
-                    print(f"Arrow[{arrow_index}]: Waiting for key press (value: {arrow.potential_collision_value})")
+                    # Only log when state changes from not waiting to waiting
+                    # or when collision value changes while waiting
+                    if not arrow.waiting_for_keypress:
+                        arrow.waiting_for_keypress = True
+                        position_desc = "fully inside ring" if arrow.potential_collision_value == 1 else "touching outer ring"
+                        print(f"Arrow[{arrow_index}]: Started waiting for key press ({position_desc}, value: {arrow.potential_collision_value})")
+                        arrow.last_collision_value = arrow.potential_collision_value
+                    elif hasattr(arrow, 'last_collision_value') and arrow.last_collision_value != arrow.potential_collision_value:
+                        position_desc = "fully inside ring" if arrow.potential_collision_value == 1 else "touching outer ring"
+                        print(f"Arrow[{arrow_index}]: Still waiting, now {position_desc} (value: {arrow.potential_collision_value})")
+                        arrow.last_collision_value = arrow.potential_collision_value
             
             # No collision registered
             return 0
@@ -790,8 +828,12 @@ class Example(Base):
         # Remove setas marcadas em ordem reversa
         for i in sorted(arrows_to_remove, reverse=True):
             if i < len(self.arrows):  # Verificação adicional de segurança
+                arrow = self.arrows[i]
+                # Log if arrow was in waiting state when removed
+                if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
+                    print(f"Arrow[{i}]: Stopped waiting (removed from scene)")
                 print(f"Removing Arrow[{i}] from scene")
-                arrow = self.arrows.pop(i)  # Remove da lista
+                self.arrows.pop(i)  # Remove da lista
                 arrow.rig.parent.remove(arrow.rig)  # Remove da cena
                 del arrow  # Remove da memória
 
