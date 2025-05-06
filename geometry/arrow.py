@@ -19,6 +19,9 @@ class Arrow:
         axis='z',
         debug_mode=False
     ):
+        # Print debug mode setting to verify it's being passed correctly
+        print(f"\n==== Arrow created with debug_mode={debug_mode} ====\n")
+        
         self.attribute_dict = {
             "vertexPosition": None,
             "vertexColor": None,
@@ -86,13 +89,26 @@ class Arrow:
                 current_pos[2] + offset[2]
             ])
         
-        # Create debug visualization if in debug mode
+        # Initialize debug visualization variables
         self.debug_rect_mesh = None
+        self.debug_corner_markers = []
+        
+        # Create debug visualization if in debug mode - Do this after position and rotation
         if self.debug_mode:
-            self.create_debug_rect_visualization()
+            print(f"\n==== Creating debug visualization for arrow ====\n")
+            result = self.create_debug_rect_visualization()
+            print(f"\n==== Debug visualization created: {result} ====\n")
 
     def add_to_scene(self, scene):
+        """Add the arrow to the scene and create a separate debug box if in debug mode"""
         scene.add(self.rig)
+        
+        # Store scene reference for debug visualization
+        self.scene = scene
+        
+        # If in debug mode, create a direct scene debug box
+        if self.debug_mode:
+            self.create_direct_debug_box()
 
     def set_position(self, position):
         self.rig.set_position(position)
@@ -107,29 +123,77 @@ class Arrow:
             self.inner_rig.rotate_z(angle)
 
     def update(self, delta_time=None):
-        """Atualiza o movimento da seta"""
+        """Updates the arrow's position based on its direction and applies any needed transformations"""
+        if not self.is_visible:
+            return
+            
         # If delta_time is not provided (older code might not pass it), use a default value
         if delta_time is None:
             delta_time = 1/60  # Default to 60 FPS
-            
+
+        # Move the arrow based on direction and speed
+        # Handle both legacy X-direction movement and new Z-direction movement
+        # First check if we need to move in X direction (old method)
         current_pos = self.rig.local_position
+        arrow_stop_x = 4.0  # Preserve the original stopping point logic
         
-        # Define the absolute stopping X-coordinate
-        arrow_stop_x = 4.0
-        
-        # Only update position if the arrow hasn't reached the stopping point
         if current_pos[0] < arrow_stop_x:
             new_x = current_pos[0] + self.SPEED_UNITS_PER_SECOND * self.direction * delta_time
             # Ensure the arrow doesn't overshoot the arrow_stop_x
             new_x = min(new_x, arrow_stop_x)
             self.rig.set_position([new_x, current_pos[1], current_pos[2]])
+            
+            # Update direct debug box position to match new collision bounds
+            if hasattr(self, 'direct_debug_box') and self.direct_debug_box:
+                try:
+                    # Get updated bounding rect
+                    min_x, min_z, max_x, max_z = self.get_bounding_rect()
+                    center_x = (min_x + max_x) / 2
+                    center_z = (min_z + max_z) / 2
+                    
+                    # Update debug box position and size
+                    self.direct_debug_box.set_position([center_x, current_pos[1] + 0.02, center_z])
+                    
+                    # Update corner markers
+                    if hasattr(self, 'direct_corner_markers'):
+                        corners = [
+                            (min_x, min_z),  # Bottom-left
+                            (max_x, min_z),  # Bottom-right
+                            (max_x, max_z),  # Top-right
+                            (min_x, max_z)   # Top-left
+                        ]
+                        
+                        for i, (x, z) in enumerate(corners):
+                            if i < len(self.direct_corner_markers):
+                                self.direct_corner_markers[i].set_position([x, current_pos[1] + 0.04, z])
+                except Exception as e:
+                    print(f"Error updating direct debug visualization: {e}")
         else:
             # Mark the arrow as not visible once it reaches or passes arrow_stop_x
             self.is_visible = False
             
-        # Update debug visualization if it exists
+            # Remove direct debug box if it exists
+            if hasattr(self, 'direct_debug_box') and self.direct_debug_box and hasattr(self, 'scene') and self.scene:
+                try:
+                    self.scene.remove(self.direct_debug_box)
+                    self.direct_debug_box = None
+                    
+                    # Remove corner markers
+                    if hasattr(self, 'direct_corner_markers'):
+                        for marker in self.direct_corner_markers:
+                            self.scene.remove(marker)
+                        self.direct_corner_markers = []
+                except Exception as e:
+                    print(f"Error removing direct debug visualization: {e}")
+        
+        # Update standard debug visualization if enabled
         if self.debug_mode and self.debug_rect_mesh is not None:
-            self.update_debug_rect_visualization()
+            try:
+                self.update_debug_rect_visualization()
+            except Exception as e:
+                print(f"Error updating debug visualization: {e}")
+                # If we encounter errors, disable debug visualization to prevent crashes
+                self.debug_mode = False
 
     def get_rotation_angle(self):
         """Obtém o ângulo de rotação atual da seta em graus"""
@@ -165,8 +229,8 @@ class Arrow:
             
     def get_bounding_rect(self):
         """
-        Returns the circumscribed rectangle of the arrow (min_x, min_z, max_x, max_z)
-        Takes into account the arrow's position and rotation
+        Returns the precise circumscribed rectangle of the arrow (min_x, min_z, max_x, max_z)
+        Takes into account the arrow's position and rotation with improved accuracy
         """
         # Get current arrow position and rotation
         arrow_pos = self.rig.local_position
@@ -177,7 +241,6 @@ class Arrow:
         body_height = 0.6 * 0.8  # height * size from initialization
         tip_radius = 0.3 * 0.8   # radius * size from initialization
         
-        # Calculate the corners of the rectangle and triangle in local coordinates
         # Calculate dimensions
         triangle_height = tip_radius * math.cos(math.pi/6)
         total_height = body_height + triangle_height
@@ -185,159 +248,344 @@ class Arrow:
         # Calculate the offset from the center
         center_offset_from_top = total_height / 2 - triangle_height / 2
         
-        # Calculate the rectangle's corners relative to its center
+        # Create a more precise outline of the arrow shape with more points
+        # Rectangle corners
         half_width = body_width / 2
-        half_height = body_height / 2
-        rect_center_y = center_offset_from_top - triangle_height - half_height
+        rect_center_y = center_offset_from_top - triangle_height - body_height/2
         
-        # Rectangle corners (before rotation)
-        rect_corners = [
-            [-half_width, rect_center_y - half_height],  # bottom-left
-            [half_width, rect_center_y - half_height],   # bottom-right
-            [half_width, rect_center_y + half_height],   # top-right
-            [-half_width, rect_center_y + half_height]   # top-left
+        rect_points = [
+            [-half_width, rect_center_y - body_height/2],  # bottom-left
+            [half_width, rect_center_y - body_height/2],   # bottom-right
+            [half_width, rect_center_y + body_height/2],   # top-right
+            [-half_width, rect_center_y + body_height/2]   # top-left
         ]
         
-        # Triangle corners (before rotation)
+        # Triangle points - use more points to better define the triangle
         triangle_center_y = center_offset_from_top - triangle_height/2
-        triangle_corners = [
-            [0, triangle_center_y + triangle_height/2],  # top
-            [-tip_radius, triangle_center_y - triangle_height/2],  # bottom-left
-            [tip_radius, triangle_center_y - triangle_height/2]    # bottom-right
+        
+        # Calculate exact points of the equilateral triangle
+        triangle_top_y = triangle_center_y + triangle_height/2
+        triangle_bottom_y = triangle_center_y - triangle_height/2
+        
+        triangle_points = [
+            [0, triangle_top_y],  # top point
+            [-tip_radius, triangle_bottom_y],  # bottom-left
+            [tip_radius, triangle_bottom_y]    # bottom-right
         ]
         
-        # Combine all corners
-        all_corners = rect_corners + triangle_corners
+        # Add midpoints for better accuracy
+        triangle_points.append([tip_radius/2, (triangle_top_y + triangle_bottom_y)/2])  # mid-right
+        triangle_points.append([-tip_radius/2, (triangle_top_y + triangle_bottom_y)/2]) # mid-left
         
-        # Apply rotation to all corners
-        rotated_corners = []
-        for x, y in all_corners:
+        # Combine all points to represent the arrow's shape
+        all_points = rect_points + triangle_points
+        
+        # Apply rotation to all points
+        rotated_points = []
+        for x, y in all_points:
             # Apply rotation
             rotated_x = x * math.cos(rotation_rad) - y * math.sin(rotation_rad)
             rotated_y = x * math.sin(rotation_rad) + y * math.cos(rotation_rad)
             # Add arrow position offset
-            rotated_corners.append([
+            rotated_points.append([
                 rotated_x + arrow_pos[0],  # x-coordinate
                 rotated_y + arrow_pos[2]   # z-coordinate (y in 2D space)
             ])
         
-        # Find min/max coordinates
-        min_x = min(corner[0] for corner in rotated_corners)
-        max_x = max(corner[0] for corner in rotated_corners)
-        min_z = min(corner[1] for corner in rotated_corners)
-        max_z = max(corner[1] for corner in rotated_corners)
+        # Find min/max coordinates for the tight bounding box
+        min_x = min(point[0] for point in rotated_points)
+        max_x = max(point[0] for point in rotated_points)
+        min_z = min(point[1] for point in rotated_points)
+        max_z = max(point[1] for point in rotated_points)
+        
+        # Store the actual rotated points for debug visualization
+        self.debug_points = rotated_points
         
         return min_x, min_z, max_x, max_z
-    
+        
     def create_debug_rect_visualization(self):
         """Creates a visual representation of the bounding rectangle when in debug mode"""
-        # Create a wireframe rectangle to represent the bounding box
+        try:
+            print(f"\n==== Inside create_debug_rect_visualization method ====\n")
+            
+            # Get current bounding rect
+            min_x, min_z, max_x, max_z = self.get_bounding_rect()
+            
+            # Make the bounding box much larger and more visible
+            # Expand bounds to make it more obvious
+            width = (max_x - min_x) * 1.5  # 50% wider
+            height = (max_z - min_z) * 1.5  # 50% taller
+            
+            print(f"Bounding box: min_x={min_x:.2f}, min_z={min_z:.2f}, max_x={max_x:.2f}, max_z={max_z:.2f}")
+            print(f"Debug visualization dimensions: width={width:.2f}, height={height:.2f}")
+            
+            if width <= 0 or height <= 0:
+                print(f"Warning: Invalid bounding box dimensions: {width}x{height}")
+                width = 0.5  # Use fixed size if calculations are wrong
+                height = 0.5
+            
+            # Create rectangle geometry with simple but highly visible settings
+            debug_geometry = RectangleGeometry(width=width, height=height)
+            
+            # Create a simple material with solid yellow color - avoid any fancy settings
+            debug_material = SurfaceMaterial(
+                property_dict={
+                    "baseColor": [1.0, 1.0, 0.0, 1.0],  # Bright yellow, fully opaque
+                    "wireframe": False,  # Make it solid
+                    "doubleSide": True,  # Visible from both sides
+                    "useVertexColors": False  # Don't use vertex colors
+                }
+            )
+            
+            # Create mesh
+            self.debug_rect_mesh = Mesh(debug_geometry, debug_material)
+            
+            # Position it at the center of the bounding box in the XZ plane
+            center_x = (min_x + max_x) / 2
+            center_z = (min_z + max_z) / 2
+            arrow_pos = self.rig.local_position
+            
+            # Position well above the arrow to prevent z-fighting and make it very visible
+            self.debug_rect_mesh.set_position([center_x, arrow_pos[1] + 0.1, center_z])
+            
+            # Add it to the rig
+            self.rig.add(self.debug_rect_mesh)
+            
+            print(f"Debug bounding box created: width={width:.2f}, height={height:.2f}, " +
+                  f"pos=[{center_x:.2f}, {arrow_pos[1] + 0.1:.2f}, {center_z:.2f}]")
+            
+            # Create corner markers with bright white color
+            self.create_bright_corner_markers(min_x, min_z, max_x, max_z)
+            
+            return True
+        except Exception as e:
+            print(f"Error creating debug visualization: {e}")
+            print(f"Error type: {type(e)}")
+            import traceback
+            traceback.print_exc()
+            self.debug_rect_mesh = None
+            self.debug_corner_markers = []
+            return False
+            
+    def create_bright_corner_markers(self, min_x, min_z, max_x, max_z):
+        """Creates very bright and visible corner markers"""
+        try:
+            # Create corners
+            corner_positions = [
+                (min_x, min_z),  # Bottom-left
+                (max_x, min_z),  # Bottom-right
+                (max_x, max_z),  # Top-right
+                (min_x, max_z)   # Top-left
+            ]
+            
+            # Create material properties for corners (bright white for visibility)
+            corner_colors = [
+                [1.0, 0.0, 0.0],  # Red
+                [0.0, 1.0, 0.0],  # Green
+                [0.0, 0.0, 1.0],  # Blue
+                [1.0, 0.0, 1.0]   # Purple
+            ]
+            
+            # Create large rectangle for each corner
+            self.debug_corner_markers = []
+            for i, (x, z) in enumerate(corner_positions):
+                # Large marker (0.2 units square) for high visibility
+                corner_geometry = RectangleGeometry(width=0.2, height=0.2)
+                
+                # Create a new material for each corner with bright color
+                corner_material = SurfaceMaterial(
+                    property_dict={
+                        "baseColor": corner_colors[i],
+                        "doubleSide": True,
+                        "wireframe": False  # Solid fill for better visibility
+                    }
+                )
+                
+                corner_mesh = Mesh(corner_geometry, corner_material)
+                # Position well above the arrow for visibility
+                corner_mesh.set_position([x, self.rig.local_position[1] + 0.15, z])
+                self.rig.add(corner_mesh)
+                self.debug_corner_markers.append(corner_mesh)
+                
+            print(f"Created {len(self.debug_corner_markers)} bright corner markers")
+            return True
+        except Exception as e:
+            print(f"Error creating corner markers: {e}")
+            self.debug_corner_markers = []
+            return False
+    
+    def update_debug_rect_visualization(self):
+        """Updates the visual representation of the bounding rectangle"""
+        if not self.debug_mode or self.debug_rect_mesh is None:
+            return
+        
+        # Remove previous debug meshes
+        try:
+            # Keep track of whether we need to recreate the debug rect
+            should_recreate = True
+            
+            # Try to remove existing debug visualization
+            if self.debug_rect_mesh is not None:
+                self.rig.remove(self.debug_rect_mesh)
+                self.debug_rect_mesh = None
+            
+            # Remove corner markers if they exist
+            if hasattr(self, 'debug_corner_markers'):
+                for marker in self.debug_corner_markers:
+                    self.rig.remove(marker)
+                self.debug_corner_markers = []
+        except Exception as e:
+            print(f"Warning: Error removing debug visualization: {e}")
+        
+        # Get current bounding rect
         min_x, min_z, max_x, max_z = self.get_bounding_rect()
         width = max_x - min_x
         height = max_z - min_z
         
-        # Create rectangle geometry
+        # Create a new rectangle with updated dimensions
         debug_geometry = RectangleGeometry(width=width, height=height)
-        
-        # Create wireframe material (semi-transparent blue)
         debug_material = SurfaceMaterial(
             property_dict={
-                "baseColor": [0.0, 0.5, 1.0, 0.5],  # Semi-transparent blue
-                "wireframe": True,  # Make it wireframe
-                "doubleSide": True  # Visible from both sides
+                "baseColor": [1.0, 0.0, 0.0, 0.4],  # Red with transparency
+                "wireframe": False,  # Solid fill for better visibility
+                "doubleSide": True,  # Visible from both sides
+                "lineWidth": 3.0     # Thicker lines
             }
         )
         
-        # Create mesh
+        # Create new mesh
         self.debug_rect_mesh = Mesh(debug_geometry, debug_material)
         
-        # Position the debug rectangle
+        # Position at center of bounding box
         center_x = (min_x + max_x) / 2
         center_z = (min_z + max_z) / 2
-        self.debug_rect_mesh.set_position([center_x, 0.01, center_z])  # Slight Y offset to prevent z-fighting
+        arrow_pos = self.rig.local_position
+        self.debug_rect_mesh.set_position([center_x, arrow_pos[1], center_z])
         
-        # Add to the scene
+        # Add to rig
         self.rig.add(self.debug_rect_mesh)
         
-        # Create corner markers for collision detection visualization
-        self.create_corner_markers(min_x, min_z, max_x, max_z)
-    
-    def create_corner_markers(self, min_x, min_z, max_x, max_z):
-        """Creates small markers at each corner of the bounding box for collision visualization"""
-        # Create corners
-        corner_positions = [
+        # Update corner markers
+        self.update_corner_markers(min_x, min_z, max_x, max_z)
+
+    def update_corner_markers(self, min_x, min_z, max_x, max_z):
+        """Updates the positions of the corner markers based on the updated bounding box"""
+        try:
+            # If we don't have corner markers yet, create them
+            if not hasattr(self, 'debug_corner_markers') or not self.debug_corner_markers:
+                self.create_bright_corner_markers(min_x, min_z, max_x, max_z)
+                return
+                
+            # Update corner positions
+            corner_positions = [
+                (min_x, min_z),  # Bottom-left
+                (max_x, min_z),  # Bottom-right
+                (max_x, max_z),  # Top-right
+                (min_x, max_z)   # Top-left
+            ]
+            
+            # Update position of each corner marker
+            for i, (x, z) in enumerate(corner_positions):
+                if i < len(self.debug_corner_markers):
+                    marker = self.debug_corner_markers[i]
+                    marker.set_position([x, self.rig.local_position[1] + 0.02, z])  # Slightly above bounding box
+        except Exception as e:
+            print(f"Warning: Error updating corner markers: {e}")
+            # If we encounter errors with corner markers, just create new ones
+            try:
+                # First try to clean up existing markers if any
+                if hasattr(self, 'debug_corner_markers'):
+                    for marker in self.debug_corner_markers:
+                        try:
+                            self.rig.remove(marker)
+                        except:
+                            pass
+                self.debug_corner_markers = []
+                # Then create new markers
+                self.create_bright_corner_markers(min_x, min_z, max_x, max_z)
+            except Exception as inner_e:
+                print(f"Failed to recreate corner markers: {inner_e}")
+                # If recreation fails, disable debug to prevent further errors
+                self.debug_mode = False
+
+    def create_direct_debug_box(self):
+        """Create a debug box that's added directly to the scene, not to the arrow rig"""
+        try:
+            # Get EXACT bounding rect used for collision - must match what's used in collision detection
+            min_x, min_z, max_x, max_z = self.get_bounding_rect()
+            width = max_x - min_x
+            height = max_z - min_z
+            
+            # Create box geometry matching the EXACT bounds used in collision detection
+            box_geometry = RectangleGeometry(width=width, height=height)
+            box_material = SurfaceMaterial(
+                property_dict={
+                    "baseColor": [1.0, 0.0, 0.0, 0.7],  # Red with transparency
+                    "wireframe": False, 
+                    "doubleSide": True
+                }
+            )
+            
+            # Create mesh
+            self.direct_debug_box = Mesh(box_geometry, box_material)
+            
+            # Position box at the EXACT center of the bounding rect
+            center_x = (min_x + max_x) / 2
+            center_z = (min_z + max_z) / 2
+            arrow_pos = self.rig.local_position
+            self.direct_debug_box.set_position([center_x, arrow_pos[1] + 0.02, center_z])
+            
+            # Add directly to scene
+            if hasattr(self, 'scene') and self.scene:
+                self.scene.add(self.direct_debug_box)
+                print(f"Added direct debug box MATCHING COLLISION BOUNDS: [{min_x:.2f}, {min_z:.2f}] to [{max_x:.2f}, {max_z:.2f}]")
+                
+                # Also add corner markers for better visualization
+                self.create_direct_corner_markers(min_x, min_z, max_x, max_z)
+            else:
+                print("Could not add direct debug box - scene reference not available")
+            
+            return True
+        except Exception as e:
+            print(f"Error creating direct debug box: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+            
+    def create_direct_corner_markers(self, min_x, min_z, max_x, max_z):
+        """Create corner markers at the exact corners of the bounding rectangle"""
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+            
+        # Store corner markers for cleanup
+        self.direct_corner_markers = []
+        
+        # Define corner positions
+        corners = [
             (min_x, min_z),  # Bottom-left
             (max_x, min_z),  # Bottom-right
             (max_x, max_z),  # Top-right
             (min_x, max_z)   # Top-left
         ]
         
-        # Create material properties for corners
-        corner_color = [1.0, 1.0, 1.0]  # White initially
-        
-        # Create small rectangle for each corner
-        self.debug_corner_markers = []
-        for i, (x, z) in enumerate(corner_positions):
-            # Small marker (0.05 units square)
-            corner_geometry = RectangleGeometry(width=0.05, height=0.05)
-            
-            # Create a new material for each corner (instead of copying)
-            corner_material = SurfaceMaterial(
+        # Create a marker at each corner
+        for i, (x, z) in enumerate(corners):
+            marker_geo = RectangleGeometry(width=0.05, height=0.05)
+            marker_mat = SurfaceMaterial(
                 property_dict={
-                    "baseColor": corner_color,
+                    "baseColor": [1.0, 1.0, 0.0, 1.0],  # Yellow
+                    "wireframe": False,
                     "doubleSide": True
                 }
             )
             
-            corner_mesh = Mesh(corner_geometry, corner_material)
-            corner_mesh.set_position([x, 0.02, z])  # Slightly higher than bounding rect
-            self.rig.add(corner_mesh)
-            self.debug_corner_markers.append(corner_mesh)
-    
-    def update_debug_rect_visualization(self):
-        """Updates the position and size of the debug rectangle visualization"""
-        if self.debug_rect_mesh is None:
-            return
+            marker = Mesh(marker_geo, marker_mat)
+            arrow_pos = self.rig.local_position
+            marker.set_position([x, arrow_pos[1] + 0.04, z])
             
-        # Get current bounding rectangle
-        min_x, min_z, max_x, max_z = self.get_bounding_rect()
-        width = max_x - min_x
-        height = max_z - min_z
-        
-        # Update rectangle size by replacing the mesh with a new one
-        # (since we can't easily change the size of an existing geometry)
-        arrow_pos = self.rig.local_position
-        
-        # Create new geometry with updated size
-        debug_geometry = RectangleGeometry(width=width, height=height)
-        
-        # Keep the same material
-        debug_material = self.debug_rect_mesh.material
-        
-        # Remove old mesh
-        self.rig.remove(self.debug_rect_mesh)
-        
-        # Create new mesh
-        self.debug_rect_mesh = Mesh(debug_geometry, debug_material)
-        
-        # Position the debug rectangle
-        center_x = (min_x + max_x) / 2 - arrow_pos[0]  # Relative to arrow position
-        center_z = (min_z + max_z) / 2 - arrow_pos[2]  # Relative to arrow position
-        self.debug_rect_mesh.set_position([center_x, 0.01, center_z])  # Slight Y offset
-        
-        # Add to the rig
-        self.rig.add(self.debug_rect_mesh)
-        
-        # If we have corner markers, update them too
-        if hasattr(self, 'debug_corner_markers'):
-            # We don't update the corner markers here since they're updated
-            # in the collision detection code to show collision status
-            # Instead, ensure they're at least removed from scene if old ones exist
-            for marker in self.debug_corner_markers:
-                if marker in self.rig.descendant_list:
-                    self.rig.remove(marker)
+            self.scene.add(marker)
+            self.direct_corner_markers.append(marker)
             
-            # Create new corner markers
-            self.create_corner_markers(min_x, min_z, max_x, max_z)
+        print(f"Added {len(corners)} corner markers at exact bounding rectangle corners")
 
 

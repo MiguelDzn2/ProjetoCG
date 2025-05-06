@@ -90,6 +90,10 @@ class Example(Base):
 
     def initialize(self):
         print("Initializing program...")
+        
+        # Print debug mode status to confirm it's properly set
+        print(f"\n==== Program running with debug_mode = {self.debug_mode} ====\n")
+        
         print("\nInstruções de Controlo:")
         print("Fase de Seleção:")
         print("- Setas Esquerda/Direita: Selecionar objeto")
@@ -109,6 +113,12 @@ class Example(Base):
         
         # Initialize timing adjustment for calibration
         self.timing_adjustment = 0.9
+        
+        # Initialize debug pause state
+        self.debug_paused = False
+        self.debug_pause_duration = 3.0  # Pause for 3 seconds
+        self.debug_pause_timer = 0
+        self.debug_pause_arrow = None
         
         # Initialize music and keyframes
         self.initialize_music()
@@ -655,155 +665,75 @@ class Example(Base):
         elif self.current_phase == GamePhase.GAMEPLAY:
             # Handle input for gameplay phase
             self.handle_gameplay_input()
-            # Update camera animation
-            self.update_camera_animation()
-            # self.handle_arrows(self.delta_time) # Old call, will be modified
             
-            # New keyframe-based arrow spawning and handling
-            if self.music_playing:
-                self.update_keyframe_arrows()
+            # Only use automatic camera animation when not in debug mode
+            if not self.debug_mode:
+                self.update_camera_animation()
             
-            # Continue handling movement and removal of existing arrows
-            self.handle_arrows(self.delta_time) # Pass delta_time for arrow.update
+            # Check for debug pause state
+            if self.debug_mode and self.debug_paused:
+                self.debug_pause_timer += self.delta_time
+                
+                # Display pause info
+                pause_text = f"GAME PAUSED FOR COLLISION INSPECTION - Resume in {max(0, self.debug_pause_duration - self.debug_pause_timer):.1f}s"
+                self.collision_texture.update_text(pause_text)
+                
+                # Resume after pause duration or if space is pressed
+                if self.debug_pause_timer >= self.debug_pause_duration or self.input.is_key_down('space'):
+                    self.debug_paused = False
+                    self.debug_pause_arrow = None
+                    self.collision_texture.update_text(" ")
+                    print("Debug pause ended - game resumed")
+            else:
+                # Only process game updates if not paused
+                # New keyframe-based arrow spawning and handling
+                if self.music_playing:
+                    self.update_keyframe_arrows()
+                
+                # Continue handling movement and removal of existing arrows
+                self.handle_arrows(self.delta_time) # Pass delta_time for arrow.update
         
         self.renderer.render(self.scene, self.camera)
-
-    def handle_selection_input(self):
-        # Check if left/right arrow keys are pressed to change selection
-        key_pressed = False
         
-        if self.input.is_key_down('left'):
-            # Move selection left (with wrap-around)
-            self.highlighted_index = (self.highlighted_index - 1) % len(self.object_rigs)
-            key_pressed = True
-            
-        if self.input.is_key_down('right'):
-            # Move selection right (with wrap-around)
-            self.highlighted_index = (self.highlighted_index + 1) % len(self.object_rigs)
-            key_pressed = True
-            
-        # Update the highlighted object if a key was pressed
-        if key_pressed:
-            self.highlight_selected_object()
-            
-        # Check if Enter key is pressed to confirm selection
-        if self.input.is_key_down('return'):
-            # Set the active object to the currently highlighted one
-            self.active_object_rig = self.object_rigs[self.highlighted_index]
-            
-            # Transition to gameplay phase
-            self.setup_gameplay_phase()
-            self.current_phase = GamePhase.GAMEPLAY
-    
     def handle_gameplay_input(self):
-        # Camera is now hardcoded and no longer controlled manually
-        
         # Update camera animation time for future use in time-based camera animation
         self.camera_animation_time += self.delta_time
         
         move_amount = MOVE_AMOUNT_MULTIPLIER * self.delta_time
         rotate_amount = ROTATE_AMOUNT_MULTIPLIER * self.delta_time
         
-        # Translation with arrow keys has been removed to prevent object movement
-        # Arrow keys are now only used for gameplay interactions with arrows
-        
-        # Rotation with UO affects the active object
-        if self.input.is_key_pressed('u'):
-            self.active_object_rig.rotate_y(rotate_amount)
-        if self.input.is_key_pressed('o'):
-            self.active_object_rig.rotate_y(-rotate_amount)
-
-        # Tilt with KL affects the active object
-        if self.input.is_key_pressed('k'):
-            self.active_object_rig.rotate_x(rotate_amount)
-        if self.input.is_key_pressed('l'):
-            self.active_object_rig.rotate_x(-rotate_amount)
+        # Camera controls only available in debug mode
+        if self.debug_mode:
+            # Camera rotation with I and P keys
+            if self.input.is_key_pressed('i'):
+                self.camera_rig.rotate_y(rotate_amount)
+            if self.input.is_key_pressed('p'):
+                self.camera_rig.rotate_y(-rotate_amount)
             
-        # Increment score by 100 when pressing A
+            # Camera position movement with J, K, L keys
+            if self.input.is_key_pressed('j'):
+                self.camera_rig.translate(-move_amount, 0, 0)  # Move left
+            if self.input.is_key_pressed('k'):
+                self.camera_rig.translate(0, 0, move_amount)   # Move backward
+            if self.input.is_key_pressed('l'):
+                self.camera_rig.translate(move_amount, 0, 0)   # Move right
+                
+            # Allow immediate resume from pause with spacebar
+            if self.debug_paused and self.input.is_key_down('space'):
+                self.debug_paused = False
+                self.debug_pause_arrow = None
+                self.collision_texture.update_text(" ")
+                print("Debug pause canceled by user")
+        
+        # All object controls have been removed completely
+
+        # Increment score by 100 when pressing A (kept for testing)
         if self.input.is_key_down('a'):
             self.score += 100
             print(f"Score: {self.score}")
             # Update score display text
             self.score_texture.update_text(f"Score: {int(self.score)}")
-
-    def create_single_arrow(self, arrow_type_str=None): # Modified to accept arrow_type_str
-        """Cria uma única seta com orientação especificada ou aleatória."""
-        import random
-        import uuid
-        
-        angle = 0 # Default angle
-        
-        if arrow_type_str:
-            arrow_type_str_lower = arrow_type_str.lower()
-            if arrow_type_str_lower in self.ARROW_TYPE_NAMES:
-                angle = self.ARROW_TYPE_NAMES[arrow_type_str_lower]
-            else:
-                print(f"Warning: Unknown arrow_type_str '{arrow_type_str}' in create_single_arrow. Defaulting to UP (0 degrees).")
-                angle = self.ARROW_TYPE_UP # Default to UP if type is unknown
-        else:
-            # If no type specified, choose a random one (optional, consider if this case is still needed)
-            possible_angles = [self.ARROW_TYPE_UP, self.ARROW_TYPE_LEFT, self.ARROW_TYPE_DOWN, self.ARROW_TYPE_RIGHT]
-            angle = random.choice(possible_angles)
-            print(f"Warning: create_single_arrow called without arrow_type_str. Spawning random arrow (angle: {angle}).")
-
-        # Pass debug_mode flag from the base class
-        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0], debug_mode=self.debug_mode)
-        arrow.add_to_scene(self.scene)
-        arrow.rotate(math.radians(angle), 'z') # Rotate based on the determined angle
-        
-        # ARROW_START_POSITION is imported from config.py
-        arrow.set_position(ARROW_START_POSITION) 
-        
-        arrow.unique_id = str(uuid.uuid4())
-        
-        return arrow
-
-    def setup_arrow_spawning(self, interval=2.0): # This method might become obsolete or repurposed
-        """Configura o spawn automático de setas a cada intervalo (OLD METHOD - TO BE REPLACED)"""
-        self.arrows = [] # Ensure arrows list is initialized here if not elsewhere for gameplay phase start
-        # self.arrow_spawn_timer = 0 # Not needed for keyframe system
-        # self.arrow_spawn_interval = interval # Not needed for keyframe system
-        
-        # Initialize the current waiting arrow ID
-        self.current_waiting_arrow_id = None
-        print("INFO: setup_arrow_spawning called. Ensure this is intended if using keyframe system.")
-
-    def update_arrow_spawning(self, delta_time): # THIS ENTIRE METHOD IS NOW OBSOLETE
-        """Atualiza o timer e cria novas setas quando necessário (OLD METHOD - OBSOLETE)"""
-        # This logic is replaced by update_keyframe_arrows
-        # self.arrow_spawn_timer += delta_time
-        # if self.arrow_spawn_timer >= self.arrow_spawn_interval:
-        #     self.arrow_spawn_timer = 0
-        #     self.arrows.append(self.create_single_arrow()) # Old random spawning
-        pass # Does nothing now
-
-    def update_keyframe_arrows(self):
-        """Check if it's time to spawn arrows according to keyframes and music time."""
-        if not hasattr(self, 'keyframes') or not self.keyframes or self.current_keyframe_index >= len(self.keyframes):
-            return # No keyframes loaded or all keyframes processed
-
-        if not hasattr(self, 'arrow_travel_time'):
-            print("Error: arrow_travel_time not calculated. Cannot spawn keyframe arrows accurately.")
-            return
-
-        current_music_time = self.get_music_time()
-
-        # Process all keyframes that should have spawned by now
-        while (self.current_keyframe_index < len(self.keyframes) and
-               current_music_time >= (self.keyframes[self.current_keyframe_index]['time'] - self.arrow_travel_time)):
             
-            keyframe = self.keyframes[self.current_keyframe_index]
-            arrow_type_to_spawn = keyframe.get('arrow_type') # Already validated in load_keyframes
-
-            print(f"Spawning arrow for keyframe {self.current_keyframe_index}: time {keyframe['time']:.2f}s, type '{arrow_type_to_spawn}', music_time: {current_music_time:.2f}s")
-            
-            new_arrow = self.create_single_arrow(arrow_type_str=arrow_type_to_spawn)
-            if not hasattr(self, 'arrows'): # Ensure self.arrows exists
-                self.arrows = []
-            self.arrows.append(new_arrow)
-            
-            self.current_keyframe_index += 1
-
     def check_arrow_ring_collision(self, arrow):
         """
         Checks if an arrow is inside the ring.
@@ -948,6 +878,15 @@ class Example(Base):
             if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.processed_arrow_uuids:
                 self.processed_arrow_uuids.append(arrow.unique_id)
                 print(f"Arrow[{arrow.unique_id}]: Added to processed arrows list")
+            
+            # Debug mode: Pause the game to inspect collision    
+            if self.debug_mode and not self.debug_paused:
+                self.debug_paused = True
+                self.debug_pause_timer = 0
+                self.debug_pause_arrow = arrow
+                pause_message = f"PAUSED: {collision_type} Hit (Press SPACE to resume)"
+                self.collision_texture.update_text(pause_message)
+                print(f"Game paused for {self.debug_pause_duration} seconds to inspect collision")
                 
             return arrow.collision_value
         else:
@@ -979,9 +918,11 @@ class Example(Base):
             
             # No collision registered
             return 0
-    
+            
     def handle_arrows(self, delta_time):
-        # self.update_arrow_spawning(self.delta_time) # REMOVE THIS LINE - Old timer-based spawning
+        # If we're paused in debug mode, don't update arrows
+        if self.debug_mode and self.debug_paused:
+            return
 
         # Atualiza todas as setas
         arrows_to_remove = []
@@ -999,7 +940,7 @@ class Example(Base):
         if is_arrow_key_pressed != self.prev_key_state:
             print(f"Arrow key state changed: {'PRESSED' if is_arrow_key_pressed else 'RELEASED'}")
             self.prev_key_state = is_arrow_key_pressed
-        
+            
         # First update all arrows and find two nearest to ring
         ring_pos = self.target_ring.global_position
         arrow_distances = []
@@ -1200,6 +1141,114 @@ class Example(Base):
                 arrow.rig.parent.remove(arrow.rig)  # Remove da cena
                 del arrow  # Remove da memória
 
+    def handle_selection_input(self):
+        # Check if left/right arrow keys are pressed to change selection
+        key_pressed = False
+        
+        if self.input.is_key_down('left'):
+            # Move selection left (with wrap-around)
+            self.highlighted_index = (self.highlighted_index - 1) % len(self.object_rigs)
+            key_pressed = True
+            
+        if self.input.is_key_down('right'):
+            # Move selection right (with wrap-around)
+            self.highlighted_index = (self.highlighted_index + 1) % len(self.object_rigs)
+            key_pressed = True
+            
+        # Update the highlighted object if a key was pressed
+        if key_pressed:
+            self.highlight_selected_object()
+            
+        # Check if Enter key is pressed to confirm selection
+        if self.input.is_key_down('return'):
+            # Set the active object to the currently highlighted one
+            self.active_object_rig = self.object_rigs[self.highlighted_index]
+            
+            # Transition to gameplay phase
+            self.setup_gameplay_phase()
+            self.current_phase = GamePhase.GAMEPLAY
+            
+    def create_single_arrow(self, arrow_type_str=None): # Modified to accept arrow_type_str
+        """Cria uma única seta com orientação especificada ou aleatória."""
+        import random
+        import uuid
+        
+        angle = 0 # Default angle
+        
+        if arrow_type_str:
+            arrow_type_str_lower = arrow_type_str.lower()
+            if arrow_type_str_lower in self.ARROW_TYPE_NAMES:
+                angle = self.ARROW_TYPE_NAMES[arrow_type_str_lower]
+            else:
+                print(f"Warning: Unknown arrow_type_str '{arrow_type_str}' in create_single_arrow. Defaulting to UP (0 degrees).")
+                angle = self.ARROW_TYPE_UP # Default to UP if type is unknown
+        else:
+            # If no type specified, choose a random one (optional, consider if this case is still needed)
+            possible_angles = [self.ARROW_TYPE_UP, self.ARROW_TYPE_LEFT, self.ARROW_TYPE_DOWN, self.ARROW_TYPE_RIGHT]
+            angle = random.choice(possible_angles)
+            print(f"Warning: create_single_arrow called without arrow_type_str. Spawning random arrow (angle: {angle}).")
+
+        # Print debug mode before creating arrow
+        print(f"\n==== Creating arrow with debug_mode = {self.debug_mode} ====\n")
+        
+        # Pass debug_mode flag from the base class
+        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0], debug_mode=self.debug_mode)
+        arrow.add_to_scene(self.scene)
+        arrow.rotate(math.radians(angle), 'z') # Rotate based on the determined angle
+        
+        # ARROW_START_POSITION is imported from config.py
+        arrow.set_position(ARROW_START_POSITION) 
+        
+        arrow.unique_id = str(uuid.uuid4())
+        
+        return arrow
+
+    def setup_arrow_spawning(self, interval=2.0): # This method might become obsolete or repurposed
+        """Configura o spawn automático de setas a cada intervalo (OLD METHOD - TO BE REPLACED)"""
+        self.arrows = [] # Ensure arrows list is initialized here if not elsewhere for gameplay phase start
+        # self.arrow_spawn_timer = 0 # Not needed for keyframe system
+        # self.arrow_spawn_interval = interval # Not needed for keyframe system
+        
+        # Initialize the current waiting arrow ID
+        self.current_waiting_arrow_id = None
+        print("INFO: setup_arrow_spawning called. Ensure this is intended if using keyframe system.")
+
+    def update_arrow_spawning(self, delta_time): # THIS ENTIRE METHOD IS NOW OBSOLETE
+        """Atualiza o timer e cria novas setas quando necessário (OLD METHOD - OBSOLETE)"""
+        # This logic is replaced by update_keyframe_arrows
+        # self.arrow_spawn_timer += delta_time
+        # if self.arrow_spawn_timer >= self.arrow_spawn_interval:
+        #     self.arrow_spawn_timer = 0
+        #     self.arrows.append(self.create_single_arrow()) # Old random spawning
+        pass # Does nothing now
+
+    def update_keyframe_arrows(self):
+        """Check if it's time to spawn arrows according to keyframes and music time."""
+        if not hasattr(self, 'keyframes') or not self.keyframes or self.current_keyframe_index >= len(self.keyframes):
+            return # No keyframes loaded or all keyframes processed
+
+        if not hasattr(self, 'arrow_travel_time'):
+            print("Error: arrow_travel_time not calculated. Cannot spawn keyframe arrows accurately.")
+            return
+
+        current_music_time = self.get_music_time()
+
+        # Process all keyframes that should have spawned by now
+        while (self.current_keyframe_index < len(self.keyframes) and
+               current_music_time >= (self.keyframes[self.current_keyframe_index]['time'] - self.arrow_travel_time)):
+            
+            keyframe = self.keyframes[self.current_keyframe_index]
+            arrow_type_to_spawn = keyframe.get('arrow_type') # Already validated in load_keyframes
+
+            print(f"Spawning arrow for keyframe {self.current_keyframe_index}: time {keyframe['time']:.2f}s, type '{arrow_type_to_spawn}', music_time: {current_music_time:.2f}s")
+            
+            new_arrow = self.create_single_arrow(arrow_type_str=arrow_type_to_spawn)
+            if not hasattr(self, 'arrows'): # Ensure self.arrows exists
+                self.arrows = []
+            self.arrows.append(new_arrow)
+            
+            self.current_keyframe_index += 1
+
     def handle_nightClub(self):
         self.nightClub = nightclub.NightClub(self.scene,"geometry/nightClub.obj", [0, -2.5, 10], 3)
         self.nightClub_rig = self.nightClub.get_rig()
@@ -1224,7 +1273,7 @@ class Example(Base):
         try:
             print(f"Attempting to load music file: {music_file}")
             pygame.mixer.music.load(music_file)
-            pygame.mixer.music.set_volume(0.3)  # Set volume to 30%
+            pygame.mixer.music.set_volume(0.2)  # Set volume to 30%
             self.music_loaded = True
             self.music_file = music_file
             print(f"Successfully loaded music file: {music_file}")
@@ -1323,12 +1372,12 @@ class Example(Base):
 
     def add_ring_debug_visualization(self):
         """Add visual indicators for the inner and outer ring boundaries for debugging"""
-        # For a vertical ring, we need to create a circle in the XZ plane (not XY)
+        # The ring is actually created in the XY plane (horizontal), but appears vertical due to camera
         def circle_function(u, v):
             # v parameter is not used for a simple circle
             x = self.RING_INNER_RADIUS * np.cos(u * 2 * np.pi)
-            z = self.RING_INNER_RADIUS * np.sin(u * 2 * np.pi)  # Use Z instead of Y for vertical ring
-            y = 0  # Keep flat in the XZ plane
+            y = self.RING_INNER_RADIUS * np.sin(u * 2 * np.pi)  # Keep in XY plane (same as actual ring)
+            z = 0  # Flat in the XY plane
             return [x, y, z]
             
         inner_circle_geometry = ParametricGeometry(0, 1, 32, 0, 1, 1, circle_function)
@@ -1353,7 +1402,7 @@ class Example(Base):
         
         # Add an explanation text for debug mode
         debug_text = TextTexture(
-            text="Debug Mode: Red circle shows perfect hit zone | Arrow corners must be GREEN for perfect hit",
+            text="Debug Mode: Red circle shows perfect hit zone | Ring is in XY plane (appears vertical due to camera)",
             system_font_name="Arial",
             font_size=18,
             font_color=(255, 255, 255),  # White text
@@ -1401,17 +1450,17 @@ class Example(Base):
         marker_positions = []
         
         # Add markers at four cardinal points on inner circle
-        # For vertical ring, use XZ plane (not XY)
+        # Ring is actually in the XY plane (horizontal), but appears vertical due to camera
         for angle in [0, math.pi/2, math.pi, 3*math.pi/2]:
             x = ring_center[0] + inner_radius * math.cos(angle)
-            z = ring_center[2] + inner_radius * math.sin(angle)  # Use Z instead of Y
-            marker_positions.append((x, ring_center[1], z, inner_marker_material, "inner"))
+            y = ring_center[1] + inner_radius * math.sin(angle)  # Use Y for XY plane orientation
+            marker_positions.append((x, y, ring_center[2], inner_marker_material, "inner"))
             
         # Add markers at four cardinal points on outer circle
         for angle in [0, math.pi/2, math.pi, 3*math.pi/2]:
             x = ring_center[0] + outer_radius * math.cos(angle)
-            z = ring_center[2] + outer_radius * math.sin(angle)  # Use Z instead of Y
-            marker_positions.append((x, ring_center[1], z, outer_marker_material, "outer"))
+            y = ring_center[1] + outer_radius * math.sin(angle)  # Use Y for XY plane orientation
+            marker_positions.append((x, y, ring_center[2], outer_marker_material, "outer"))
             
         # Create and position all markers
         self.marker_meshes = []
