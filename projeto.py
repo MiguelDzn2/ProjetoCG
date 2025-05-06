@@ -568,6 +568,8 @@ class Example(Base):
     def create_single_arrow(self):
         """Cria uma única seta com orientação aleatória, considerando offset de origem"""
         import random
+        import uuid
+        
         possible_angles = [0, 90, 180, 270, 360, 90, 270]
         angle = random.choice(possible_angles)
         
@@ -582,6 +584,9 @@ class Example(Base):
         # Set arrow at hardcoded position
         arrow.set_position([arrow_x, arrow_y, arrow_z])
         
+        # Generate a unique ID for this arrow
+        arrow.unique_id = str(uuid.uuid4())
+        
         return arrow
 
     def setup_arrow_spawning(self, interval=2.0):
@@ -589,6 +594,9 @@ class Example(Base):
         self.arrows = []
         self.arrow_spawn_timer = 0
         self.arrow_spawn_interval = interval
+        
+        # Initialize the current waiting arrow ID
+        self.current_waiting_arrow_id = None
 
     def update_arrow_spawning(self, delta_time):
         """Atualiza o timer e cria novas setas quando necessário"""
@@ -597,7 +605,7 @@ class Example(Base):
             self.arrow_spawn_timer = 0
             self.arrows.append(self.create_single_arrow())
 
-    def check_arrow_ring_collision(self, arrow, arrow_index):
+    def check_arrow_ring_collision(self, arrow):
         """
         Checks if an arrow is inside the ring.
         Returns:
@@ -605,6 +613,10 @@ class Example(Base):
         - 0.5: Arrow is partially inside the ring (only part of body or tip)
         - 0: Arrow is outside the ring
         """
+        # If arrow has been marked as ineligible for detection, immediately return 0
+        if hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection:
+            return 0
+            
         # Get positions of arrow and ring
         arrow_pos = arrow.rig.local_position
         ring_pos = self.target_ring.global_position
@@ -649,7 +661,7 @@ class Example(Base):
         # Reset waiting state if arrow has passed the ring completely
         if has_passed_ring and hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
             arrow.waiting_for_keypress = False
-            print(f"Arrow[{arrow_index}]: Stopped waiting - passed ring completely")
+            print(f"Arrow[{arrow.unique_id}]: Stopped waiting - passed ring completely")
         
         # First check if arrow has passed the ring without colliding
         if has_passed_ring:
@@ -667,7 +679,7 @@ class Example(Base):
             # Arrow is completely inside the inner ring (full interception)
             # Check if the value changed from 0.5 to 1
             if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value == 0.5:
-                print(f"Arrow[{arrow_index}]: Now fully inside ring (value: 1.0)")
+                print(f"Arrow[{arrow.unique_id}]: Now fully inside ring (value: 1.0)")
             arrow.potential_collision_value = 1
         elif flat_distance <= outer_radius:
             # Arrow is at least partially inside the ring (partial interception)
@@ -676,7 +688,7 @@ class Example(Base):
             # Arrow is completely outside the ring
             # If arrow was previously waiting, log that it's now outside ring
             if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value > 0:
-                print(f"Arrow[{arrow_index}]: Now outside ring (value: 0)")
+                print(f"Arrow[{arrow.unique_id}]: Now outside ring (value: 0)")
             arrow.potential_collision_value = 0
         
         # Check if any arrow key is pressed
@@ -693,10 +705,14 @@ class Example(Base):
         # 1. Arrow has a potential collision value > 0
         # 2. An arrow key is pressed
         # 3. Collision has not been checked while the key is pressed
-        if arrow.potential_collision_value > 0 and is_arrow_key_pressed and not arrow.collision_checked:
+        # 4. Arrow is eligible for detection (not ineligible)
+        if (arrow.potential_collision_value > 0 and 
+            is_arrow_key_pressed and 
+            not arrow.collision_checked and
+            not (hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection)):
             # Debug print only essential collision information
             collision_type = "PERFECT" if arrow.potential_collision_value == 1 else "PARTIAL"
-            print(f"COLLISION DETECTED - Arrow[{arrow_index}]: {collision_type} (Value {arrow.potential_collision_value})")
+            print(f"COLLISION DETECTED - Arrow[{arrow.unique_id}]: {collision_type} (Value {arrow.potential_collision_value})")
             print(f"  Arrow X,Z: ({arrow_pos[0]:.2f}, {arrow_pos[2]:.2f}), Ring X,Z: ({ring_pos[0]:.2f}, {ring_pos[2]:.2f})")
             print(f"  Distance: {flat_distance:.2f}, Arrow extent: {arrow_max_extent:.2f}, Ring radius: {outer_radius:.2f}")
             
@@ -706,8 +722,9 @@ class Example(Base):
             arrow.collision_value = arrow.potential_collision_value
             return arrow.collision_value
         else:
-            # Only print if potential collision exists
-            if arrow.potential_collision_value > 0:
+            # Only print if potential collision exists and arrow is eligible
+            if (arrow.potential_collision_value > 0 and 
+                not (hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection)):
                 # Initialize waiting_for_keypress flag if it doesn't exist
                 if not hasattr(arrow, 'waiting_for_keypress'):
                     arrow.waiting_for_keypress = False
@@ -717,18 +734,18 @@ class Example(Base):
                 if is_arrow_key_pressed and arrow.collision_checked:
                     if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
                         arrow.waiting_for_keypress = False
-                        print(f"Arrow[{arrow_index}]: No longer waiting - already checked")
+                        print(f"Arrow[{arrow.unique_id}]: No longer waiting - already checked")
                 elif arrow.potential_collision_value > 0 and not is_arrow_key_pressed:
                     # Only log when state changes from not waiting to waiting
                     # or when collision value changes while waiting
                     if not arrow.waiting_for_keypress:
                         arrow.waiting_for_keypress = True
                         position_desc = "fully inside ring" if arrow.potential_collision_value == 1 else "touching outer ring"
-                        print(f"Arrow[{arrow_index}]: Started waiting for key press ({position_desc}, value: {arrow.potential_collision_value})")
+                        print(f"Arrow[{arrow.unique_id}]: Started waiting for key press ({position_desc}, value: {arrow.potential_collision_value})")
                         arrow.last_collision_value = arrow.potential_collision_value
                     elif hasattr(arrow, 'last_collision_value') and arrow.last_collision_value != arrow.potential_collision_value:
                         position_desc = "fully inside ring" if arrow.potential_collision_value == 1 else "touching outer ring"
-                        print(f"Arrow[{arrow_index}]: Still waiting, now {position_desc} (value: {arrow.potential_collision_value})")
+                        print(f"Arrow[{arrow.unique_id}]: Still waiting, now {position_desc} (value: {arrow.potential_collision_value})")
                         arrow.last_collision_value = arrow.potential_collision_value
             
             # No collision registered
@@ -759,6 +776,10 @@ class Example(Base):
         ring_pos = self.target_ring.global_position
         arrow_distances = []
         
+        # Track if we have a new arrow entering the waiting state
+        new_waiting_arrow_found = False
+        latest_waiting_arrow_id = None
+        
         for i, arrow in enumerate(self.arrows):
             # Update arrow position
             arrow.update()
@@ -774,7 +795,7 @@ class Example(Base):
             distance = math.sqrt(dx*dx + dz*dz)
             
             # Store arrow index and distance
-            arrow_distances.append((i, distance))
+            arrow_distances.append((i, distance, arrow))
             
             # Check if arrow should be removed
             if not arrow.isVisible():
@@ -786,12 +807,47 @@ class Example(Base):
         # Only process the two nearest arrows
         nearest_arrows = arrow_distances[:2] if len(arrow_distances) >= 2 else arrow_distances
         
-        # Process only the nearest arrows
-        for idx, distance in nearest_arrows:
-            arrow = self.arrows[idx]
+        # First pass to find if any arrow is entering the waiting state
+        for idx, distance, arrow in nearest_arrows:
+            # Calculate flat distance to determine if arrow is near/in the ring
+            arrow_pos = arrow.rig.local_position
+            dx = arrow_pos[0] - ring_pos[0]
+            dz = arrow_pos[2] - ring_pos[2]
+            flat_distance = math.sqrt(dx*dx + dz*dz)
+            
+            # Get the outer radius of the ring
+            outer_radius = self.RING_OUTER_RADIUS * self.RING_SCALE
+            
+            # Check if this arrow is entering the ring area
+            is_near_ring = flat_distance <= outer_radius
+            is_in_waiting = hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress
+            
+            # If arrow is near ring but not yet waiting, it's a new candidate
+            if is_near_ring and not is_in_waiting and not hasattr(arrow, 'scored'):
+                new_waiting_arrow_found = True
+                latest_waiting_arrow_id = arrow.unique_id
+        
+        # If we found a new arrow entering waiting state, invalidate previous waiting arrows
+        if new_waiting_arrow_found:
+            # Set the new current waiting arrow ID
+            self.current_waiting_arrow_id = latest_waiting_arrow_id
+            
+            # Mark all other arrows as ineligible
+            for arrow in self.arrows:
+                if arrow.unique_id != self.current_waiting_arrow_id:
+                    if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
+                        arrow.waiting_for_keypress = False
+                        arrow.ineligible_for_detection = True
+                        print(f"Arrow[{arrow.unique_id}]: No longer waiting - newer arrow detected")
+        
+        # Process collision checks for arrows
+        for idx, distance, arrow in nearest_arrows:
+            # Skip arrows that have been marked as ineligible for detection
+            if hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection:
+                continue
             
             # Check for collision with ring
-            collision_result = self.check_arrow_ring_collision(arrow, idx)
+            collision_result = self.check_arrow_ring_collision(arrow)
             
             if collision_result > 0:
                 # Update the collision status display
@@ -814,14 +870,20 @@ class Example(Base):
                     self.score_texture.update_text(f"Score: {self.score}")
                     # Mark arrow as scored so we don't count it multiple times
                     arrow.scored = True
-                    print(f"Arrow[{idx}] scored: {collision_result * 100} points, total: {self.score}")
+                    print(f"Arrow[{arrow.unique_id}] scored: {collision_result * 100} points, total: {self.score}")
+                    
+                    # After scoring, reset current_waiting_arrow_id to allow next arrow to be detected
+                    self.current_waiting_arrow_id = None
             else:
                 # If no collision and arrow is far enough to be past the ring
                 if arrow.rig.local_position[0] > ring_pos[0] + 0.5:
                     # Update status to show miss
                     self.collision_texture.update_text("Status: 0 (Miss)")
                 # If we have a potential collision but no arrow key is pressed
-                elif hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value > 0 and not is_arrow_key_pressed:
+                elif (hasattr(arrow, 'potential_collision_value') and 
+                      arrow.potential_collision_value > 0 and 
+                      not is_arrow_key_pressed and
+                      (not hasattr(arrow, 'ineligible_for_detection') or not arrow.ineligible_for_detection)):
                     # Show that an arrow key needs to be pressed
                     self.collision_texture.update_text("Status: Press Arrow Key!")
 
@@ -831,8 +893,11 @@ class Example(Base):
                 arrow = self.arrows[i]
                 # Log if arrow was in waiting state when removed
                 if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
-                    print(f"Arrow[{i}]: Stopped waiting (removed from scene)")
-                print(f"Removing Arrow[{i}] from scene")
+                    print(f"Arrow[{arrow.unique_id}]: Stopped waiting (removed from scene)")
+                # If this was the current waiting arrow, reset the ID
+                if hasattr(arrow, 'unique_id') and self.current_waiting_arrow_id == arrow.unique_id:
+                    self.current_waiting_arrow_id = None
+                print(f"Removing Arrow[{arrow.unique_id}] from scene")
                 self.arrows.pop(i)  # Remove da lista
                 arrow.rig.parent.remove(arrow.rig)  # Remove da cena
                 del arrow  # Remove da memória
