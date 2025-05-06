@@ -1,6 +1,7 @@
 """Basic window management allowing for time and user input"""
 import sys
 import pygame
+import argparse
 
 from core.input import Input
 
@@ -9,6 +10,12 @@ class Base(object):
     """Basic window"""
     def __init__(self, screen_size=(512, 512)):
         """initialize all pygame modules"""
+        # Parse command line arguments
+        parser = argparse.ArgumentParser(description="Computer Graphics Application")
+        parser.add_argument("-debug", action="store_true", help="Run in debug mode to show axes and additional information")
+        args, unknown = parser.parse_known_args()
+        self.debug_mode = args.debug
+        
         pygame.init()
         # indicate rendering details
         display_flags = pygame.DOUBLEBUF | pygame.OPENGL

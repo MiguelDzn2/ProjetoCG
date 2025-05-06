@@ -59,17 +59,22 @@ class Example(Base):
         print("- Enter: Confirmar seleção e passar para fase de jogo")
         print("\nFase de Jogo:")
         print("Controlo dos Objectos:")
-        print("- Setas: Mover o objecto para a frente/esquerda/trás/direita")
         print("- UO: Rodar o objecto para a esquerda/direita")
         print("- KL: Inclinar o objecto para cima/para baixo")
-        print("\nNota: A câmara está agora em modo automático.")
-
+        print("- Setas: Interagir com as setas do jogo quando chegam ao anel")
+        print("\n")
         # Initialize game phase
         self.current_phase = GamePhase.SELECTION
         self.highlighted_index = 0
         
         # Initialize score
         self.score = 0
+        
+        # Initialize perfect hit streak counter
+        self.perfect_streak = 0
+        
+        # Track arrows that have contributed to the streak
+        self.streak_arrows = []
         
         # Track processed arrows to ensure their status isn't changed by new arrows
         self.processed_arrow_uuids = []
@@ -121,6 +126,34 @@ class Example(Base):
         
         # Store the score texture for updates
         self.score_texture = score_texture
+        
+        # Create streak text display
+        streak_texture = TextTexture(
+            text="Streak: 0",
+            system_font_name="Arial",
+            font_size=24,
+            font_color=(255, 255, 255),  # White text
+            background_color=(0, 0, 0, 128),  # Semi-transparent black background
+            transparent=True,
+            image_width=300,
+            image_height=60,
+            align_horizontal=0.0,  # Left-aligned
+            align_vertical=0.5,    # Vertically centered
+            image_border_width=0,  # Remove border
+            image_border_color=(255, 255, 255)  # White border
+        )
+        streak_material = TextureMaterial(texture=streak_texture, property_dict={"doubleSide": True})
+        streak_geometry = RectangleGeometry(width=2, height=0.4)
+        self.streak_mesh = Mesh(streak_geometry, streak_material)
+        
+        # Create the streak rig but don't add to scene directly - will be added to camera
+        self.streak_rig = MovementRig()
+        self.streak_rig.add(self.streak_mesh)
+        # Position streak below score
+        self.streak_rig.set_position([2.6, 0.8, -3])
+        
+        # Store the streak texture for updates
+        self.streak_texture = streak_texture
         
         # Initially hide the score display in selection phase
         # self.score_mesh.visible = False
@@ -197,15 +230,19 @@ class Example(Base):
         # Set up the camera for the selection phase
         self.setup_selection_phase()
         
-        # behind_z = -5
-        axes = AxesHelper(axis_length=2)
-        self.scene.add(axes)
-        grid = GridHelper(
-            size=20,
-            grid_color=[1, 1, 1],
-            center_color=[1, 1, 0]
-        )
-        grid.rotate_x(-math.pi / 2)
+        # Only show debug elements (axes and grid) when in debug mode
+        if self.debug_mode:
+            # Debug visualization helpers
+            axes = AxesHelper(axis_length=2)
+            self.scene.add(axes)
+            grid = GridHelper(
+                size=20,
+                grid_color=[1, 1, 1],
+                center_color=[1, 1, 0]
+            )
+            grid.rotate_x(-math.pi / 2)
+            self.scene.add(grid)
+        
         self.setup_arrow_spawning(2.0)
         self.handle_nightClub()
 
@@ -256,6 +293,10 @@ class Example(Base):
         # Show score by adding to camera if not already there
         if self.score_rig not in self.camera.descendant_list:
             self.camera.add(self.score_rig)
+            
+        # Show streak counter by adding to camera
+        if self.streak_rig not in self.camera.descendant_list:
+            self.camera.add(self.streak_rig)
         
         # Remove the title rig from the scene
         if self.title_rig in self.scene.descendant_list:
@@ -280,9 +321,12 @@ class Example(Base):
         
         # Reset score to 0 for new game
         self.score = 0
+        self.perfect_streak = 0
+        self.streak_arrows = [] # Reset streak tracking
         print(f"Score: {self.score}")
         # Update score display text
         self.score_texture.update_text(f"Score: {int(self.score)}")
+        self.streak_texture.update_text(f"Streak: {self.perfect_streak}")
         
         # Clear processed arrow UUIDs for new game
         self.processed_arrow_uuids = []
@@ -512,20 +556,12 @@ class Example(Base):
         # Update camera animation time for future use in time-based camera animation
         self.camera_animation_time += self.delta_time
         
-        # Object movement with arrow keys and other controls
         move_amount = MOVE_AMOUNT_MULTIPLIER * self.delta_time
         rotate_amount = ROTATE_AMOUNT_MULTIPLIER * self.delta_time
         
-        # Translation with arrow keys affects the active object
-        if self.input.is_key_pressed('left'):
-            self.active_object_rig.translate(-move_amount, 0, 0)
-        if self.input.is_key_pressed('right'):
-            self.active_object_rig.translate(move_amount, 0, 0)
-        if self.input.is_key_pressed('up'):
-            self.active_object_rig.translate(0, 0, -move_amount)
-        if self.input.is_key_pressed('down'):
-            self.active_object_rig.translate(0, 0, move_amount)
-
+        # Translation with arrow keys has been removed to prevent object movement
+        # Arrow keys are now only used for gameplay interactions with arrows
+        
         # Rotation with UO affects the active object
         if self.input.is_key_pressed('u'):
             self.active_object_rig.rotate_y(rotate_amount)
@@ -868,25 +904,89 @@ class Example(Base):
             if collision_result > 0:
                 # Update arrow visual feedback based on collision result
                 if collision_result == 1:
+                    # Calculate score multiplier based on current streak (BEFORE incrementing)
+                    score_multiplier = 1.0
+                    if self.perfect_streak >= 10:
+                        score_multiplier = 2.0
+                    elif self.perfect_streak >= 5:
+                        score_multiplier = 1.5
+                    
                     # Change arrow color to green for perfect hit
                     arrow.change_color([0.0, 1.0, 0.0]) # Green for 1.0
+                    
+                    # Update score only once per arrow
+                    if not hasattr(arrow, 'scored') or not arrow.scored:
+                        # Add score based on collision level with streak multiplier
+                        score_increase = collision_result * 100 * score_multiplier
+                        self.score += score_increase
+                        
+                        # Update score display
+                        self.score_texture.update_text(f"Score: {int(self.score)}")
+                        
+                        # Mark arrow as scored so we don't count it multiple times
+                        arrow.scored = True
+                        print(f"Arrow[{arrow.unique_id}] scored: {score_increase} points (multiplier: x{score_multiplier}), total: {self.score}")
+                        
+                        # After scoring, reset current_waiting_arrow_id to allow next arrow to be detected
+                        self.current_waiting_arrow_id = None
+                    
+                    # AFTER scoring, increment perfect streak for perfect hits
+                    # Only increment streak if this arrow hasn't been counted before
+                    if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.streak_arrows:
+                        self.perfect_streak += 1
+                        self.streak_arrows.append(arrow.unique_id)
+                        print(f"Perfect hit! Streak incremented to: {self.perfect_streak}")
+                        
+                        # Show streak with multiplier indicator for NEXT hit
+                        multiplier_text = ""
+                        if self.perfect_streak >= 10:
+                            multiplier_text = " (x2.0)"
+                        elif self.perfect_streak >= 5:
+                            multiplier_text = " (x1.5)"
+                        self.streak_texture.update_text(f"Streak: {self.perfect_streak}{multiplier_text}")
+                    
                 else: # collision_result must be 0.5 here
+                    # No multiplier for partial hits
+                    score_multiplier = 1.0
+                    
                     # Change arrow color to yellow for partial hit
                     arrow.change_color([1.0, 1.0, 0.0]) # Yellow for 0.5
-                
-                # Update score only once per arrow
-                if not hasattr(arrow, 'scored') or not arrow.scored:
-                    # Add score based on collision level
-                    self.score += collision_result * 100
-                    # Update score display
-                    self.score_texture.update_text(f"Score: {int(self.score)}")
-                    # Mark arrow as scored so we don't count it multiple times
-                    arrow.scored = True
-                    print(f"Arrow[{arrow.unique_id}] scored: {collision_result * 100} points, total: {self.score}")
                     
-                    # After scoring, reset current_waiting_arrow_id to allow next arrow to be detected
-                    self.current_waiting_arrow_id = None
+                    # Update score only once per arrow
+                    if not hasattr(arrow, 'scored') or not arrow.scored:
+                        # Add score based on collision level with no multiplier
+                        score_increase = collision_result * 100
+                        self.score += score_increase
+                        
+                        # Update score display
+                        self.score_texture.update_text(f"Score: {int(self.score)}")
+                        
+                        # Mark arrow as scored so we don't count it multiple times
+                        arrow.scored = True
+                        print(f"Arrow[{arrow.unique_id}] scored: {score_increase} points (no multiplier), total: {self.score}")
+                        
+                        # After scoring, reset current_waiting_arrow_id to allow next arrow to be detected
+                        self.current_waiting_arrow_id = None
+                    
+                    # Reset perfect streak for partial hits
+                    self.perfect_streak = 0
+                    self.streak_arrows = []  # Clear tracked streak arrows
+                    self.streak_texture.update_text(f"Streak: {self.perfect_streak}")
+                    print(f"Partial hit! Streak reset to: {self.perfect_streak}")
             else:
+                # Reset streak on misses
+                if (hasattr(arrow, 'unique_id') and 
+                    arrow.unique_id not in self.processed_arrow_uuids and
+                    hasattr(arrow, 'waiting_for_keypress') and 
+                    not arrow.waiting_for_keypress and
+                    not hasattr(arrow, 'scored')):
+                    # This is a missed arrow that's passed the ring
+                    if self.perfect_streak > 0:
+                        self.perfect_streak = 0
+                        self.streak_arrows = []  # Clear tracked streak arrows
+                        self.streak_texture.update_text(f"Streak: {self.perfect_streak}")
+                        print("Streak reset due to miss!")
+                
                 # No need to update status display - we've removed it
                 pass
 
