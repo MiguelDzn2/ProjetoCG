@@ -14,7 +14,7 @@ ProjetoCG/
 ├── core/                  # Core framework components
 │   ├── base.py            # Base application class
 │   ├── matrix.py          # Matrix transformation operations
-│   ├── obj_reader2.py     # OBJ file parser
+│   ├── obj_reader2.py     # Custom OBJ file parser
 │   └── ...                # Other core utilities
 │
 ├── core_ext/              # Extended core functionality
@@ -22,6 +22,7 @@ ProjetoCG/
 │   ├── mesh.py            # Mesh handling
 │   ├── renderer.py        # Rendering pipeline
 │   ├── scene.py           # Scene graph management
+│   ├── texture.py         # Texture loading/handling
 │   └── ...                # Other extensions
 │
 ├── geometry/              # Geometric primitives and custom models
@@ -29,7 +30,12 @@ ProjetoCG/
 │   ├── zeinstrument.py       # Ze's instrument model
 │   ├── anainstrument.py      # Ana's instrument model
 │   ├── brandoninstrument.py  # Brandon's instrument model
-│   ├── miguelOBJ.obj         # 3D model files
+│   ├── arrow.py           # Arrow geometry for gameplay
+│   ├── ring.py            # Ring geometry for gameplay target
+│   ├── rectangle.py       # Rectangle geometry (used for UI)
+│   ├── geometry.py        # Base geometry class
+│   ├── nightClub.py       # Geometry/logic for nightclub scene
+│   ├── miguelOBJ.obj         # 3D model files for instruments...
 │   └── ...                   # Basic geometric shapes
 │
 ├── material/              # Material definitions
@@ -39,19 +45,38 @@ ProjetoCG/
 ├── extras/                # Additional utilities
 │   ├── axes.py            # Axes visualization helper
 │   ├── grid.py            # Grid visualization helper
-│   └── movement_rig.py    # Movement controls for objects/camera
+│   ├── movement_rig.py    # Movement controls for objects/camera
+│   └── text_texture.py    # Utility to create textures from text
 │
 ├── images/                # Texture images and other visual assets
+│   ├── miguelJPG.jpg      # Textures for instruments...
+│   ├── game_title_transparent.png # Game title image
+│   └── ...
 │
 ├── .cursor/               # Cursor-specific configuration
-│   └── rules/             # Cursor rules
-│       ├── dependencies.mdc   # Dependencies documentation
-│       ├── structure.mdc      # Project structure documentation
-│       └── phases.mdc         # Game phases documentation
+│   └── rules/             # Cursor rules documentation
+│       ├── coding_standards.mdc
+│       ├── phases.mdc
+│       ├── project_files.mdc
+│       └── structure.mdc
+│
+├── .git/                  # Git repository data
+├── .idea/                 # IDE configuration (e.g., PyCharm)
+├── Helper/                # (Purpose unclear from listing)
 │
 ├── projeto.py             # Main application file
-├── phase_explanation.md   # Detailed explanation of game phases
-└── analysis.md            # Analysis of the project code
+├── phase_explanation.md   # Detailed explanation of game phases (potentially outdated?)
+├── analysis.md            # Analysis of the project code (potentially outdated?)
+├── arrow_implementation.md # Documentation specific to arrow feature
+├── uniform_explanation.md  # Documentation specific to uniforms
+├── dependencies.mdc       # Dependencies documentation (potentially outdated?)
+├── README.md              # Project README file
+├── pyproject.toml         # Project metadata and dependencies (Poetry)
+├── poetry.lock            # Exact dependency versions (Poetry)
+├── .gitattributes         # Git file handling configuration
+├── p9-1.py, p9-2.py, p9-3.py # Example/test scripts?
+├── texture_example_1.py   # Example/test script?
+└── ...                    # Other configuration/temporary files
 ```
 
 ## Main Components
@@ -61,8 +86,11 @@ ProjetoCG/
 The main application file contains the `Example` class which inherits from `Base` and implements:
 - Game phase management (Selection and Gameplay)
 - Scene setup for both phases
-- Input handling for both phases
-- Camera and object movement control
+- Input handling (object control in Gameplay, selection in Selection)
+- Gameplay logic (arrow spawning, collision detection, scoring)
+- Camera setup and automatic movement logic
+- Object loading and management using `MovementRig`
+- UI elements (score, collision status, title) using `TextTexture` and `RectangleGeometry`
 
 ### Core Framework
 
@@ -70,7 +98,7 @@ The core framework provides the foundation for the application:
 - Application lifecycle management
 - Input handling
 - Mathematical operations
-- File parsing
+- Custom OBJ file parsing (`obj_reader2.py`)
 
 ### Rendering System
 
@@ -83,29 +111,34 @@ The rendering system is built on:
 ### Geometry System
 
 The geometry system includes:
-- Basic geometric primitives (box, sphere, etc.)
+- Basic geometric primitives (e.g., `RectangleGeometry`)
 - Custom instrument models for each team member
-- OBJ file loading capabilities
+- Gameplay-specific geometry (`Arrow`, `RingGeometry`)
+- Nightclub scene geometry (`nightClub.py`)
+- OBJ file loading capabilities using `my_obj_reader2`
 
 ### Materials and Textures
 
 The material system supports:
 - Surface materials with adjustable properties
-- Texture-based materials with image loading
+- Texture-based materials with image loading (`Texture`)
+- Dynamic text rendering to textures (`TextTexture`)
 
 ### Movement Controls
 
 Movement is implemented through:
-- MovementRig class for hierarchical transformations
-- Input mapping for keyboard controls
+- `MovementRig` class for hierarchical transformations
+- Input mapping for keyboard controls (object movement in Gameplay)
 - Phase-specific input handling
+- Automatic camera movement logic in Gameplay phase
 
 ## Architectural Patterns
 
 The project follows several architectural patterns:
 1. **Scene Graph**: Hierarchical organization of 3D objects
 2. **Component-Based Design**: Objects composed of geometry and material components
-3. **State Machine**: Phase management using enumeration states
+3. **State Machine**: Phase management using `GamePhase` enumeration
 4. **Input Observer**: Input events trigger appropriate responses
 5. **Transformation Hierarchy**: Parent-child relationships for transformations
+6. **UI Elements**: Using `TextTexture` and basic geometry for on-screen display.
 

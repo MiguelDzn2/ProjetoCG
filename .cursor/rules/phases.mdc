@@ -39,6 +39,7 @@ The Selection Phase presents all four instrument models in a lineup, allowing th
 - **Camera Position**: High up (`y=50`) and facing backwards to view all objects
 - **Objects Arrangement**: Four instruments positioned in a horizontal row with increased spacing
 - **Highlighting**: Selected object is visually highlighted by scaling (1.2x)
+- **Title Image**: A game title image is displayed.
 
 ### Controls
 - **Left/Right Arrow Keys**: Navigate between the four instruments
@@ -55,27 +56,29 @@ The Selection Phase presents all four instrument models in a lineup, allowing th
 The Gameplay Phase allows the user to control the selected instrument model and move it around the scene.
 
 ### Visual Setup
-- **Camera Position**: Reset to ground level (`y=1`) facing forward
-- **Objects Arrangement**: 
-  - Selected object positioned at the center (`[0, 0, 0]`)
-  - Other objects positioned behind at `z=-5` with different x-coordinates
+- **Camera Position**: Follows a predefined path/position (`camera_hardcoded_position`, `camera_hardcoded_rotation`). Camera is added to the main `camera_rig`.
+- **Objects Arrangement**:
+  - Selected object positioned at the center (`[0, 0, 0]`) and controlled by the player.
+- **Score Display**: A score counter is displayed on screen, attached to the camera rig.
+- **Collision Status**: A text display shows collision status (e.g., "HIT", "MISS"), attached to the camera rig.
+- **Target Ring**: A green ring (`target_ring`) is placed in the scene for gameplay interaction.
+- **Arrows**: Arrows (`Arrow` geometry) spawn periodically and move towards the target ring.
+- **Nightclub Elements**: Visual elements loaded via `geometry/nightClub.py` are potentially added.
 
 ### Controls
 - **Camera Controls**:
-  - WASD: Move camera forward/left/backward/right
-  - RF: Move camera up/down
-  - QE: Turn camera left/right
-  - TG: Look up/down
+  - Camera movement is now automatic/scripted. Manual controls (WASD, RF, QE, TG) have been removed for the gameplay phase.
 - **Object Controls**:
-  - Arrow Keys: Move object forward/left/backward/right
-  - UO: Rotate object left/right
-  - KL: Tilt object up/down
+  - Arrow Keys: Move active object forward/left/backward/right.
 
 ### Implementation Details
 - Function `setup_gameplay_phase()` configures the scene for this phase
-- Function `handle_gameplay_input()` processes input during this phase
-- Camera movement is handled by the `camera_rig.update()` method
+- Function `handle_gameplay_input()` processes object control input during this phase
+- Camera movement is handled automatically, potentially via `update_camera_animation`. The `camera_rig` still holds the camera.
 - Object movement is applied directly to the `active_object_rig`
+- Arrow spawning and movement are managed by `setup_arrow_spawning`, `update_arrow_spawning`, and `handle_arrows`
+- Collision detection between arrows and the target ring is handled by `check_arrow_ring_collision`
+- Score and collision status are updated based on gameplay events, modifying `score_texture` and `collision_texture`
 
 ## Phase Transition
 
@@ -94,4 +97,7 @@ Potential improvements to the phase system:
 2. Implement additional phases (e.g., tutorial, settings)
 3. Add transition animations between phases
 4. Introduce additional interactions within each phase
+5. Implement the "Nightclub" scene elements fully.
+6. Refine arrow spawning logic and collision detection.
+7. Develop the automatic camera movement further.
 
