@@ -31,10 +31,9 @@ import os
 import geometry.nightClub as nightclub # <--- ALTERADO AQUI
 from geometry.ring import RingGeometry
 from extras.text_texture import TextTexture
-
-class GamePhase(Enum):
-    SELECTION = auto()
-    GAMEPLAY = auto()
+from game_phases import GamePhase
+from arrow_manager import ArrowManager
+from config import *
 
 class Example(Base):
     """
@@ -82,8 +81,8 @@ class Example(Base):
         self.RING_POSITION = [1, -0.02, 8]  # [x, z, y]
         
         # Camera animation properties - initial setup for gameplay phase
-        self.camera_hardcoded_position = [0, 1.2, 7]  # X, Y, Z
-        self.camera_hardcoded_rotation = [0, -math.pi/2, 0]  # X, Y, Z rotations in radians
+        self.camera_hardcoded_position = CAMERA_INITIAL_POSITION
+        self.camera_hardcoded_rotation = CAMERA_INITIAL_ROTATION
         self.camera_animation_time = 0  # Track elapsed time for future animation
         
         self.renderer = Renderer()
@@ -114,38 +113,9 @@ class Example(Base):
         score_geometry = RectangleGeometry(width=2, height=0.6)
         self.score_mesh = Mesh(score_geometry, score_material)
         
-        # Create collision status display
-        collision_texture = TextTexture(
-            text="Status: --",
-            system_font_name="Arial",
-            font_size=36,
-            font_color=(255, 255, 255),  # White text
-            background_color=(0, 0, 0, 128),  # Semi-transparent black background
-            transparent=True,
-            image_width=300,
-            image_height=100,
-            align_horizontal=0.0,  # Left-aligned
-            align_vertical=0.5,    # Vertically centered
-            image_border_width=0,  # Remove border
-            image_border_color=(255, 255, 255)  # White border
-        )
-        collision_material = TextureMaterial(texture=collision_texture, property_dict={"doubleSide": True})
-        collision_geometry = RectangleGeometry(width=2, height=0.6)
-        self.collision_mesh = Mesh(collision_geometry, collision_material)
-        
-        # Create the collision status rig
-        self.collision_rig = MovementRig()
-        self.collision_rig.add(self.collision_mesh)
-        # Position collision status below score
-        self.collision_rig.set_position([2.6, 0.7, -3])
-        
-        # Store the collision texture for updates
-        self.collision_texture = collision_texture
-        
         # Create the score rig but don't add to scene directly - will be added to camera
         self.score_rig = MovementRig()
         self.score_rig.add(self.score_mesh)
-        self.score_rig.add(self.collision_mesh)
         # Position score relative to camera view
         self.score_rig.set_position([2.6, 1.3, -3])
         
@@ -248,6 +218,9 @@ class Example(Base):
 
         self.scene.add(self.target_ring)
 
+        # Initialize arrow manager
+        self.arrow_manager = ArrowManager(self.scene, self.target_ring)
+
     def setup_selection_phase(self):
         # Hide score by removing from camera if it's present
         if self.score_rig in self.camera.descendant_list:
@@ -309,7 +282,7 @@ class Example(Base):
         self.score = 0
         print(f"Score: {self.score}")
         # Update score display text
-        self.score_texture.update_text(f"Score: {self.score}")
+        self.score_texture.update_text(f"Score: {int(self.score)}")
         
         # Clear processed arrow UUIDs for new game
         self.processed_arrow_uuids = []
@@ -438,11 +411,11 @@ class Example(Base):
         initial_rotation = self.camera_hardcoded_rotation  # [0, -math.pi/2, 0]
         
         # Final position and rotation
-        final_position = [-3, 1.2, 12.5]
-        final_rotation = [0, -math.pi/4, 0]
+        final_position = CAMERA_FINAL_POSITION
+        final_rotation = CAMERA_FINAL_ROTATION
         
         # Time to reach final position (in seconds)
-        transition_time = 4.0
+        transition_time = CAMERA_TRANSITION_TIME
         
         # If animation time is less than 0.1, use initial position without interpolation
         if self.camera_animation_time < 0.1:
@@ -540,8 +513,8 @@ class Example(Base):
         self.camera_animation_time += self.delta_time
         
         # Object movement with arrow keys and other controls
-        move_amount = 2 * self.delta_time
-        rotate_amount = 1 * self.delta_time
+        move_amount = MOVE_AMOUNT_MULTIPLIER * self.delta_time
+        rotate_amount = ROTATE_AMOUNT_MULTIPLIER * self.delta_time
         
         # Translation with arrow keys affects the active object
         if self.input.is_key_pressed('left'):
@@ -570,7 +543,7 @@ class Example(Base):
             self.score += 100
             print(f"Score: {self.score}")
             # Update score display text
-            self.score_texture.update_text(f"Score: {self.score}")
+            self.score_texture.update_text(f"Score: {int(self.score)}")
 
     def create_single_arrow(self):
         """Cria uma única seta com orientação aleatória, considerando offset de origem"""
@@ -578,6 +551,11 @@ class Example(Base):
         import uuid
         
         possible_angles = [0, 90, 180, 270]
+        # 0 is UP
+        # 90 is LEFT
+        # 180 is DOWN
+        # 270 is RIGHT
+
         angle = random.choice(possible_angles)
         
         arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0])  # Offset removed
@@ -706,17 +684,31 @@ class Example(Base):
                                self.input.is_key_pressed('left') or 
                                self.input.is_key_pressed('right'))
         
+        # Get the arrow's rotation angle
+        arrow_angle = arrow.get_rotation_angle()
+        
+        # Check if the correct arrow key is pressed based on the arrow's angle
+        correct_key_pressed = False
+        if arrow_angle == 0 and self.input.is_key_pressed('up'):
+            correct_key_pressed = True
+        elif arrow_angle == 90 and self.input.is_key_pressed('left'):
+            correct_key_pressed = True
+        elif arrow_angle == 180 and self.input.is_key_pressed('down'):
+            correct_key_pressed = True
+        elif arrow_angle == 270 and self.input.is_key_pressed('right'):
+            correct_key_pressed = True
+        
         # Initialize collision checked flag if it doesn't exist
         if not hasattr(arrow, 'collision_checked'):
             arrow.collision_checked = False
             
         # Only register a collision if all conditions are met:
         # 1. Arrow has a potential collision value > 0
-        # 2. An arrow key is pressed
+        # 2. The correct arrow key is pressed
         # 3. Collision has not been checked while the key is pressed
         # 4. Arrow is eligible for detection (not ineligible)
         if (arrow.potential_collision_value > 0 and 
-            is_arrow_key_pressed and 
+            correct_key_pressed and 
             not arrow.collision_checked and
             not (hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection)):
             # Debug print only essential collision information
@@ -750,7 +742,7 @@ class Example(Base):
                     if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
                         arrow.waiting_for_keypress = False
                         print(f"Arrow[{arrow.unique_id}]: No longer waiting - already checked")
-                elif arrow.potential_collision_value > 0 and not is_arrow_key_pressed:
+                elif arrow.potential_collision_value > 0 and not correct_key_pressed:
                     # Only log when state changes from not waiting to waiting
                     # or when collision value changes while waiting
                     if not arrow.waiting_for_keypress:
@@ -874,24 +866,20 @@ class Example(Base):
             collision_result = self.check_arrow_ring_collision(arrow)
             
             if collision_result > 0:
-                # Update the collision status display
+                # Update arrow visual feedback based on collision result
                 if collision_result == 1:
-                    status_text = "Status: 1.0 (Perfect!)"
                     # Change arrow color to green for perfect hit
                     arrow.change_color([0.0, 1.0, 0.0]) # Green for 1.0
                 else: # collision_result must be 0.5 here
-                    status_text = "Status: 0.5 (Partial)"
                     # Change arrow color to yellow for partial hit
                     arrow.change_color([1.0, 1.0, 0.0]) # Yellow for 0.5
-                
-                self.collision_texture.update_text(status_text)
                 
                 # Update score only once per arrow
                 if not hasattr(arrow, 'scored') or not arrow.scored:
                     # Add score based on collision level
                     self.score += collision_result * 100
                     # Update score display
-                    self.score_texture.update_text(f"Score: {self.score}")
+                    self.score_texture.update_text(f"Score: {int(self.score)}")
                     # Mark arrow as scored so we don't count it multiple times
                     arrow.scored = True
                     print(f"Arrow[{arrow.unique_id}] scored: {collision_result * 100} points, total: {self.score}")
@@ -899,17 +887,8 @@ class Example(Base):
                     # After scoring, reset current_waiting_arrow_id to allow next arrow to be detected
                     self.current_waiting_arrow_id = None
             else:
-                # If no collision and arrow is far enough to be past the ring
-                if arrow.rig.local_position[0] > ring_pos[0] + 0.5:
-                    # Update status to show miss
-                    self.collision_texture.update_text("Status: 0 (Miss)")
-                # If we have a potential collision but no arrow key is pressed
-                elif (hasattr(arrow, 'potential_collision_value') and 
-                      arrow.potential_collision_value > 0 and 
-                      not is_arrow_key_pressed and
-                      (not hasattr(arrow, 'ineligible_for_detection') or not arrow.ineligible_for_detection)):
-                    # Show that an arrow key needs to be pressed
-                    self.collision_texture.update_text("Status: Press Arrow Key!")
+                # No need to update status display - we've removed it
+                pass
 
         # Remove setas marcadas em ordem reversa
         for i in sorted(arrows_to_remove, reverse=True):
@@ -941,7 +920,7 @@ class Example(Base):
         self.nightClub_rig = self.nightClub.get_rig()
         self.scene.add(self.nightClub_rig)
 
-Example(screen_size=[1280, 720]).run()
+Example(screen_size=SCREEN_SIZE).run()
 
 
 
