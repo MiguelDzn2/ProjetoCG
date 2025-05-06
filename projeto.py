@@ -73,10 +73,10 @@ class Example(Base):
         self.score = 0
         
         # Define ring configuration constants
-        self.RING_INNER_RADIUS = 0.4
-        self.RING_OUTER_RADIUS = 0.5
-        self.RING_SCALE = 1.7
-        self.RING_POSITION = [1.3, -0.025, 5]  # [x, y, z]
+        self.RING_INNER_RADIUS = 0.55
+        self.RING_OUTER_RADIUS = 0.65
+        self.RING_SCALE = 1.0
+        self.RING_POSITION = [1, -0.02, 8]  # [x, z, y]
         
         # Camera animation properties - initial setup for gameplay phase
         self.camera_hardcoded_position = [0, 1.2, 7]  # X, Y, Z
@@ -571,7 +571,7 @@ class Example(Base):
         possible_angles = [0, 90, 180, 270, 360, 90, 270]
         angle = random.choice(possible_angles)
         
-        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[-0.5, 0, 0])  # Offset para compensar origem não central
+        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0])  # Offset removed
         arrow.add_to_scene(self.scene)
         arrow.rotate(math.radians(angle), 'z')
         
@@ -797,12 +797,12 @@ class Example(Base):
                 # Update the collision status display
                 if collision_result == 1:
                     status_text = "Status: 1.0 (Perfect!)"
-                    # Change arrow color to gold for perfect hit
-                    arrow.change_color([1.0, 0.84, 0.0])
-                else:
+                    # Change arrow color to green for perfect hit
+                    arrow.change_color([0.0, 1.0, 0.0]) # Green for 1.0
+                else: # collision_result must be 0.5 here
                     status_text = "Status: 0.5 (Partial)"
-                    # Change arrow color to green for partial hit
-                    arrow.change_color([0.0, 1.0, 0.0])
+                    # Change arrow color to yellow for partial hit
+                    arrow.change_color([1.0, 1.0, 0.0]) # Yellow for 0.5
                 
                 self.collision_texture.update_text(status_text)
                 
