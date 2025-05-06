@@ -147,5 +147,71 @@ class Arrow:
         # Change tip color
         if hasattr(self, 'tip_mesh') and self.tip_mesh:
             self.tip_mesh.material.set_properties({"baseColor": color})
+            
+    def get_bounding_rect(self):
+        """
+        Returns the circumscribed rectangle of the arrow (min_x, min_z, max_x, max_z)
+        Takes into account the arrow's position and rotation
+        """
+        # Get current arrow position and rotation
+        arrow_pos = self.rig.local_position
+        rotation_rad = math.radians(self.get_rotation_angle())
+        
+        # Get dimensions from the arrow
+        body_width = 0.2 * 0.8  # width * size from initialization
+        body_height = 0.6 * 0.8  # height * size from initialization
+        tip_radius = 0.3 * 0.8   # radius * size from initialization
+        
+        # Calculate the corners of the rectangle and triangle in local coordinates
+        # Calculate dimensions
+        triangle_height = tip_radius * math.cos(math.pi/6)
+        total_height = body_height + triangle_height
+        
+        # Calculate the offset from the center
+        center_offset_from_top = total_height / 2 - triangle_height / 2
+        
+        # Calculate the rectangle's corners relative to its center
+        half_width = body_width / 2
+        half_height = body_height / 2
+        rect_center_y = center_offset_from_top - triangle_height - half_height
+        
+        # Rectangle corners (before rotation)
+        rect_corners = [
+            [-half_width, rect_center_y - half_height],  # bottom-left
+            [half_width, rect_center_y - half_height],   # bottom-right
+            [half_width, rect_center_y + half_height],   # top-right
+            [-half_width, rect_center_y + half_height]   # top-left
+        ]
+        
+        # Triangle corners (before rotation)
+        triangle_center_y = center_offset_from_top - triangle_height/2
+        triangle_corners = [
+            [0, triangle_center_y + triangle_height/2],  # top
+            [-tip_radius, triangle_center_y - triangle_height/2],  # bottom-left
+            [tip_radius, triangle_center_y - triangle_height/2]    # bottom-right
+        ]
+        
+        # Combine all corners
+        all_corners = rect_corners + triangle_corners
+        
+        # Apply rotation to all corners
+        rotated_corners = []
+        for x, y in all_corners:
+            # Apply rotation
+            rotated_x = x * math.cos(rotation_rad) - y * math.sin(rotation_rad)
+            rotated_y = x * math.sin(rotation_rad) + y * math.cos(rotation_rad)
+            # Add arrow position offset
+            rotated_corners.append([
+                rotated_x + arrow_pos[0],  # x-coordinate
+                rotated_y + arrow_pos[2]   # z-coordinate (y in 2D space)
+            ])
+        
+        # Find min/max coordinates
+        min_x = min(corner[0] for corner in rotated_corners)
+        max_x = max(corner[0] for corner in rotated_corners)
+        min_z = min(corner[1] for corner in rotated_corners)
+        max_z = max(corner[1] for corner in rotated_corners)
+        
+        return min_x, min_z, max_x, max_z
 
 

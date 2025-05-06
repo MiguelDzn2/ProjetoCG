@@ -72,6 +72,9 @@ class Example(Base):
         # Initialize score
         self.score = 0
         
+        # Track processed arrows to ensure their status isn't changed by new arrows
+        self.processed_arrow_uuids = []
+        
         # Define ring configuration constants
         self.RING_INNER_RADIUS = 0.55
         self.RING_OUTER_RADIUS = 0.65
@@ -307,6 +310,10 @@ class Example(Base):
         print(f"Score: {self.score}")
         # Update score display text
         self.score_texture.update_text(f"Score: {self.score}")
+        
+        # Clear processed arrow UUIDs for new game
+        self.processed_arrow_uuids = []
+        print("Cleared processed arrow list for new game")
         
         self.remove_highlighting()
         self.active_object_rig._matrix = Matrix.make_identity()
@@ -570,7 +577,7 @@ class Example(Base):
         import random
         import uuid
         
-        possible_angles = [0, 90, 180, 270, 360, 90, 270]
+        possible_angles = [0, 90, 180, 270]
         angle = random.choice(possible_angles)
         
         arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0])  # Offset removed
@@ -617,46 +624,38 @@ class Example(Base):
         if hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection:
             return 0
             
-        # Get positions of arrow and ring
-        arrow_pos = arrow.rig.local_position
+        # If this arrow has already been processed, return its saved collision value
+        if hasattr(arrow, 'unique_id') and arrow.unique_id in self.processed_arrow_uuids:
+            return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
+            
+        # Get positions of ring
         ring_pos = self.target_ring.global_position
-        
-        # Calculate distance between arrow center and ring center
-        dx = arrow_pos[0] - ring_pos[0]
-        dy = arrow_pos[1] - ring_pos[1]
-        dz = arrow_pos[2] - ring_pos[2]
-        
-        # Calculate flat distance (considering only X and Z planes, as the game is essentially planar)
-        flat_distance = math.sqrt(dx*dx + dz*dz)
         
         # Get the inner and outer radius of the ring, adjusted by the scale factor
         inner_radius = self.RING_INNER_RADIUS * self.RING_SCALE
         outer_radius = self.RING_OUTER_RADIUS * self.RING_SCALE
         
-        # Get dimensions of arrow parts
-        # These values should match those in the Arrow class
-        body_width = 0.2 * 0.8  # width * size from Arrow class
-        body_height = 0.6 * 0.8  # height * size from Arrow class
-        tip_radius = 0.3 * 0.8   # radius * size from Arrow class
+        # Get arrow's bounding rectangle
+        min_x, min_z, max_x, max_z = arrow.get_bounding_rect()
         
-        # Maximum extent of arrow from its center point
-        # This is half the width of the body and the radius of the tip
-        arrow_max_extent = max(body_width/2, tip_radius)
+        # Get arrow position
+        arrow_pos = arrow.rig.local_position
         
-        # Calculate arrow bounds for debugging
-        arrow_min_x = arrow_pos[0] - arrow_max_extent
-        arrow_max_x = arrow_pos[0] + arrow_max_extent
-        arrow_min_z = arrow_pos[2] - arrow_max_extent
-        arrow_max_z = arrow_pos[2] + arrow_max_extent
+        # Calculate distance between arrow center and ring center
+        dx = arrow_pos[0] - ring_pos[0]
+        dz = arrow_pos[2] - ring_pos[2]
+        center_distance = math.sqrt(dx*dx + dz*dz)
         
-        # Calculate ring bounds for debugging
-        ring_min_x = ring_pos[0] - outer_radius
-        ring_max_x = ring_pos[0] + outer_radius
-        ring_min_z = ring_pos[2] - outer_radius
-        ring_max_z = ring_pos[2] + outer_radius
+        # Calculate distances from each corner of the bounding box to the ring center
+        corner_distances = [
+            math.sqrt((min_x - ring_pos[0])**2 + (min_z - ring_pos[2])**2),  # Bottom-left
+            math.sqrt((max_x - ring_pos[0])**2 + (min_z - ring_pos[2])**2),  # Bottom-right
+            math.sqrt((max_x - ring_pos[0])**2 + (max_z - ring_pos[2])**2),  # Top-right
+            math.sqrt((min_x - ring_pos[0])**2 + (max_z - ring_pos[2])**2)   # Top-left
+        ]
         
         # Check if arrow has passed the ring completely
-        has_passed_ring = arrow_min_x > ring_max_x
+        has_passed_ring = min_x > ring_pos[0] + outer_radius
         
         # Reset waiting state if arrow has passed the ring completely
         if has_passed_ring and hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
@@ -673,16 +672,26 @@ class Example(Base):
                 # Arrow passed without colliding
                 return 0
         
+        # Determine collision status
+        # Perfect hit: all corners of the bounding box are inside the inner ring
+        all_corners_in_inner = all(dist < inner_radius for dist in corner_distances)
+        
+        # Partial hit: at least one corner is inside the outer ring
+        any_corner_in_outer = any(dist < outer_radius for dist in corner_distances)
+        
         # Calculate potential collision value
-        # Modified condition to detect fully inside inner ring - arrow center must be within inner radius
-        if flat_distance < inner_radius:
+        if all_corners_in_inner:
             # Arrow is completely inside the inner ring (full interception)
-            # Check if the value changed from 0.5 to 1
-            if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value == 0.5:
+            if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value != 1:
                 print(f"Arrow[{arrow.unique_id}]: Now fully inside ring (value: 1.0)")
             arrow.potential_collision_value = 1
-        elif flat_distance <= outer_radius:
+        elif any_corner_in_outer:
             # Arrow is at least partially inside the ring (partial interception)
+            if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value != 0.5:
+                if arrow.potential_collision_value == 1:
+                    print(f"Arrow[{arrow.unique_id}]: Now touching outer ring (value: 0.5)")
+                else:
+                    print(f"Arrow[{arrow.unique_id}]: Now partially inside ring (value: 0.5)")
             arrow.potential_collision_value = 0.5
         else:
             # Arrow is completely outside the ring
@@ -713,13 +722,19 @@ class Example(Base):
             # Debug print only essential collision information
             collision_type = "PERFECT" if arrow.potential_collision_value == 1 else "PARTIAL"
             print(f"COLLISION DETECTED - Arrow[{arrow.unique_id}]: {collision_type} (Value {arrow.potential_collision_value})")
-            print(f"  Arrow X,Z: ({arrow_pos[0]:.2f}, {arrow_pos[2]:.2f}), Ring X,Z: ({ring_pos[0]:.2f}, {ring_pos[2]:.2f})")
-            print(f"  Distance: {flat_distance:.2f}, Arrow extent: {arrow_max_extent:.2f}, Ring radius: {outer_radius:.2f}")
+            print(f"  Arrow bounds: ({min_x:.2f}, {min_z:.2f}) to ({max_x:.2f}, {max_z:.2f})")
+            print(f"  Ring center: ({ring_pos[0]:.2f}, {ring_pos[2]:.2f}), Inner radius: {inner_radius:.2f}, Outer radius: {outer_radius:.2f}")
             
             # Mark that collision has been checked while key is pressed
             arrow.collision_checked = True
             # Store the collision value for scoring
             arrow.collision_value = arrow.potential_collision_value
+            
+            # Add this arrow to the processed list to prevent future changes
+            if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.processed_arrow_uuids:
+                self.processed_arrow_uuids.append(arrow.unique_id)
+                print(f"Arrow[{arrow.unique_id}]: Added to processed arrows list")
+                
             return arrow.collision_value
         else:
             # Only print if potential collision exists and arrow is eligible
@@ -809,6 +824,10 @@ class Example(Base):
         
         # First pass to find if any arrow is entering the waiting state
         for idx, distance, arrow in nearest_arrows:
+            # Skip this arrow if it's already been processed
+            if hasattr(arrow, 'unique_id') and arrow.unique_id in self.processed_arrow_uuids:
+                continue
+                
             # Calculate flat distance to determine if arrow is near/in the ring
             arrow_pos = arrow.rig.local_position
             dx = arrow_pos[0] - ring_pos[0]
@@ -824,21 +843,26 @@ class Example(Base):
             
             # If arrow is near ring but not yet waiting, it's a new candidate
             if is_near_ring and not is_in_waiting and not hasattr(arrow, 'scored'):
-                new_waiting_arrow_found = True
-                latest_waiting_arrow_id = arrow.unique_id
+                # Only consider this arrow if we don't already have a waiting arrow
+                # or if this is the closest arrow to the ring
+                if self.current_waiting_arrow_id is None or idx == 0:
+                    new_waiting_arrow_found = True
+                    latest_waiting_arrow_id = arrow.unique_id
+                    break  # Only consider the first arrow that meets the criteria
         
         # If we found a new arrow entering waiting state, invalidate previous waiting arrows
         if new_waiting_arrow_found:
             # Set the new current waiting arrow ID
             self.current_waiting_arrow_id = latest_waiting_arrow_id
             
-            # Mark all other arrows as ineligible
+            # Mark all other arrows as ineligible - but ONLY those not already processed
             for arrow in self.arrows:
-                if arrow.unique_id != self.current_waiting_arrow_id:
-                    if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
-                        arrow.waiting_for_keypress = False
-                        arrow.ineligible_for_detection = True
-                        print(f"Arrow[{arrow.unique_id}]: No longer waiting - newer arrow detected")
+                if (arrow.unique_id != self.current_waiting_arrow_id and 
+                    arrow.unique_id not in self.processed_arrow_uuids and
+                    hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress):
+                    arrow.waiting_for_keypress = False
+                    arrow.ineligible_for_detection = True
+                    print(f"Arrow[{arrow.unique_id}]: No longer waiting - newer arrow detected")
         
         # Process collision checks for arrows
         for idx, distance, arrow in nearest_arrows:
@@ -897,6 +921,16 @@ class Example(Base):
                 # If this was the current waiting arrow, reset the ID
                 if hasattr(arrow, 'unique_id') and self.current_waiting_arrow_id == arrow.unique_id:
                     self.current_waiting_arrow_id = None
+                    
+                # Only remove from processed list if arrow didn't score
+                # We keep scored arrows in the list even after removal from scene
+                if hasattr(arrow, 'unique_id') and arrow.unique_id in self.processed_arrow_uuids:
+                    if not hasattr(arrow, 'scored') or not arrow.scored:
+                        self.processed_arrow_uuids.remove(arrow.unique_id)
+                        print(f"Removing Arrow[{arrow.unique_id}] from processed list (no score)")
+                    else:
+                        print(f"Keeping Arrow[{arrow.unique_id}] in processed list (scored)")
+                        
                 print(f"Removing Arrow[{arrow.unique_id}] from scene")
                 self.arrows.pop(i)  # Remove da lista
                 arrow.rig.parent.remove(arrow.rig)  # Remove da cena
