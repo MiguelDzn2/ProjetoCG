@@ -92,10 +92,10 @@ class Example(Base):
         
         # Attempt to load default music and keyframes
         # These files should be created by the user.
-        if self.load_music("music/default_song.mp3"): # Placeholder path
+        if self.load_music("music/fitnessgram.mp3"): # Placeholder path
             print("Default music loaded.")
         else:
-            print("Default music file not found or error loading. Please ensure 'music/default_song.mp3' exists.")
+            print("Default music file not found or error loading. Please ensure 'music/fitnessgram.mp3' exists.")
             
         if self.load_keyframes("keyframes.json"):
             print("Keyframes loaded.")
@@ -316,28 +316,32 @@ class Example(Base):
         self.calculate_arrow_travel_time()
 
     def calculate_arrow_travel_time(self):
-        """Calculate how long it takes an arrow to travel from spawn to ring."""
-        # ARROW_START_POSITION is imported from config.py [x, y, z]
-        # self.RING_POSITION is defined in initialize as [x, z, y] but used by target_ring.set_position([x,y,z])
-        # So, for consistency, let's use the X-coordinates directly as movement is along X.
-        arrow_start_x = ARROW_START_POSITION[0]  # Expected to be -3
-        ring_x = self.RING_POSITION[0]           # Expected to be 1
+        """Calculate how long it takes an arrow to travel from spawn to target ring."""
+        # ARROW_START_POSITION and ARROW_UNITS_PER_SECOND are expected from config.py
+        # self.RING_POSITION is defined in initialize()
+        
+        # Assuming travel is primarily along the X-axis as per the plan.
+        # ARROW_START_POSITION[0] is the x-coordinate of arrow spawn.
+        # self.RING_POSITION[0] is the x-coordinate of the ring.
+        
+        if ARROW_START_POSITION is None or self.RING_POSITION is None or ARROW_UNITS_PER_SECOND is None:
+            print("Error: Arrow positioning or speed constants not defined. Cannot calculate travel time.")
+            self.arrow_travel_time = -1 # Indicate error
+            return -1
+
+        if ARROW_UNITS_PER_SECOND == 0:
+            print("Error: ARROW_UNITS_PER_SECOND is zero. Cannot calculate travel time (division by zero).")
+            self.arrow_travel_time = float('inf') # Or handle as an error appropriately
+            return float('inf')
+
+        arrow_start_x = ARROW_START_POSITION[0]
+        ring_x = self.RING_POSITION[0]
         
         distance = abs(ring_x - arrow_start_x)
         
-        # Arrow.SPEED_UNITS_PER_SECOND is defined in geometry/arrow.py
-        speed_per_second = Arrow.SPEED_UNITS_PER_SECOND 
+        self.arrow_travel_time = distance / ARROW_UNITS_PER_SECOND
         
-        if speed_per_second == 0:
-            print("Error: Arrow.SPEED_UNITS_PER_SECOND is 0, cannot calculate travel time.")
-            self.arrow_travel_time = float('inf') # Avoid division by zero
-        else:
-            self.arrow_travel_time = distance / speed_per_second
-        
-        print(f"Arrow start X: {arrow_start_x}, Ring X: {ring_x}")
-        print(f"Calculated arrow travel distance: {distance:.2f} units")
-        print(f"Arrow speed: {speed_per_second:.2f} units/sec")
-        print(f"Calculated arrow travel time: {self.arrow_travel_time:.2f} seconds")
+        print(f"Arrow travel time calculated: {self.arrow_travel_time:.2f} seconds (Distance: {distance}, Speed: {ARROW_UNITS_PER_SECOND} units/sec)")
         return self.arrow_travel_time
 
     def setup_selection_phase(self):
@@ -1172,11 +1176,12 @@ class Example(Base):
 
     def load_music(self, music_file):
         """Load a specific music file"""
+        import pygame
         try:
             pygame.mixer.music.load(music_file)
+            pygame.mixer.music.set_volume(0.3)  # Set volume to 30%
             self.music_loaded = True
             self.music_file = music_file
-            print(f"Music '{music_file}' loaded successfully.")
             return True
         except pygame.error as e: # More specific exception for pygame
             print(f"Error loading music '{music_file}': {e}")

@@ -20,6 +20,7 @@ ROTATE_AMOUNT_MULTIPLIER = 1
 # Arrow Configuration
 ARROW_SPAWN_INTERVAL = 2.0
 ARROW_START_POSITION = [-3, 0, 8]  # X, Y, Z
+ARROW_UNITS_PER_SECOND = 4.0 # Placeholder value, adjust as needed
 
 # Screen Configuration
 SCREEN_SIZE = [1280, 720] 
