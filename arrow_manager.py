@@ -5,7 +5,7 @@ from geometry.arrow import Arrow
 from config import ARROW_START_POSITION, ARROW_SPAWN_INTERVAL
 
 class ArrowManager:
-    def __init__(self, scene, target_ring):
+    def __init__(self, scene, target_ring, debug_mode=False):
         self.scene = scene
         self.target_ring = target_ring
         self.arrows = []
@@ -13,13 +13,14 @@ class ArrowManager:
         self.arrow_spawn_interval = ARROW_SPAWN_INTERVAL
         self.processed_arrow_uuids = []
         self.current_waiting_arrow_id = None
+        self.debug_mode = debug_mode
         
     def create_single_arrow(self):
         """Creates a single arrow with random orientation"""
         possible_angles = [0, 90, 180, 270]
         angle = random.choice(possible_angles)
         
-        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0])
+        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0], debug_mode=self.debug_mode)
         arrow.add_to_scene(self.scene)
         arrow.rotate(math.radians(angle), 'z')
         
@@ -67,20 +68,47 @@ class ArrowManager:
         # Get arrow position
         arrow_pos = arrow.rig.local_position
         
-        # Calculate distance between arrow center and ring center
+        # IMPORTANT CORRECTION: The ring is vertical, so we need to check in the XY plane, not XZ plane
+        # For a vertical ring in the ZY plane, we use the Z coordinate of the arrow for distance calculation
+        # Calculate distance between arrow center and ring center in the XZ plane (vertical ring)
         dx = arrow_pos[0] - ring_pos[0]
-        dz = arrow_pos[2] - ring_pos[2]
+        dz = arrow_pos[2] - ring_pos[2]  # Use Z coordinate for vertical ring
         center_distance = math.sqrt(dx*dx + dz*dz)
         
-        # Calculate distances from each corner of the bounding box to the ring center
-        corner_distances = [
-            math.sqrt((min_x - ring_pos[0])**2 + (min_z - ring_pos[2])**2),  # Bottom-left
-            math.sqrt((max_x - ring_pos[0])**2 + (min_z - ring_pos[2])**2),  # Bottom-right
-            math.sqrt((max_x - ring_pos[0])**2 + (max_z - ring_pos[2])**2),  # Top-right
-            math.sqrt((min_x - ring_pos[0])**2 + (max_z - ring_pos[2])**2)   # Top-left
+        # Calculate the corner points of the bounding rectangle
+        # For a vertical ring, we need the points in the XZ plane
+        corner_points = [
+            (min_x, min_z),  # Bottom-left
+            (max_x, min_z),  # Bottom-right
+            (max_x, max_z),  # Top-right
+            (min_x, max_z)   # Top-left
         ]
         
-        # Check if arrow has passed the ring completely
+        # Calculate distances from each corner of the bounding box to the ring center
+        corner_distances = []
+        for corner_x, corner_z in corner_points:
+            # Use XZ distance for vertical ring
+            dist = math.sqrt((corner_x - ring_pos[0])**2 + (corner_z - ring_pos[2])**2)
+            corner_distances.append(dist)
+        
+        # Visual debug: Update corner markers if in debug mode and the arrow has debug corner markers
+        if self.debug_mode and hasattr(arrow, 'debug_corner_markers'):
+            for i, ((corner_x, corner_z), dist) in enumerate(zip(corner_points, corner_distances)):
+                # Determine color based on whether the corner is inside inner ring, outer ring, or outside
+                if dist < inner_radius:
+                    color = [0, 1, 0]  # Green for inside inner ring
+                elif dist < outer_radius:
+                    color = [1, 1, 0]  # Yellow for between inner and outer ring
+                else:
+                    color = [1, 0, 0]  # Red for outside
+                
+                # Update marker position and color
+                marker = arrow.debug_corner_markers[i]
+                # For visual debug, place markers in 3D space at their actual positions
+                marker.set_position([corner_x, arrow_pos[1], corner_z])
+                marker.material.set_properties({"baseColor": color})
+        
+        # Check if arrow has passed the ring completely (still using X coordinate)
         has_passed_ring = min_x > ring_pos[0] + outer_radius
         
         # Reset waiting state if arrow has passed the ring completely
@@ -154,8 +182,8 @@ class ArrowManager:
         
         # First pass: update positions and calculate distances
         for i, arrow in enumerate(self.arrows):
-            # Update arrow position
-            arrow.update()
+            # Update arrow position with delta_time
+            arrow.update(delta_time)
             
             # Reset collision_checked flag when no arrow keys are pressed
             if not is_arrow_key_pressed and hasattr(arrow, 'collision_checked'):

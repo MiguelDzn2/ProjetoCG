@@ -36,6 +36,8 @@ from extras.text_texture import TextTexture
 from game_phases import GamePhase
 from arrow_manager import ArrowManager
 from config import *
+from geometry.parametric import ParametricGeometry
+import numpy as np
 
 class Example(Base):
     """
@@ -301,6 +303,10 @@ class Example(Base):
         self.target_ring.scale(self.RING_SCALE) # Apply scaling
         self.scene.add(self.target_ring)
         
+        # Create debug visualization for the inner circle of the ring if in debug mode
+        if self.debug_mode:
+            self.add_ring_debug_visualization()
+        
         # Create collision text display (similar to score)
         collision_texture = TextTexture(
             text=" ",  # Initially empty
@@ -323,8 +329,8 @@ class Example(Base):
         self.collision_rig.set_position([-2.6, 1.3, -3]) # Position collision status display
         self.collision_texture = collision_texture
 
-        # Initialize arrow manager
-        self.arrow_manager = ArrowManager(self.scene, self.target_ring)
+        # Create and set up the arrow manager (Handles arrow spawning, movement, and collision)
+        self.arrow_manager = ArrowManager(self.scene, self.target_ring, debug_mode=self.debug_mode)
 
         # Calculate arrow travel time (needs Arrow class to be defined/imported)
         self.calculate_arrow_travel_time()
@@ -740,7 +746,8 @@ class Example(Base):
             angle = random.choice(possible_angles)
             print(f"Warning: create_single_arrow called without arrow_type_str. Spawning random arrow (angle: {angle}).")
 
-        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0])
+        # Pass debug_mode flag from the base class
+        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0], debug_mode=self.debug_mode)
         arrow.add_to_scene(self.scene)
         arrow.rotate(math.radians(angle), 'z') # Rotate based on the determined angle
         
@@ -826,18 +833,26 @@ class Example(Base):
         # Get arrow position
         arrow_pos = arrow.rig.local_position
         
+        # IMPORTANT CORRECTION: The ring is vertical, so we need to check in the XZ plane
         # Calculate distance between arrow center and ring center
         dx = arrow_pos[0] - ring_pos[0]
-        dz = arrow_pos[2] - ring_pos[2]
+        dz = arrow_pos[2] - ring_pos[2]  # Use Z coordinate for vertical ring
         center_distance = math.sqrt(dx*dx + dz*dz)
         
-        # Calculate distances from each corner of the bounding box to the ring center
-        corner_distances = [
-            math.sqrt((min_x - ring_pos[0])**2 + (min_z - ring_pos[2])**2),  # Bottom-left
-            math.sqrt((max_x - ring_pos[0])**2 + (min_z - ring_pos[2])**2),  # Bottom-right
-            math.sqrt((max_x - ring_pos[0])**2 + (max_z - ring_pos[2])**2),  # Top-right
-            math.sqrt((min_x - ring_pos[0])**2 + (max_z - ring_pos[2])**2)   # Top-left
+        # For a vertical ring, we use the corners in the XZ plane
+        corner_points = [
+            (min_x, min_z),  # Bottom-left
+            (max_x, min_z),  # Bottom-right
+            (max_x, max_z),  # Top-right
+            (min_x, max_z)   # Top-left
         ]
+        
+        # Calculate distances from each corner of the bounding box to the ring center
+        corner_distances = []
+        for corner_x, corner_z in corner_points:
+            # Use XZ distance for vertical ring
+            dist = math.sqrt((corner_x - ring_pos[0])**2 + (corner_z - ring_pos[2])**2)
+            corner_distances.append(dist)
         
         # Check if arrow has passed the ring completely
         has_passed_ring = min_x > ring_pos[0] + outer_radius
@@ -1305,6 +1320,112 @@ class Example(Base):
             print(f"Error loading keyframes from '{keyframe_file}': {e}")
             self.keyframes = []
             return False
+
+    def add_ring_debug_visualization(self):
+        """Add visual indicators for the inner and outer ring boundaries for debugging"""
+        # For a vertical ring, we need to create a circle in the XZ plane (not XY)
+        def circle_function(u, v):
+            # v parameter is not used for a simple circle
+            x = self.RING_INNER_RADIUS * np.cos(u * 2 * np.pi)
+            z = self.RING_INNER_RADIUS * np.sin(u * 2 * np.pi)  # Use Z instead of Y for vertical ring
+            y = 0  # Keep flat in the XZ plane
+            return [x, y, z]
+            
+        inner_circle_geometry = ParametricGeometry(0, 1, 32, 0, 1, 1, circle_function)
+        inner_circle_material = SurfaceMaterial(
+            property_dict={
+                "baseColor": [1, 0, 0, 0.7],  # Semi-transparent red
+                "wireframe": False,  # Solid fill makes it more visible
+                "doubleSide": True  # Visible from both sides
+            }
+        )
+        self.inner_circle_mesh = Mesh(inner_circle_geometry, inner_circle_material)
+        
+        # Position the inner circle at the same position as the ring
+        self.inner_circle_mesh.set_position(self.RING_POSITION)
+        self.inner_circle_mesh.scale(self.RING_SCALE)  # Apply the same scale as the ring
+        
+        # Add inner circle to the scene
+        self.scene.add(self.inner_circle_mesh)
+        
+        # Also add small squares at key positions for the collision detection algorithm
+        self.add_collision_point_markers()
+        
+        # Add an explanation text for debug mode
+        debug_text = TextTexture(
+            text="Debug Mode: Red circle shows perfect hit zone | Arrow corners must be GREEN for perfect hit",
+            system_font_name="Arial",
+            font_size=18,
+            font_color=(255, 255, 255),  # White text
+            background_color=(0, 0, 0, 128),  # Semi-transparent black background
+            transparent=True,
+            image_width=800,
+            image_height=50,
+            align_horizontal=0.5,  # Centered
+            align_vertical=0.5,    # Vertically centered
+            image_border_width=0
+        )
+        debug_material = TextureMaterial(texture=debug_text, property_dict={"doubleSide": True})
+        debug_geometry = RectangleGeometry(width=6, height=0.5)
+        self.debug_text_mesh = Mesh(debug_geometry, debug_material)
+        self.debug_text_mesh.set_position([0, 2, -3])  # Position at top of screen
+        self.camera.add(self.debug_text_mesh)  # Add to camera so it's always visible
+
+    def add_collision_point_markers(self):
+        """Add visual markers for the collision detection points"""
+        # Create a small rectangle geometry for the markers
+        from geometry.rectangle import RectangleGeometry
+        
+        # Create materials for different types of markers
+        inner_marker_material = SurfaceMaterial(
+            property_dict={
+                "baseColor": [1, 0, 0, 1],  # Red for inner ring boundary
+                "doubleSide": True
+            }
+        )
+        
+        outer_marker_material = SurfaceMaterial(
+            property_dict={
+                "baseColor": [0, 0, 1, 1],  # Blue for outer ring boundary
+                "doubleSide": True
+            }
+        )
+        
+        # Define the ring center for reference
+        ring_center = self.RING_POSITION
+        inner_radius = self.RING_INNER_RADIUS * self.RING_SCALE
+        outer_radius = self.RING_OUTER_RADIUS * self.RING_SCALE
+        
+        # Create small markers at key points on inner and outer ring
+        marker_size = 0.05
+        marker_positions = []
+        
+        # Add markers at four cardinal points on inner circle
+        # For vertical ring, use XZ plane (not XY)
+        for angle in [0, math.pi/2, math.pi, 3*math.pi/2]:
+            x = ring_center[0] + inner_radius * math.cos(angle)
+            z = ring_center[2] + inner_radius * math.sin(angle)  # Use Z instead of Y
+            marker_positions.append((x, ring_center[1], z, inner_marker_material, "inner"))
+            
+        # Add markers at four cardinal points on outer circle
+        for angle in [0, math.pi/2, math.pi, 3*math.pi/2]:
+            x = ring_center[0] + outer_radius * math.cos(angle)
+            z = ring_center[2] + outer_radius * math.sin(angle)  # Use Z instead of Y
+            marker_positions.append((x, ring_center[1], z, outer_marker_material, "outer"))
+            
+        # Create and position all markers
+        self.marker_meshes = []
+        for i, (x, y, z, material, marker_type) in enumerate(marker_positions):
+            marker_geometry = RectangleGeometry(width=marker_size, height=marker_size)
+            marker_mesh = Mesh(marker_geometry, material)
+            marker_mesh.set_position([x, y, z])
+            
+            # Add a text label to the marker
+            label = f"{marker_type}_{i % 4}"
+            print(f"Adding marker: {label} at position: ({x:.2f}, {y:.2f}, {z:.2f})")
+            
+            self.scene.add(marker_mesh)
+            self.marker_meshes.append(marker_mesh)
 
 Example(screen_size=SCREEN_SIZE).run()
 
