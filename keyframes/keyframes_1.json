@@ -1,26 +1,12 @@
 [
-    {
-        "time": 4,
-        "arrow_type": "up"
-    },
-    {
-        "time": 26.819,
-        "arrow_type": "up"
-    },
-    {
-        "time": 35.477,
-        "arrow_type": "left"
-    },
-    {
-        "time": 44.593,
-        "arrow_type": "up"
-    },
-    {
-        "time": 53.452,
-        "arrow_type": "right"
-    },
-    {
-        "time": 62.442,
-        "arrow_type": "left"
-    }
+  {"time":26.844,"arrow_type":"up"},
+  {"time":29.171,"arrow_type":"left"},
+  {"time":31.389,"arrow_type":"right"},
+  {"time":33.651,"arrow_type":"right"},
+  {"time":35.477,"arrow_type":"left"},
+  {"time":38.119,"arrow_type":"left"},
+  {"time":35.477,"arrow_type":"left"},
+  {"time":44.593,"arrow_type":"up"},
+  {"time":53.452,"arrow_type":"right"},
+  {"time":62.442,"arrow_type":"left"}
 ]
