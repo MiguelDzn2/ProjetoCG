@@ -353,6 +353,15 @@ class Example(Base):
         self.rotation_duration = 0.5  # Duration of rotation animation in seconds
         self.total_rotation_angle = 2 * math.pi  # 360 degrees in radians
         self.original_rotation = [0, 0, 0]  # Store original object rotation
+        
+        # Initialize jump animation parameters
+        self.is_jumping = False
+        self.jump_start_time = 0
+        self.jump_direction = [0, 0, 0]
+        self.jump_duration = 0.5  # Duration of jump animation in seconds
+        self.jump_distance = 2.0  # Distance to jump (units)
+        self.jump_height = 1.0    # Max height of jump (units)
+        self.original_position = [0, 0, 0]  # Store original object position
 
     def calculate_arrow_travel_time(self):
         """Calculate how long it takes an arrow to travel from spawn to target ring."""
@@ -736,8 +745,11 @@ class Example(Base):
         
         # All object controls have been removed completely
 
+        # Create a general animation state check
+        is_animating = self.is_rotating or self.is_jumping
+        
         # Handle rotation animation with Q, W, E, R keys (only in gameplay phase)
-        if self.current_phase == GamePhase.GAMEPLAY and not self.is_rotating:
+        if self.current_phase == GamePhase.GAMEPLAY and not is_animating:
             if self.input.is_key_down('q'):
                 self.start_rotation_animation('x', 1)  # Positive X rotation
             elif self.input.is_key_down('e'):
@@ -746,10 +758,16 @@ class Example(Base):
                 self.start_rotation_animation('y', 1)  # Positive Y rotation
             elif self.input.is_key_down('r'):
                 self.start_rotation_animation('y', -1)  # Negative Y rotation (inverted W)
+            elif self.input.is_key_down('t'):
+                self.start_jump_animation([-1, 0, 0])  # Jump left
+            elif self.input.is_key_down('y'):
+                self.start_jump_animation([1, 0, 0])   # Jump right
 
-        # Update rotation animation if active
+        # Update animations if active
         if self.is_rotating:
             self.update_rotation_animation()
+        if self.is_jumping:
+            self.update_jump_animation()
 
         # Increment score by 100 when pressing A (kept for testing)
         if self.input.is_key_down('a'):
@@ -1524,6 +1542,7 @@ class Example(Base):
         """
         Update the rotation animation based on elapsed time.
         Completes a 360° rotation and returns to original orientation.
+        Uses sine-based easing for smooth acceleration and deceleration.
         """
         if not hasattr(self, 'active_object_rig') or not self.active_object_rig:
             self.is_rotating = False
@@ -1534,10 +1553,15 @@ class Example(Base):
         elapsed_time = current_time - self.rotation_start_time
         
         # Normalize progress to [0, 1] range
-        progress = min(1.0, elapsed_time / self.rotation_duration)
+        linear_progress = min(1.0, elapsed_time / self.rotation_duration)
         
-        # Calculate current rotation angle (full 360°), applying direction
-        current_angle = progress * self.total_rotation_angle * self.rotation_direction
+        # Apply sine-based easing for smooth acceleration and deceleration
+        # This transforms linear progress into a smooth curve that starts slow,
+        # accelerates in the middle, and slows down at the end
+        eased_progress = (1 - math.cos(linear_progress * math.pi)) / 2
+        
+        # Calculate current rotation angle (full 360°), applying direction and easing
+        current_angle = eased_progress * self.total_rotation_angle * self.rotation_direction
         
         # Reset to the original matrix
         self.active_object_rig._matrix = self.original_matrix.copy()
@@ -1551,10 +1575,84 @@ class Example(Base):
             self.active_object_rig.rotate_z(current_angle)
         
         # Check if animation is complete
-        if progress >= 1.0:
+        if linear_progress >= 1.0:
             self.is_rotating = False
             # Reset to original state
             self.active_object_rig._matrix = self.original_matrix.copy()
+
+    def start_jump_animation(self, direction):
+        """
+        Start a jump animation in the specified direction.
+        The object will permanently move to the new position.
+        
+        Parameters:
+            direction (list): [x, y, z] direction vector for the jump
+        """
+        if not self.is_jumping and not self.is_rotating:  # Only start if no animation is running
+            self.is_jumping = True
+            self.jump_start_time = time.time()
+            self.jump_direction = direction
+            
+            # Store original position for the animation
+            if hasattr(self, 'active_object_rig') and self.active_object_rig:
+                self.original_position = self.active_object_rig.local_position.copy()
+                # Store original matrix as well for the animation
+                self.original_jump_matrix = self.active_object_rig._matrix.copy()
+    
+    def update_jump_animation(self):
+        """
+        Update the jump animation based on elapsed time.
+        Creates a parabolic arc motion to the target position.
+        Uses sine-based easing for smooth acceleration.
+        """
+        if not hasattr(self, 'active_object_rig') or not self.active_object_rig:
+            self.is_jumping = False
+            return
+            
+        # Calculate elapsed time and progress
+        current_time = time.time()
+        elapsed_time = current_time - self.jump_start_time
+        
+        # Normalize progress to [0, 1] range
+        linear_progress = min(1.0, elapsed_time / self.jump_duration)
+        
+        # Apply sine-based easing for smooth acceleration
+        eased_progress = (1 - math.cos(linear_progress * math.pi)) / 2
+        
+        # Calculate horizontal movement (linear from 0 to 1)
+        # This moves the object to the target position permanently
+        horizontal_factor = eased_progress  # Linear progress from 0 to 1
+        
+        # Calculate vertical movement (parabolic arc: up then down)
+        # sin(t·π) gives a 0 to 1 to 0 pattern over the [0,1] domain
+        vertical_factor = math.sin(linear_progress * math.pi)
+        
+        # Reset to original matrix first to ensure we start from the correct state
+        self.active_object_rig._matrix = self.original_jump_matrix.copy()
+        
+        # Calculate new position
+        new_position = [
+            self.original_position[0] + self.jump_direction[0] * self.jump_distance * horizontal_factor,
+            self.original_position[1] + self.jump_height * vertical_factor,
+            self.original_position[2] + self.jump_direction[2] * self.jump_distance * horizontal_factor
+        ]
+        
+        # Apply the new position
+        self.active_object_rig.set_position(new_position)
+        
+        # Check if animation is complete
+        if linear_progress >= 1.0:
+            self.is_jumping = False
+            # Keep the final position, no need to reset
+            # Just make sure the matrix is preserved
+            self.active_object_rig._matrix = self.original_jump_matrix.copy()
+            # Apply the final position
+            final_position = [
+                self.original_position[0] + self.jump_direction[0] * self.jump_distance,
+                self.original_position[1],  # Return to original Y height
+                self.original_position[2] + self.jump_direction[2] * self.jump_distance
+            ]
+            self.active_object_rig.set_position(final_position)
 
 Example(screen_size=SCREEN_SIZE).run()
 
