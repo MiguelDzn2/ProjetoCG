@@ -54,6 +54,11 @@ class Uniform:
             elif self._data_type == 'vec2':
                 GL.glUniform2f(self._variable_ref, *self._data)
             elif self._data_type == 'vec3':
+                # --- BEGIN DEBUG PRINT ---
+                print(f"DEBUG uniform.py: vec3 uniform. ref={self._variable_ref}, data={self._data}, type(data)={type(self._data)}")
+                if isinstance(self._data, (list, tuple)) and len(self._data) == 3:
+                    print(f"DEBUG uniform.py: vec3 elements types: {[type(x) for x in self._data]}")
+                # --- END DEBUG PRINT ---
                 GL.glUniform3f(self._variable_ref, *self._data)
             elif self._data_type == 'vec4':
                 GL.glUniform4f(self._variable_ref, *self._data)
@@ -71,7 +76,9 @@ class Uniform:
                 GL.glUniform1i(self._variable_ref["lightType"], self._data.light_type)
                 GL.glUniform3f(self._variable_ref["color"], *self._data.color)
                 GL.glUniform3f(self._variable_ref["direction"], *self._data.direction)
-                GL.glUniform3f(self._variable_ref["position"], *self._data.local_position)
+                # Ensure position components are explicitly Python floats
+                position_data = [float(p) for p in self._data.local_position]
+                GL.glUniform3f(self._variable_ref["position"], *position_data)
                 GL.glUniform3f(self._variable_ref["attenuation"], *self._data.attenuation)
             elif self._data_type == "Shadow":
                 GL.glUniform3f(self._variable_ref["lightDirection"], *self._data.light_source.direction)

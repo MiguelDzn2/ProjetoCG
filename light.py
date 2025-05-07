@@ -17,6 +17,7 @@ from extras.movement_rig import MovementRig
 from geometry.sphere import SphereGeometry
 from light.ambient import AmbientLight
 from light.point import PointLight
+from light.spotlight import SpotLight
 from material.phong import PhongMaterial
 from material.basic import BasicMaterial # Assuming BasicMaterial is in material.basic as per user context
 
@@ -49,30 +50,40 @@ class Example(Base):
         ambient_light = AmbientLight(color=[0.1, 0.1, 0.1])
         self.scene.add(ambient_light)
 
-        point_light_color = [1.0, 1.0, 1.0]
-        self.point_light = PointLight(color=point_light_color, position=[0, 2.5, 0])
-        self.scene.add(self.point_light)
+        # Comment out or remove existing PointLight
+        # point_light_color = [1.0, 1.0, 1.0]
+        # self.point_light = PointLight(color=point_light_color, position=[0, 2.5, 0])
+        # self.scene.add(self.point_light)
 
-        # Make the point light source visible
-        glow_geometry = SphereGeometry(radius=0.2)
-        # Assuming BasicMaterial uses baseColor for an unlit/emissive effect
-        glow_material = BasicMaterial()
-        glow_material.add_uniform("vec3", "baseColor", point_light_color)
-        glow_material.locate_uniforms() # Crucial after adding/modifying uniforms
+        # # Make the point light source visible
+        # glow_geometry = SphereGeometry(radius=0.2)
+        # glow_material = BasicMaterial()
+        # glow_material.add_uniform("vec3", "baseColor", point_light_color)
+        # glow_material.locate_uniforms()
+        # glow_mesh = Mesh(glow_geometry, glow_material)
+        # self.point_light.add(glow_mesh)
 
-        glow_mesh = Mesh(glow_geometry, glow_material)
-        self.point_light.add(glow_mesh) # Attach glow mesh to the light
+        # Add SpotLight
+        spot_light_color = [1.0, 1.0, 0.8] # Slightly yellowish
+        self.spot_light = SpotLight(
+            color=spot_light_color, 
+            position=[0, 3, 0],       # Position it a bit high
+            direction=[0, -1, 0],     # Pointing downwards
+            angle=40,                 # Cone angle
+            cone_opacity=0.3
+        )
+        self.scene.add(self.spot_light)
 
         # Reflective object at the bottom
         object_geometry = SphereGeometry(radius=1.0)
-        # Phong material for reflections, reacting to 2 light sources (ambient + point)
+        # Phong material for reflections, reacting to 2 light sources (ambient + spotlight)
         object_material = PhongMaterial(
             property_dict={
                 "baseColor": [0.2, 0.3, 0.8], # Bluish
-                "specularStrength": 1.0, # Default is 1.0, explicitly stated
-                "shininess": 50.0 # You had 50.0, so we keep it
+                "specularStrength": 1.0, 
+                "shininess": 50.0 
             },
-            number_of_light_sources=2 
+            number_of_light_sources=2 # Ambient (1) + SpotLight (1) = 2
         )
         
         object_mesh = Mesh(object_geometry, object_material)
