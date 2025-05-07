@@ -22,22 +22,58 @@ This rule outlines the coding standards to be followed when developing the Compu
   - Class names: CamelCase
   - Functions and variables: snake_case
   - Constants: UPPER_CASE
+- Module imports should be organized by:
+  1. Standard library imports
+  2. Core framework imports
+  3. Project module imports
+  4. Local imports
+
+## Modular Architecture
+
+- Each module should have a single responsibility and cohesive purpose
+- Always include module docstrings explaining purpose and functionality
+- Ensure all module classes have complete docstrings with parameters
+- Use proper type hinting for function parameters and return values
+- Avoid circular imports by careful design of module dependencies
 
 ## Scene Management
 
 - All 3D objects should be added to the scene graph
 - Use MovementRig for objects that need to be controlled
 - Apply transformations in the order: scale, rotation, translation
+- Access manager classes through appropriate interfaces, not directly
 
 ## Input Handling
 
 - All user input should be processed in the appropriate phase-specific handler
 - Movement and rotation rates should be scaled by delta_time for frame-rate independence
 - Use descriptive variable names for movement/rotation amounts
+- Phase-specific input should be encapsulated in the PhaseManager
 
 ## Code Organization
 
 - Keep the phase logic separate and modular
 - Maintain clear separation between initialization and update logic
 - Group related functions together within classes
+- Use manager classes for specialized functionality:
+  - AnimationManager for object animations
+  - UIManager for interface elements
+  - PhaseManager for game phase transitions
+  - MusicSystem for audio and keyframe management
+  - InstrumentLoader for model loading
+  
+## Configuration Management
+
+- Store all global constants in config.py
+- Use descriptive names for configuration constants
+- Separate constants logically by their domain (camera, arrows, etc.)
+- Don't hardcode values that might need to be tuned or changed
+
+## Documentation
+
+- Update documentation files when major changes are made
+- Document module interactions and dependencies
+- Use explicit parameter names in docstrings
+- Maintain README file with up-to-date run instructions
+- Include explanatory comments for complex algorithms
 
