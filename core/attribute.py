@@ -1,10 +1,8 @@
-"""Management of attribute data and related tasks."""
 import OpenGL.GL as GL
 import numpy as np
 
 
-class Attribute(object):
-    """Transfer to the GPU the data required for the rendering process"""
+class Attribute:
     def __init__(self, data_type, data):
         # type of elements in data array: int | float | vec2 | vec3 | vec4
         self._data_type = data_type
@@ -17,8 +15,11 @@ class Attribute(object):
 
     @property
     def data(self):
-        """Exposing data"""
         return self._data
+
+    @data.setter
+    def data(self, data):
+        self._data = data
 
     def upload_data(self):
         """ Upload the data to a GPU buffer """

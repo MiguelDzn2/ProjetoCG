@@ -12,4 +12,4 @@ class ZeGeometry(Geometry):
         # Usa as coordenadas UV fornecidas
         self.add_attribute("vec3", "vertexPosition", position_data)
         self.add_attribute("vec2", "vertexUV", uv_data)
-        self.count_vertices() 
+        # Vertex count is handled by add_attribute 

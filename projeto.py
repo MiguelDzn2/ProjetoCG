@@ -92,6 +92,9 @@ class Example(Base):
     def initialize(self):
         print("Initializing program...")
         
+        # Initialize debug mode
+        self.debug_mode = False  # Set to True to enable debug features
+        
         # Print debug mode status to confirm it's properly set
         print(f"\n==== Program running with debug_mode = {self.debug_mode} ====\n")
         

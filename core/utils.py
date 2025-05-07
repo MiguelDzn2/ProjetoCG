@@ -9,7 +9,6 @@ class Utils:
     """
     @staticmethod
     def get_system_info():
-        """Obter informação detalhada sobre a plataforma utilizada"""
         vendor = GL.glGetString(GL.GL_VENDOR).decode('utf-8')
         renderer = GL.glGetString(GL.GL_RENDERER).decode('utf-8')
         opengl = GL.glGetString(GL.GL_VERSION).decode('utf-8')
@@ -19,9 +18,8 @@ class Utils:
 
     @staticmethod
     def initialize_shader(shader_code, shader_type):
-        """Cria o objeto shader, junta o código e compila."""
         # Specify required OpenGL/GLSL version
-        shader_code = '#version 130\n' + shader_code
+        shader_code = '#version 330\n' + shader_code
         # Create empty shader object and return reference value
         shader_ref = GL.glCreateShader(shader_type)
         # Stores the source code in the shader
@@ -44,7 +42,6 @@ class Utils:
 
     @staticmethod
     def initialize_program(vertex_shader_code, fragment_shader_code):
-        """Cria o objeto programa e junta os shaders compilados para linkagem"""
         vertex_shader_ref = Utils.initialize_shader(vertex_shader_code, GL.GL_VERTEX_SHADER)
         fragment_shader_ref = Utils.initialize_shader(fragment_shader_code, GL.GL_FRAGMENT_SHADER)
         # Create empty program object and store reference to it
@@ -70,7 +67,6 @@ class Utils:
 
     @staticmethod
     def print_system_info():
-        """Reúne e apresenta a informação do sistema"""
         info = Utils.get_system_info()
         result = ''.join(['Vendor: ', info.vendor, '\n',
                           'Renderer: ', info.renderer, '\n',

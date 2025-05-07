@@ -64,7 +64,7 @@ class NightClub:
                     geometry = Geometry()
                     geometry.add_attribute("vec3", "vertexPosition", geometry_data['vertices'])
                     geometry.add_attribute("vec2", "vertexUV", geometry_data['uvs'])
-                    geometry.count_vertices() # Importante!
+                    # Vertex count is handled by add_attribute
 
                     if geometry.vertex_count == 0:
                         print(f"    Warning: Geometry for material '{material_name}' has 0 vertices. Skipping mesh part.")

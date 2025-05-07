@@ -22,6 +22,14 @@ class Texture:
             self.upload_data()
 
     @property
+    def surface(self):
+        return self._surface
+
+    @surface.setter
+    def surface(self, surface):
+        self._surface = surface
+
+    @property
     def texture_ref(self):
         return self._texture_ref
 
@@ -31,11 +39,12 @@ class Texture:
 
     def set_properties(self, property_dict):
         """ Set property values """
-        for name, value in property_dict.items():
-            if name in self._property_dict.keys():
-                self._property_dict[name] = value
-            else:  # unknown property type
-                raise Exception("Texture has no property with name: " + name)
+        if property_dict:
+            for name, value in property_dict.items():
+                if name in self._property_dict.keys():
+                    self._property_dict[name] = value
+                else:  # unknown property type
+                    raise Exception("Texture has no property with name: " + name)
 
     def upload_data(self):
         """ Upload pixel data to GPU """
