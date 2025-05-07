@@ -54,6 +54,7 @@ class Example(Base):
     - Selected object is centered
     - Camera: WASDRF(move), QE(turn), TG(look)
     - Object: Arrow keys(move), UO(turn), KL(tilt)
+    - Q/W/E keys: Perform 360° flip animation
     """
 
     # Arrow Type Constants
@@ -344,6 +345,14 @@ class Example(Base):
 
         # Calculate arrow travel time (needs Arrow class to be defined/imported)
         self.calculate_arrow_travel_time()
+
+        # Initialize rotation animation parameters
+        self.is_rotating = False
+        self.rotation_start_time = 0
+        self.rotation_axis = None
+        self.rotation_duration = 0.5  # Duration of rotation animation in seconds
+        self.total_rotation_angle = 2 * math.pi  # 360 degrees in radians
+        self.original_rotation = [0, 0, 0]  # Store original object rotation
 
     def calculate_arrow_travel_time(self):
         """Calculate how long it takes an arrow to travel from spawn to target ring."""
@@ -727,6 +736,21 @@ class Example(Base):
         
         # All object controls have been removed completely
 
+        # Handle rotation animation with Q, W, E, R keys (only in gameplay phase)
+        if self.current_phase == GamePhase.GAMEPLAY and not self.is_rotating:
+            if self.input.is_key_down('q'):
+                self.start_rotation_animation('x', 1)  # Positive X rotation
+            elif self.input.is_key_down('e'):
+                self.start_rotation_animation('x', -1)  # Negative X rotation (inverted Q)
+            elif self.input.is_key_down('w'):
+                self.start_rotation_animation('y', 1)  # Positive Y rotation
+            elif self.input.is_key_down('r'):
+                self.start_rotation_animation('y', -1)  # Negative Y rotation (inverted W)
+
+        # Update rotation animation if active
+        if self.is_rotating:
+            self.update_rotation_animation()
+
         # Increment score by 100 when pressing A (kept for testing)
         if self.input.is_key_down('a'):
             self.score += 100
@@ -923,7 +947,7 @@ class Example(Base):
         # If we're paused in debug mode, don't update arrows
         if self.debug_mode and self.debug_paused:
             return
-
+        
         # Atualiza todas as setas
         arrows_to_remove = []
         
@@ -1023,7 +1047,7 @@ class Example(Base):
             # Skip arrows that have been marked as ineligible for detection
             if hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection:
                 continue
-            
+                
             # Check for collision with ring
             collision_result = self.check_arrow_ring_collision(arrow)
             
@@ -1475,6 +1499,62 @@ class Example(Base):
             
             self.scene.add(marker_mesh)
             self.marker_meshes.append(marker_mesh)
+
+    def start_rotation_animation(self, axis, direction=1):
+        """
+        Start a 360° rotation animation around the specified axis.
+        
+        Parameters:
+            axis (str): 'x', 'y', or 'z' - the axis to rotate around
+            direction (int): 1 for clockwise, -1 for counter-clockwise
+        """
+        if not self.is_rotating:  # Only start if not already rotating
+            self.is_rotating = True
+            self.rotation_start_time = time.time()
+            self.rotation_axis = axis
+            self.rotation_direction = direction  # Store rotation direction
+            
+            # Store original rotation for restoration
+            # We'll use the current matrix as our reference state
+            if hasattr(self, 'active_object_rig') and self.active_object_rig:
+                # Create a copy of the current transform matrix
+                self.original_matrix = self.active_object_rig._matrix.copy()
+    
+    def update_rotation_animation(self):
+        """
+        Update the rotation animation based on elapsed time.
+        Completes a 360° rotation and returns to original orientation.
+        """
+        if not hasattr(self, 'active_object_rig') or not self.active_object_rig:
+            self.is_rotating = False
+            return
+            
+        # Calculate elapsed time and progress
+        current_time = time.time()
+        elapsed_time = current_time - self.rotation_start_time
+        
+        # Normalize progress to [0, 1] range
+        progress = min(1.0, elapsed_time / self.rotation_duration)
+        
+        # Calculate current rotation angle (full 360°), applying direction
+        current_angle = progress * self.total_rotation_angle * self.rotation_direction
+        
+        # Reset to the original matrix
+        self.active_object_rig._matrix = self.original_matrix.copy()
+        
+        # Apply the animation rotation on top of the original position
+        if self.rotation_axis == 'x':
+            self.active_object_rig.rotate_x(current_angle)
+        elif self.rotation_axis == 'y':
+            self.active_object_rig.rotate_y(current_angle)
+        elif self.rotation_axis == 'z':
+            self.active_object_rig.rotate_z(current_angle)
+        
+        # Check if animation is complete
+        if progress >= 1.0:
+            self.is_rotating = False
+            # Reset to original state
+            self.active_object_rig._matrix = self.original_matrix.copy()
 
 Example(screen_size=SCREEN_SIZE).run()
 
