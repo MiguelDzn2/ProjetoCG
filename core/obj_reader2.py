@@ -168,7 +168,7 @@ def load_multimaterial_from_object(obj_filepath): # <--- NOME ALTERADO AQUI
     for material_name, group_data in material_groups.items():
         part_vertices = []
         part_uvs = []
-        # part_normals = [] # Se precisares de normais por vértice
+        part_normals = [] # Se precisares de normais por vértice
 
         if not group_data['faces']:
              # print(f"  Skipping material '{material_name}': No faces assigned.") # Log opcional
@@ -192,10 +192,15 @@ def load_multimaterial_from_object(obj_filepath): # <--- NOME ALTERADO AQUI
                      part_uvs.extend([0.0, 0.0]) # UV por defeito
 
                 # Adiciona dados normais (se existirem e precisares)
-                # if 0 <= n_idx < len(normals):
-                #     part_normals.extend(normals[n_idx])
-                # else:
-                #     part_normals.extend([0.0, 0.0, 0.0]) # Normal por defeito
+                if 0 <= n_idx < len(normals):
+                    part_normals.extend(normals[n_idx])
+                else:
+                    # If normals are expected, provide a default or raise an error.
+                    # For lighting, valid normals are crucial. A default like [0,0,0] is problematic.
+                    # It might be better to ensure OBJs have normals or skip lighting if not.
+                    # For now, let's add a default normal if missing, but log a warning.
+                    # print(f"Warning: Normal index {n_idx+1} missing or out of bounds for vertex {v_idx+1} in material {material_name}. Using [0,1,0].") # Example default
+                    part_normals.extend([0.0, 1.0, 0.0]) # Default normal (e.g., pointing up)
 
         texture_file = material_textures.get(material_name, {}).get('texture')
         if not texture_file:
@@ -211,15 +216,25 @@ def load_multimaterial_from_object(obj_filepath): # <--- NOME ALTERADO AQUI
                  'geometry_data': {
                       # Assegura que são listas planas de floats
                       'vertices': [float(v) for v in part_vertices],
-                      'uvs': [float(uv) for uv in part_uvs]
+                      'uvs': [float(uv) for uv in part_uvs],
+                      'normals': [float(n) for n in part_normals]
                  },
                  'texture_path': texture_file
              })
-        elif part_vertices:
-             print(f"  Prepared part for material '{material_name}' with {len(part_vertices)//3} vertices but NO TEXTURE assigned in MTL.")
+        elif part_vertices: # If there are vertices but no texture file from MTL
+             print(f"  Prepared part for material '{material_name}' with {len(part_vertices)//3} vertices but NO TEXTURE assigned in MTL. Adding with texture_path=None.")
+             output_parts.append({
+                 'material_name': material_name,
+                 'geometry_data': {
+                      'vertices': [float(v) for v in part_vertices],
+                      'uvs': [float(uv) for uv in part_uvs],
+                      'normals': [float(n) for n in part_normals]
+                 },
+                 'texture_path': None # Add part with texture_path as None
+             })
              # Decide se queres adicionar partes sem textura (talvez com um material de cor?)
              # Por agora, vamos ignorá-las se não tiverem textura definida no MTL.
-             pass
+             # pass # Old behavior
 
 
     print(f"Finished processing OBJ. Generated {len(output_parts)} textured parts.")
@@ -228,9 +243,18 @@ def load_multimaterial_from_object(obj_filepath): # <--- NOME ALTERADO AQUI
 
 if __name__ == '__main__':
     f_in = input("File? ")
-    positions, textures = my_obj_reader(f_in)
-    print("Vertex positions:", positions)
-    print("Texture coordinates:", textures)
+    # positions, textures = my_obj_reader(f_in) # Original function name might be my_obj_reader2
+    # For testing load_multimaterial_from_object:
+    parts = load_multimaterial_from_object(f_in)
+    if parts:
+        for i, part in enumerate(parts):
+            print(f"Part {i} (Material: {part['material_name']}):")
+            print(f"  Vertices: {len(part['geometry_data']['vertices']) // 3}")
+            print(f"  UVs: {len(part['geometry_data']['uvs']) // 2}")
+            # print(f"  Normals: {len(part['geometry_data']['normals']) // 3}") # When normals are added
+            print(f"  Texture: {part['texture_path']}")
+    # print("Vertex positions:", positions)
+    # print("Texture coordinates:", textures)
     # Nota: O código original aqui chamava my_obj_reader, talvez precise de ajuste
     # se quiseres testar as novas funções diretamente.
     pass # Mantém como estava ou ajusta para testar as novas funções

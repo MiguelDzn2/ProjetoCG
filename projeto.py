@@ -23,11 +23,10 @@ from extras.movement_rig import MovementRig
 from material.surface import SurfaceMaterial
 from core_ext.texture import Texture
 from material.texture import TextureMaterial
-from core.obj_reader2 import my_obj_reader2
+from core.obj_reader2 import my_obj_reader2, load_multimaterial_from_object
 from core.matrix import Matrix
 from geometry.rectangle import RectangleGeometry
 from geometry.arrow import Arrow
-from core.obj_reader2 import my_obj_reader2 # <--- ALTERADO AQUI
 from geometry.geometry import Geometry
 import os 
 import geometry.nightClub as nightclub # <--- ALTERADO AQUI
@@ -42,6 +41,7 @@ from light.ambient import AmbientLight
 from light.directional import DirectionalLight
 from light.point import PointLight
 from light.spotlight import SpotLight
+from material.phong import PhongMaterial
 
 class Example(Base):
     """
@@ -224,18 +224,25 @@ class Example(Base):
         # Initially hide the score display in selection phase
         # self.score_mesh.visible = False
 
-        # Load textures and materials for each instrument
+        # Load textures for each instrument
         miguel_texture = Texture(file_name="images/miguelJPG.jpg")
-        miguel_material = TextureMaterial(texture=miguel_texture)
+        ze_texture = Texture(file_name="images/zeJPG.jpg")
+        ana_texture = Texture(file_name="images/anaJPG.jpg")
+        brandon_texture = Texture(file_name="images/brandonPNG.png")
 
-        ze_texture = Texture(file_name="images/zeJPG.jpg") # Assuming this filename
-        ze_material = TextureMaterial(texture=ze_texture)
+        # Define common Phong material properties
+        phong_properties = {
+            "specularStrength": 0.5,
+            "shininess": 32
+        }
+        # Number of light sources: 1 Ambient + 1 Directional + 4 SpotLights = 6
+        num_light_sources = 7
 
-        ana_texture = Texture(file_name="images/anaJPG.jpg") # Assuming this filename
-        ana_material = TextureMaterial(texture=ana_texture)
-
-        brandon_texture = Texture(file_name="images/brandonPNG.png") # Assuming this filename
-        brandon_material = TextureMaterial(texture=brandon_texture)
+        # Create Phong materials for each instrument
+        miguel_material = PhongMaterial(texture=miguel_texture, number_of_light_sources=num_light_sources, property_dict=phong_properties)
+        ze_material = PhongMaterial(texture=ze_texture, number_of_light_sources=num_light_sources, property_dict=phong_properties)
+        ana_material = PhongMaterial(texture=ana_texture, number_of_light_sources=num_light_sources, property_dict=phong_properties)
+        brandon_material = PhongMaterial(texture=brandon_texture, number_of_light_sources=num_light_sources, property_dict=phong_properties)
         
         # Create geometry, texture, material, and mesh for the title image
         title_geometry = RectangleGeometry(width=16, height=4)  # Adjust width/height as needed
@@ -247,51 +254,86 @@ class Example(Base):
         # Title rig is added to the scene and positioned in setup_selection_phase
 
         # Load Miguel's object
-        positions_miguel, uvs_miguel = my_obj_reader2("geometry/miguelOBJ.obj")
-        geometry_miguel = MiguelGeometry(1, 1, 1, positions_miguel, uvs_miguel)
-        self.mesh_miguel = Mesh(geometry_miguel, miguel_material) # Use Miguel's material
-        self.object_rig_miguel = MovementRig()
-        self.object_rig_miguel.add(self.mesh_miguel)
-        self.object_rig_miguel.set_position([-3, 0, 0]) # Position Miguel
-        self.scene.add(self.object_rig_miguel)
+        miguel_parts = load_multimaterial_from_object("geometry/miguelOBJ.obj")
+        if miguel_parts:
+            miguel_geom_data = miguel_parts[0]['geometry_data'] # Assume single part
+            positions_miguel = miguel_geom_data['vertices']
+            uvs_miguel = miguel_geom_data['uvs']
+            normals_miguel = miguel_geom_data['normals']
+            geometry_miguel = MiguelGeometry(1, 1, 1, positions_miguel, uvs_miguel, normals_miguel)
+            self.mesh_miguel = Mesh(geometry_miguel, miguel_material)
+            self.object_rig_miguel = MovementRig()
+            self.object_rig_miguel.add(self.mesh_miguel)
+            self.object_rig_miguel.set_position([-3, 0, 0])
+            self.scene.add(self.object_rig_miguel)
+        else:
+            print("Error: Could not load Miguel's instrument.")
+            # Fallback or error handling
 
         # Load Ze's object
-        positions_ze, uvs_ze = my_obj_reader2("geometry/zeOBJ.obj") # TODO: Replace with zeOBJ.obj later
-        geometry_ze = ZeGeometry(1, 1, 1, positions_ze, uvs_ze) # Use ZeGeometry
-        self.mesh_ze = Mesh(geometry_ze, ze_material) # Use Ze's material
-        self.object_rig_ze = MovementRig()
-        self.object_rig_ze.add(self.mesh_ze)
-        self.object_rig_ze.set_position([-1, 0, 0]) # Position Ze
-        self.scene.add(self.object_rig_ze)
+        ze_parts = load_multimaterial_from_object("geometry/zeOBJ.obj")
+        if ze_parts:
+            ze_geom_data = ze_parts[0]['geometry_data']
+            positions_ze = ze_geom_data['vertices']
+            uvs_ze = ze_geom_data['uvs']
+            normals_ze = ze_geom_data['normals']
+            geometry_ze = ZeGeometry(1, 1, 1, positions_ze, uvs_ze, normals_ze)
+            self.mesh_ze = Mesh(geometry_ze, ze_material)
+            self.object_rig_ze = MovementRig()
+            self.object_rig_ze.add(self.mesh_ze)
+            self.object_rig_ze.set_position([-1, 0, 0])
+            self.scene.add(self.object_rig_ze)
+        else:
+            print("Error: Could not load Ze's instrument.")
+            # Fallback or error handling
 
         # Load Ana's object 
-        positions_ana, uvs_ana = my_obj_reader2("geometry/anaOBJ.obj") # TODO: Replace with anaOBJ.obj later
-        geometry_ana = AnaGeometry(1, 1, 1, positions_ana, uvs_ana) # Use AnaGeometry
-        self.mesh_ana = Mesh(geometry_ana, ana_material) # Use Ana's material
-        self.object_rig_ana = MovementRig()
-        self.object_rig_ana.add(self.mesh_ana)
-        self.object_rig_ana.set_position([1, 0, 0]) # Position Ana
-        self.scene.add(self.object_rig_ana)
+        ana_parts = load_multimaterial_from_object("geometry/anaOBJ.obj")
+        if ana_parts:
+            ana_geom_data = ana_parts[0]['geometry_data']
+            positions_ana = ana_geom_data['vertices']
+            uvs_ana = ana_geom_data['uvs']
+            normals_ana = ana_geom_data['normals']
+            geometry_ana = AnaGeometry(1, 1, 1, positions_ana, uvs_ana, normals_ana)
+            self.mesh_ana = Mesh(geometry_ana, ana_material)
+            self.object_rig_ana = MovementRig()
+            self.object_rig_ana.add(self.mesh_ana)
+            self.object_rig_ana.set_position([1, 0, 0])
+            self.scene.add(self.object_rig_ana)
+        else:
+            print("Error: Could not load Ana's instrument.")
+            # Fallback or error handling
 
         # Load Brandon's object 
-        positions_brandon, uvs_brandon = my_obj_reader2("geometry/brandonOBJ.obj") # TODO: Replace with brandonOBJ.obj later
-        geometry_brandon = BrandonGeometry(2, 2, 1, positions_brandon, uvs_brandon) # Use BrandonGeometry
-        self.mesh_brandon = Mesh(geometry_brandon, brandon_material) # Use Brandon's material
-        self.object_rig_brandon = MovementRig()
-        self.object_rig_brandon.add(self.mesh_brandon)
-        self.object_rig_brandon.set_position([3, 0, 0]) # Position Brandon
-        self.scene.add(self.object_rig_brandon)
+        brandon_parts = load_multimaterial_from_object("geometry/brandonOBJ.obj")
+        if brandon_parts:
+            brandon_geom_data = brandon_parts[0]['geometry_data']
+            positions_brandon = brandon_geom_data['vertices']
+            uvs_brandon = brandon_geom_data['uvs']
+            normals_brandon = brandon_geom_data['normals']
+            geometry_brandon = BrandonGeometry(2, 2, 1, positions_brandon, uvs_brandon, normals_brandon)
+            self.mesh_brandon = Mesh(geometry_brandon, brandon_material)
+            self.object_rig_brandon = MovementRig()
+            self.object_rig_brandon.add(self.mesh_brandon)
+            self.object_rig_brandon.set_position([3, 0, 0])
+            self.scene.add(self.object_rig_brandon)
+        else:
+            print("Error: Could not load Brandon's instrument.")
+            # Fallback or error handling
 
         # Store all object rigs in a list for easier management
-        self.object_rigs = [
-            self.object_rig_miguel,
-            self.object_rig_ze,
-            self.object_rig_ana,
-            self.object_rig_brandon
-        ]
+        self.object_rigs = []
+        if hasattr(self, 'object_rig_miguel'): self.object_rigs.append(self.object_rig_miguel)
+        if hasattr(self, 'object_rig_ze'): self.object_rigs.append(self.object_rig_ze)
+        if hasattr(self, 'object_rig_ana'): self.object_rigs.append(self.object_rig_ana)
+        if hasattr(self, 'object_rig_brandon'): self.object_rigs.append(self.object_rig_brandon)
         
-        # Initially set active object rig to the highlighted one
-        self.active_object_rig = self.object_rigs[self.highlighted_index]
+        # Initially set active object rig to the highlighted one, if any objects were loaded
+        if self.object_rigs:
+            self.active_object_rig = self.object_rigs[self.highlighted_index]
+        else:
+            print("Warning: No objects loaded. Active object rig not set.")
+            self.active_object_rig = None # Or handle appropriately
         
         # Set up the camera for the selection phase
         self.setup_selection_phase()
@@ -442,24 +484,24 @@ class Example(Base):
                 self.scene.remove(obj)
         
         # Add ambient light for general illumination
-        ambient_light = AmbientLight(color=[0.2, 0.2, 0.2])
+        ambient_light = AmbientLight(color=[0.15, 0.15, 0.15]) # Reduced intensity
         self.scene.add(ambient_light)
         
         # Add an ambient light beneath the game title
-        title_ambient_light = AmbientLight(color=[0.1, 0.1, 0.3])  # Subtle blue tint
+        title_ambient_light = AmbientLight(color=[0.05, 0.05, 0.15])  # Reduced intensity, kept blue tint
         title_ambient_light.set_position([0, 108, 0])  # Just beneath the title
         self.scene.add(title_ambient_light)
         
         # Add directional light for overall directionality
-        directional_light = DirectionalLight(color=[0.5, 0.5, 0.5], direction=[-1, -1, -1])
+        directional_light = DirectionalLight(color=[0.3, 0.3, 0.3], direction=[-1, -1, -1]) # Reduced intensity
         self.scene.add(directional_light)
         
         # Add spotlights above each selectable object
         spotlight_colors = [
-            [1.0, 0.2, 0.2],  # Red for Miguel's instrument
-            [0.2, 1.0, 0.2],  # Green for Ze's instrument
-            [0.2, 0.2, 1.0],  # Blue for Ana's instrument
-            [1.0, 1.0, 0.2]   # Yellow for Brandon's instrument
+            [0.7, 0.14, 0.14],  # Red for Miguel (Original: 1.0, 0.2, 0.2)
+            [0.14, 0.7, 0.14],  # Green for Ze (Original: 0.2, 1.0, 0.2)
+            [0.14, 0.14, 0.7],  # Blue for Ana (Original: 0.2, 0.2, 1.0)
+            [0.7, 0.7, 0.14]   # Yellow for Brandon (Original: 1.0, 1.0, 0.2)
         ]
         
         self.spotlights = []
@@ -473,8 +515,11 @@ class Example(Base):
                 color=spotlight_colors[i],
                 position=spotlight_pos,
                 direction=spotlight_dir,
-                angle=30,  # 30-degree cone
-                attenuation=(1, 0, 0.05)  # Less attenuation for a stronger effect
+                angle=35,                  # Cone angle (degrees)
+                attenuation=(1, 0.01, 0.005), # Standard attenuation
+                cone_visible=True,         # Ensure cone is visible
+                cone_opacity=0.25,         # Opacity of the cone
+                cone_height=4.0            # Visual height of the cone
             )
             self.scene.add(spotlight)
             
