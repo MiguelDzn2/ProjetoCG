@@ -54,12 +54,15 @@ class Uniform:
             elif self._data_type == 'vec2':
                 GL.glUniform2f(self._variable_ref, *self._data)
             elif self._data_type == 'vec3':
-                # --- BEGIN DEBUG PRINT ---
-                print(f"DEBUG uniform.py: vec3 uniform. ref={self._variable_ref}, data={self._data}, type(data)={type(self._data)}")
-                if isinstance(self._data, (list, tuple)) and len(self._data) == 3:
-                    print(f"DEBUG uniform.py: vec3 elements types: {[type(x) for x in self._data]}")
-                # --- END DEBUG PRINT ---
-                GL.glUniform3f(self._variable_ref, *self._data)
+                # Check if data is a list of 3 elements
+                if len(self._data) == 3 and all(isinstance(x, (int, float)) for x in self._data):
+                    # Convert elements to float if they are ints
+                    float_data = [float(x) for x in self._data]
+                    # print(f"DEBUG uniform.py: vec3 uniform. ref={self._variable_ref}, data={float_data}, type(data)={type(float_data)}")
+                    # print(f"DEBUG uniform.py: vec3 elements types: {[type(x) for x in float_data]}")
+                    GL.glUniform3fv(self._variable_ref, 1, float_data)
+                else:
+                    print(f"ERROR uniform.py: Data type mismatch for vec3 uniform. Expected list of 3 numbers, got: {self._data}")
             elif self._data_type == 'vec4':
                 GL.glUniform4f(self._variable_ref, *self._data)
             elif self._data_type == 'mat4':

@@ -232,10 +232,11 @@ class Example(Base):
 
         # Define common Phong material properties
         phong_properties = {
-            "specularStrength": 0.5,
-            "shininess": 32
+            "baseColor": [1.0, 1.0, 1.0],      # White, so texture is the primary color source
+            "specularStrength": 3.0,        # Increased further for stronger highlights
+            "shininess": 80                   # Increased for sharper highlights
         }
-        # Number of light sources: 1 Ambient + 1 Directional + 4 SpotLights = 6
+        # Number of light sources: 1 Ambient + 1 Directional + 4 SpotLights = 7 (Corrected count)
         num_light_sources = 7
 
         # Create Phong materials for each instrument
@@ -256,11 +257,17 @@ class Example(Base):
         # Load Miguel's object
         miguel_parts = load_multimaterial_from_object("geometry/miguelOBJ.obj")
         if miguel_parts:
-            miguel_geom_data = miguel_parts[0]['geometry_data'] # Assume single part
-            positions_miguel = miguel_geom_data['vertices']
-            uvs_miguel = miguel_geom_data['uvs']
-            normals_miguel = miguel_geom_data['normals']
-            geometry_miguel = MiguelGeometry(1, 1, 1, positions_miguel, uvs_miguel, normals_miguel)
+            all_positions_miguel = []
+            all_uvs_miguel = []
+            all_normals_miguel = []
+
+            for part_data in miguel_parts:
+                geom_data = part_data['geometry_data']
+                all_positions_miguel.extend(geom_data['vertices'])
+                all_uvs_miguel.extend(geom_data['uvs'])
+                all_normals_miguel.extend(geom_data['normals'])
+            
+            geometry_miguel = MiguelGeometry(1, 1, 1, all_positions_miguel, all_uvs_miguel, all_normals_miguel)
             self.mesh_miguel = Mesh(geometry_miguel, miguel_material)
             self.object_rig_miguel = MovementRig()
             self.object_rig_miguel.add(self.mesh_miguel)
@@ -273,11 +280,17 @@ class Example(Base):
         # Load Ze's object
         ze_parts = load_multimaterial_from_object("geometry/zeOBJ.obj")
         if ze_parts:
-            ze_geom_data = ze_parts[0]['geometry_data']
-            positions_ze = ze_geom_data['vertices']
-            uvs_ze = ze_geom_data['uvs']
-            normals_ze = ze_geom_data['normals']
-            geometry_ze = ZeGeometry(1, 1, 1, positions_ze, uvs_ze, normals_ze)
+            all_positions_ze = []
+            all_uvs_ze = []
+            all_normals_ze = []
+
+            for part_data in ze_parts:
+                geom_data = part_data['geometry_data']
+                all_positions_ze.extend(geom_data['vertices'])
+                all_uvs_ze.extend(geom_data['uvs'])
+                all_normals_ze.extend(geom_data['normals'])
+
+            geometry_ze = ZeGeometry(1, 1, 1, all_positions_ze, all_uvs_ze, all_normals_ze)
             self.mesh_ze = Mesh(geometry_ze, ze_material)
             self.object_rig_ze = MovementRig()
             self.object_rig_ze.add(self.mesh_ze)
@@ -290,11 +303,17 @@ class Example(Base):
         # Load Ana's object 
         ana_parts = load_multimaterial_from_object("geometry/anaOBJ.obj")
         if ana_parts:
-            ana_geom_data = ana_parts[0]['geometry_data']
-            positions_ana = ana_geom_data['vertices']
-            uvs_ana = ana_geom_data['uvs']
-            normals_ana = ana_geom_data['normals']
-            geometry_ana = AnaGeometry(1, 1, 1, positions_ana, uvs_ana, normals_ana)
+            all_positions_ana = []
+            all_uvs_ana = []
+            all_normals_ana = []
+
+            for part_data in ana_parts:
+                geom_data = part_data['geometry_data']
+                all_positions_ana.extend(geom_data['vertices'])
+                all_uvs_ana.extend(geom_data['uvs'])
+                all_normals_ana.extend(geom_data['normals'])
+            
+            geometry_ana = AnaGeometry(1, 1, 1, all_positions_ana, all_uvs_ana, all_normals_ana)
             self.mesh_ana = Mesh(geometry_ana, ana_material)
             self.object_rig_ana = MovementRig()
             self.object_rig_ana.add(self.mesh_ana)
@@ -307,11 +326,17 @@ class Example(Base):
         # Load Brandon's object 
         brandon_parts = load_multimaterial_from_object("geometry/brandonOBJ.obj")
         if brandon_parts:
-            brandon_geom_data = brandon_parts[0]['geometry_data']
-            positions_brandon = brandon_geom_data['vertices']
-            uvs_brandon = brandon_geom_data['uvs']
-            normals_brandon = brandon_geom_data['normals']
-            geometry_brandon = BrandonGeometry(2, 2, 1, positions_brandon, uvs_brandon, normals_brandon)
+            all_positions_brandon = []
+            all_uvs_brandon = []
+            all_normals_brandon = []
+
+            for part_data in brandon_parts:
+                geom_data = part_data['geometry_data']
+                all_positions_brandon.extend(geom_data['vertices'])
+                all_uvs_brandon.extend(geom_data['uvs'])
+                all_normals_brandon.extend(geom_data['normals'])
+            
+            geometry_brandon = BrandonGeometry(2, 2, 1, all_positions_brandon, all_uvs_brandon, all_normals_brandon)
             self.mesh_brandon = Mesh(geometry_brandon, brandon_material)
             self.object_rig_brandon = MovementRig()
             self.object_rig_brandon.add(self.mesh_brandon)
@@ -327,6 +352,13 @@ class Example(Base):
         if hasattr(self, 'object_rig_ze'): self.object_rigs.append(self.object_rig_ze)
         if hasattr(self, 'object_rig_ana'): self.object_rigs.append(self.object_rig_ana)
         if hasattr(self, 'object_rig_brandon'): self.object_rigs.append(self.object_rig_brandon)
+        
+        # Also store meshes in a list for easy access based on index
+        self.object_meshes = []
+        if hasattr(self, 'mesh_miguel'): self.object_meshes.append(self.mesh_miguel)
+        if hasattr(self, 'mesh_ze'): self.object_meshes.append(self.mesh_ze)
+        if hasattr(self, 'mesh_ana'): self.object_meshes.append(self.mesh_ana)
+        if hasattr(self, 'mesh_brandon'): self.object_meshes.append(self.mesh_brandon)
         
         # Initially set active object rig to the highlighted one, if any objects were loaded
         if self.object_rigs:
@@ -484,30 +516,31 @@ class Example(Base):
                 self.scene.remove(obj)
         
         # Add ambient light for general illumination
-        ambient_light = AmbientLight(color=[0.15, 0.15, 0.15]) # Reduced intensity
+        ambient_light = AmbientLight(color=[0.7, 0.7, 0.7]) # Significantly increased for texture visibility
         self.scene.add(ambient_light)
         
         # Add an ambient light beneath the game title
-        title_ambient_light = AmbientLight(color=[0.05, 0.05, 0.15])  # Reduced intensity, kept blue tint
-        title_ambient_light.set_position([0, 108, 0])  # Just beneath the title
+        title_ambient_light = AmbientLight(color=[0.05, 0.05, 0.15])  # Kept low
+        title_ambient_light.set_position([0, 108, 0])
         self.scene.add(title_ambient_light)
         
         # Add directional light for overall directionality
-        directional_light = DirectionalLight(color=[0.3, 0.3, 0.3], direction=[-1, -1, -1]) # Reduced intensity
+        directional_light = DirectionalLight(color=[0.3, 0.3, 0.3], direction=[-1, -1, -1]) # Moderate directional light
         self.scene.add(directional_light)
         
         # Add spotlights above each selectable object
         spotlight_colors = [
-            [0.7, 0.14, 0.14],  # Red for Miguel (Original: 1.0, 0.2, 0.2)
-            [0.14, 0.7, 0.14],  # Green for Ze (Original: 0.2, 1.0, 0.2)
-            [0.14, 0.14, 0.7],  # Blue for Ana (Original: 0.2, 0.2, 1.0)
-            [0.7, 0.7, 0.14]   # Yellow for Brandon (Original: 1.0, 1.0, 0.2)
+            [0.4, 0.08, 0.08],  # Red (for cones and specular highlights)
+            [0.08, 0.4, 0.08],  # Green (for cones and specular highlights)
+            [0.08, 0.08, 0.4],  # Blue (for cones and specular highlights)
+            [0.4, 0.4, 0.08]   # Yellow (for cones and specular highlights)
         ]
         
         self.spotlights = []
+        spotlight_y_offset = 8 # Increased offset to move lights higher
         for i, position in enumerate(positions):
             # Position the spotlight above the object
-            spotlight_pos = [position[0], position[1] + 5, position[2]]
+            spotlight_pos = [position[0], position[1] + spotlight_y_offset, position[2]]
             # Direct it downward toward the object
             spotlight_dir = [0, -1, 0]
             # Create the spotlight with a color matching the instrument
@@ -518,7 +551,7 @@ class Example(Base):
                 angle=35,                  # Cone angle (degrees)
                 attenuation=(1, 0.01, 0.005), # Standard attenuation
                 cone_visible=True,         # Ensure cone is visible
-                cone_opacity=0.25,         # Opacity of the cone
+                cone_opacity=0.35,         # Increased opacity for cones
                 cone_height=4.0            # Visual height of the cone
             )
             self.scene.add(spotlight)
@@ -1666,11 +1699,27 @@ class Example(Base):
             self.rotation_axis = axis
             self.rotation_direction = direction  # Store rotation direction
             
-            # Store original rotation for restoration
-            # We'll use the current matrix as our reference state
+            # Store original matrix and material properties
             if hasattr(self, 'active_object_rig') and self.active_object_rig:
-                # Create a copy of the current transform matrix
                 self.original_matrix = self.active_object_rig._matrix.copy()
+                # Get the correct mesh using the index
+                if self.highlighted_index < len(self.object_meshes):
+                    active_mesh = self.object_meshes[self.highlighted_index]
+                    material = active_mesh.material 
+                    # Store original specular properties and reduce them for animation
+                    if hasattr(material, 'uniform_dict') and "specularStrength" in material.uniform_dict:
+                        self.original_specular_strength = material.uniform_dict["specularStrength"].data
+                        self.original_shininess = material.uniform_dict["shininess"].data
+                        material.uniform_dict["specularStrength"].data = 0.1 # Reduce significantly
+                        material.uniform_dict["shininess"].data = 10.0      # Reduce shininess
+                    else:
+                        self.original_specular_strength = None # Flag that we couldn't store/change it
+                        self.original_shininess = None
+                else:
+                    # Handle case where index is out of bounds (shouldn't happen if lists are synced)
+                    print("Error: highlighted_index out of bounds for object_meshes")
+                    self.original_specular_strength = None
+                    self.original_shininess = None
     
     def update_rotation_animation(self):
         """
@@ -1713,6 +1762,19 @@ class Example(Base):
             self.is_rotating = False
             # Reset to original state
             self.active_object_rig._matrix = self.original_matrix.copy()
+            # Restore original specular properties
+            if hasattr(self, 'active_object_rig') and self.active_object_rig and self.original_specular_strength is not None:
+                # Get the correct mesh using the index
+                if self.highlighted_index < len(self.object_meshes):
+                    active_mesh = self.object_meshes[self.highlighted_index]
+                    material = active_mesh.material
+                    if hasattr(material, 'uniform_dict') and "specularStrength" in material.uniform_dict:
+                        material.uniform_dict["specularStrength"].data = self.original_specular_strength
+                        material.uniform_dict["shininess"].data = self.original_shininess
+                        print("Restored specular properties") # Debug print
+                # Reset stored values to avoid accidental reuse if something goes wrong next time
+                self.original_specular_strength = None 
+                self.original_shininess = None 
 
     def start_jump_animation(self, direction):
         """
