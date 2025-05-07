@@ -362,6 +362,13 @@ class Example(Base):
         self.jump_distance = 2.0  # Distance to jump (units)
         self.jump_height = 1.0    # Max height of jump (units)
         self.original_position = [0, 0, 0]  # Store original object position
+        
+        # Track last jump direction to alternate T/Y
+        self.last_jump_was_left = False
+        
+        # Track if the next animation should be forced (after T or Y)
+        self.next_animation_forced = False
+        self.forced_animation = None
 
     def calculate_arrow_travel_time(self):
         """Calculate how long it takes an arrow to travel from spawn to target ring."""
@@ -748,7 +755,7 @@ class Example(Base):
         # Create a general animation state check
         is_animating = self.is_rotating or self.is_jumping
         
-        # Handle rotation animation with Q, W, E, R keys (only in gameplay phase)
+        # Handle animations with Q, W, E, R, T, Y keys (only in gameplay phase when not animating)
         if self.current_phase == GamePhase.GAMEPLAY and not is_animating:
             if self.input.is_key_down('q'):
                 self.start_rotation_animation('x', 1)  # Positive X rotation
@@ -856,6 +863,8 @@ class Example(Base):
             # Arrow is completely inside the inner ring (full interception)
             if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value != 1:
                 print(f"Arrow[{arrow.unique_id}]: Now fully inside ring (value: 1.0)")
+                # Trigger animation when arrow is fully inside ring
+                self.trigger_random_animation()
             arrow.potential_collision_value = 1
         elif any_corner_in_outer:
             # Arrow is at least partially inside the ring (partial interception)
@@ -1653,6 +1662,77 @@ class Example(Base):
                 self.original_position[2] + self.jump_direction[2] * self.jump_distance
             ]
             self.active_object_rig.set_position(final_position)
+
+    def trigger_random_animation(self):
+        """
+        Trigger a random animation from the available ones (Q,W,E,R,T,Y).
+        If T is selected, the next one will be Y. If Y is selected, the next one will be T.
+        After a forced alternation, selection returns to random.
+        T and Y each have only a 10% chance of being selected randomly.
+        """
+        # Don't trigger animations if already animating or not in gameplay phase
+        if self.is_rotating or self.is_jumping or self.current_phase != GamePhase.GAMEPLAY:
+            return
+            
+        import random
+        
+        # Check if we need to enforce a specific animation this time
+        if self.next_animation_forced and self.forced_animation:
+            selected = self.forced_animation
+            print(f"Animation: Enforced {selected.upper()} (alternating from previous jump)")
+            
+            # Reset forcing - next animation will be random again
+            self.next_animation_forced = False
+            self.forced_animation = None
+        else:
+            # Weighted random selection with reduced probability for T and Y
+            # Rotations (Q,W,E,R): 20% each (80% total)
+            # Jumps (T,Y): 10% each (20% total)
+            random_value = random.random()  # 0.0 to 1.0
+            
+            if random_value < 0.2:
+                selected = 'q'      # 0.0-0.2 = 20%
+            elif random_value < 0.4:
+                selected = 'w'      # 0.2-0.4 = 20%
+            elif random_value < 0.6:
+                selected = 'e'      # 0.4-0.6 = 20%
+            elif random_value < 0.8:
+                selected = 'r'      # 0.6-0.8 = 20%
+            elif random_value < 0.9:
+                selected = 't'      # 0.8-0.9 = 10%
+            else:
+                selected = 'y'      # 0.9-1.0 = 10%
+            
+            # If we randomly selected a jump, prepare to enforce alternation next time
+            if selected in ['t', 'y']:
+                self.next_animation_forced = True
+                
+                # Set the opposite jump for next time
+                if selected == 't':
+                    self.forced_animation = 'y'
+                    print(f"Animation: Left jump (T) - will enforce Right jump next time")
+                else:  # selected == 'y'
+                    self.forced_animation = 't'
+                    print(f"Animation: Right jump (Y) - will enforce Left jump next time")
+            else:
+                print(f"Animation: {selected.upper()} rotation")
+        
+        # Store the last animation
+        self.last_animation = selected
+        
+        # Trigger the selected animation
+        if selected == 'q':
+            self.start_rotation_animation('x', 1)  # Positive X rotation
+        elif selected == 'e':
+            self.start_rotation_animation('x', -1)  # Negative X rotation
+        elif selected == 'w':
+            self.start_rotation_animation('y', 1)  # Positive Y rotation
+        elif selected == 'r':
+            self.start_rotation_animation('y', -1)  # Negative Y rotation
+        elif selected == 't':
+            self.start_jump_animation([-1, 0, 0])  # Jump left
+        elif selected == 'y':
+            self.start_jump_animation([1, 0, 0])   # Jump right
 
 Example(screen_size=SCREEN_SIZE).run()
 
