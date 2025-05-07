@@ -254,97 +254,52 @@ class Example(Base):
         self.title_rig.add(self.title_mesh)
         # Title rig is added to the scene and positioned in setup_selection_phase
 
-        # Load Miguel's object
-        miguel_parts = load_multimaterial_from_object("geometry/miguelOBJ.obj")
-        if miguel_parts:
-            all_positions_miguel = []
-            all_uvs_miguel = []
-            all_normals_miguel = []
+        # Configurations for loading instrument models
+        instrument_configs = [
+            {
+                "name": "miguel", 
+                "obj_path": "geometry/miguelOBJ.obj", 
+                "geom_class": MiguelGeometry, 
+                "material": miguel_material, 
+                "pos": [-3, 0, 0], 
+                "geom_args": (1, 1, 1) # width, height, depth
+            },
+            {
+                "name": "ze", 
+                "obj_path": "geometry/zeOBJ.obj", 
+                "geom_class": ZeGeometry, 
+                "material": ze_material, 
+                "pos": [-1, 0, 0], 
+                "geom_args": (1, 1, 1)
+            },
+            {
+                "name": "ana", 
+                "obj_path": "geometry/anaOBJ.obj", 
+                "geom_class": AnaGeometry, 
+                "material": ana_material, 
+                "pos": [1, 0, 0], 
+                "geom_args": (1, 1, 1)
+            },
+            {
+                "name": "brandon", 
+                "obj_path": "geometry/brandonOBJ.obj", 
+                "geom_class": BrandonGeometry, 
+                "material": brandon_material, 
+                "pos": [3, 0, 0], 
+                "geom_args": (2, 2, 1)
+            },
+        ]
 
-            for part_data in miguel_parts:
-                geom_data = part_data['geometry_data']
-                all_positions_miguel.extend(geom_data['vertices'])
-                all_uvs_miguel.extend(geom_data['uvs'])
-                all_normals_miguel.extend(geom_data['normals'])
-            
-            geometry_miguel = MiguelGeometry(1, 1, 1, all_positions_miguel, all_uvs_miguel, all_normals_miguel)
-            self.mesh_miguel = Mesh(geometry_miguel, miguel_material)
-            self.object_rig_miguel = MovementRig()
-            self.object_rig_miguel.add(self.mesh_miguel)
-            self.object_rig_miguel.set_position([-3, 0, 0])
-            self.scene.add(self.object_rig_miguel)
-        else:
-            print("Error: Could not load Miguel's instrument.")
-            # Fallback or error handling
-
-        # Load Ze's object
-        ze_parts = load_multimaterial_from_object("geometry/zeOBJ.obj")
-        if ze_parts:
-            all_positions_ze = []
-            all_uvs_ze = []
-            all_normals_ze = []
-
-            for part_data in ze_parts:
-                geom_data = part_data['geometry_data']
-                all_positions_ze.extend(geom_data['vertices'])
-                all_uvs_ze.extend(geom_data['uvs'])
-                all_normals_ze.extend(geom_data['normals'])
-
-            geometry_ze = ZeGeometry(1, 1, 1, all_positions_ze, all_uvs_ze, all_normals_ze)
-            self.mesh_ze = Mesh(geometry_ze, ze_material)
-            self.object_rig_ze = MovementRig()
-            self.object_rig_ze.add(self.mesh_ze)
-            self.object_rig_ze.set_position([-1, 0, 0])
-            self.scene.add(self.object_rig_ze)
-        else:
-            print("Error: Could not load Ze's instrument.")
-            # Fallback or error handling
-
-        # Load Ana's object 
-        ana_parts = load_multimaterial_from_object("geometry/anaOBJ.obj")
-        if ana_parts:
-            all_positions_ana = []
-            all_uvs_ana = []
-            all_normals_ana = []
-
-            for part_data in ana_parts:
-                geom_data = part_data['geometry_data']
-                all_positions_ana.extend(geom_data['vertices'])
-                all_uvs_ana.extend(geom_data['uvs'])
-                all_normals_ana.extend(geom_data['normals'])
-            
-            geometry_ana = AnaGeometry(1, 1, 1, all_positions_ana, all_uvs_ana, all_normals_ana)
-            self.mesh_ana = Mesh(geometry_ana, ana_material)
-            self.object_rig_ana = MovementRig()
-            self.object_rig_ana.add(self.mesh_ana)
-            self.object_rig_ana.set_position([1, 0, 0])
-            self.scene.add(self.object_rig_ana)
-        else:
-            print("Error: Could not load Ana's instrument.")
-            # Fallback or error handling
-
-        # Load Brandon's object 
-        brandon_parts = load_multimaterial_from_object("geometry/brandonOBJ.obj")
-        if brandon_parts:
-            all_positions_brandon = []
-            all_uvs_brandon = []
-            all_normals_brandon = []
-
-            for part_data in brandon_parts:
-                geom_data = part_data['geometry_data']
-                all_positions_brandon.extend(geom_data['vertices'])
-                all_uvs_brandon.extend(geom_data['uvs'])
-                all_normals_brandon.extend(geom_data['normals'])
-            
-            geometry_brandon = BrandonGeometry(2, 2, 1, all_positions_brandon, all_uvs_brandon, all_normals_brandon)
-            self.mesh_brandon = Mesh(geometry_brandon, brandon_material)
-            self.object_rig_brandon = MovementRig()
-            self.object_rig_brandon.add(self.mesh_brandon)
-            self.object_rig_brandon.set_position([3, 0, 0])
-            self.scene.add(self.object_rig_brandon)
-        else:
-            print("Error: Could not load Brandon's instrument.")
-            # Fallback or error handling
+        # Load instrument models using the helper method
+        for config in instrument_configs:
+            self._load_instrument_model(
+                name=config["name"],
+                obj_path=config["obj_path"],
+                geometry_class=config["geom_class"],
+                material_instance=config["material"],
+                initial_pos=config["pos"],
+                geom_constructor_args=config["geom_args"]
+            )
 
         # Store all object rigs in a list for easier management
         self.object_rigs = []
@@ -451,6 +406,55 @@ class Example(Base):
         self.next_animation_forced = False
         self.forced_animation = None
 
+    def _load_instrument_model(self, name: str, obj_path: str, geometry_class: type,
+                               material_instance, initial_pos: list, geom_constructor_args: tuple):
+        """
+        Loads an instrument model from an OBJ file, creates its geometry and mesh,
+        and sets up its movement rig.
+        Dynamically sets instance attributes for the mesh and rig (e.g., self.mesh_name, self.object_rig_name).
+        Returns the created MovementRig instance, or None on failure.
+        """
+        print(f"Loading {name}'s object from {obj_path}...")
+        parts = load_multimaterial_from_object(obj_path)
+
+        if not parts:
+            print(f"Error: Could not load {name}'s instrument from {obj_path}.")
+            return None
+
+        all_positions = []
+        all_uvs = []
+        all_normals = []
+
+        for part_data in parts:
+            geom_data = part_data['geometry_data']
+            all_positions.extend(geom_data['vertices'])
+            all_uvs.extend(geom_data['uvs'])
+            all_normals.extend(geom_data['normals'])
+        
+        try:
+            width, height, depth = geom_constructor_args
+            geometry_instance = geometry_class(
+                width, height, depth, 
+                positions=all_positions, 
+                uvs=all_uvs, 
+                vertex_normals=all_normals
+            )
+        except Exception as e:
+            print(f"Error instantiating geometry for {name}: {e}")
+            return None
+
+        mesh_instance = Mesh(geometry_instance, material_instance)
+        setattr(self, f"mesh_{name}", mesh_instance)
+
+        object_rig_instance = MovementRig()
+        object_rig_instance.add(mesh_instance)
+        object_rig_instance.set_position(initial_pos)
+        self.scene.add(object_rig_instance)
+        setattr(self, f"object_rig_{name}", object_rig_instance)
+        
+        print(f"Successfully loaded and set up {name}'s instrument.")
+        return object_rig_instance
+        
     def calculate_arrow_travel_time(self):
         """Calculate how long it takes an arrow to travel from spawn to target ring."""
         # ARROW_START_POSITION and ARROW_UNITS_PER_SECOND are expected from config.py

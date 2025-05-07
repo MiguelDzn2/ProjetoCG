@@ -1,9 +1,13 @@
 from typing import List, Tuple
 import os # Adicionado para as novas funções
 
+# Note: my_obj_reader2 is a simplified OBJ loader.
+# It is primarily used for basic examples or testing and does not support materials or normals fully.
+# For comprehensive OBJ loading with material and normal support, 
+# prefer load_multimaterial_from_object found in this same file, which is used by the main project.
 def my_obj_reader2(filename: str) -> Tuple[List, List]:
     """
-    Get the vertices and texture coordinates from the file.
+    Get the vertices and texture coordinates from the file. (Simplified/Legacy Loader)
     """
     position_list = list()
     texture_list = list()
