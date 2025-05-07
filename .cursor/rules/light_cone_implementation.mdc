@@ -1,0 +1,161 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Light Cone Visualization Implementation
+
+This document explains how the visual cone for `SpotLight` objects is implemented and how to use it in the project.
+
+## Overview
+
+The `SpotLight` class in `light/spotlight.py` has been enhanced to optionally display a 3D cone representing its volume and direction. This cone has a transparency gradient, being fully opaque at the light\'s source (tip of the cone) and fading to fully transparent at its base. The color of the cone matches the emission color of the `SpotLight` itself.
+
+## Implementation Details
+
+1.  **`geometry/cone.py` (`ConeGeometry` class):**
+    *   Defines the 3D geometry for a cone.
+    *   The cone is constructed with its tip at the origin `(0,0,0)` and extends along the negative Y-axis.
+    *   It takes `radius`, `height`, and `num_segments` as parameters.
+    *   **Transparency Gradient**: A `vertexColor` attribute (vec4) is added. The alpha component (`w`) of this attribute is set to `1.0` for vertices at the cone\'s tip and `0.0` for vertices at its base. This alpha value is interpolated across the cone\'s surface.
+
+2.  **Shaders for Cone Visualization:**
+    *   Located in the `material/` directory:
+        *   `cone_visual_vert.glsl` (Vertex Shader):
+            *   Transforms vertex positions.
+            *   Passes the `vertexColor` (containing the alpha gradient) to the fragment shader.
+        *   `cone_visual_frag.glsl` (Fragment Shader):
+            *   Receives the interpolated `fragmentColor`.
+            *   Uses a `uniform vec3 baseColor` for the cone\'s RGB color.
+            *   Uses a `uniform float opacity` as an overall opacity multiplier.
+            *   Sets the final fragment\'s alpha using `fragmentColor.a * opacity`, achieving the gradient transparency.
+
+3.  **`light/spotlight.py` (`SpotLight` class modifications):**
+    *   **Initialization (`__init__`)**:
+        *   Accepts parameters like `cone_visible` (defaults to `True`), `cone_opacity`, and `cone_height`.
+        *   If `cone_visible` is `True`, it calls a private method `_create_visual_cone`.
+    *   **`_create_visual_cone(visual_cone_color_floats, cone_opacity_float)`**:
+        *   Calculates the cone\'s `current_radius` based on the spotlight\'s `_angle` and `_cone_height`.
+        *   Creates an instance of `ConeGeometry` with these dimensions.
+        *   Creates a `BasicMaterial` using the `cone_visual_vert.glsl` and `cone_visual_frag.glsl` shaders.
+        *   Sets the `baseColor` uniform of this material to the `SpotLight`\'s main emission color (`self._color`).
+        *   Sets the `opacity` uniform.
+        *   Calls `self.cone_material.locate_uniforms()` after adding custom uniforms to ensure their shader locations are found.
+        *   Sets material properties for blending: `blendMode = "additive"` and `doubleSide = True`.
+        *   Creates a `Mesh` object (`self.visual_cone`) using the cone geometry and material.
+        *   Calls `_update_cone_transform()` to orient the cone.
+        *   Adds `self.visual_cone` as a child of the `SpotLight` object, so it inherits the light\'s transformations.
+    *   **`_update_cone_transform()`**:
+        *   Calculates a rotation matrix to align the cone\'s default orientation (tip at origin, pointing along -Y) with the `SpotLight`\'s `_direction`.
+        *   Sets `self.visual_cone.local_matrix` to this rotation matrix. The cone\'s geometry is already built to the correct size based on `_cone_height` and `_angle`.
+    *   **`set_direction(direction)`**:
+        *   Updates `self._direction`.
+        *   Calls `_update_cone_transform()` to re-orient the visual cone.
+    *   **`set_angle(angle_degrees)`**:
+        *   Updates `self._angle`.
+        *   If the visual cone exists, it\'s removed, then recreated by calling `_create_visual_cone` with the new angle (which affects its radius) and the light\'s current color/opacity. The new cone is then added as a child. This ensures the geometry accurately reflects the new angle.
+    *   **Color Synchronization**: The `SpotLight`\'s main `color` attribute is directly used as the `baseColor` for the cone\'s material.
+
+## How to Create and Use a SpotLight with a Visual Cone
+
+As demonstrated in `@light.py`:
+
+1.  **Import `SpotLight`**:
+    ```python
+    from light.spotlight import SpotLight
+    ```
+
+2.  **Instantiate `SpotLight`**:
+    Provide the necessary parameters. The visual cone is enabled by default.
+    ```python
+    # Example from light.py
+    spot_light_color = [1.0, 1.0, 0.8] # Color for light emission and cone visualization
+
+    my_spotlight = SpotLight(
+        color=spot_light_color,      # Main light color, also used for the cone
+        position=[0, 3, 0],          # Position of the light source
+        direction=[0, -1, 0],        # Direction the spotlight is pointing
+        angle=40,                    # Angle of the spotlight cone in degrees
+        attenuation=[1.0, 0.01, 0.005],# Light attenuation (constant, linear, quadratic)
+        cone_opacity=0.3,            # Overall opacity for the visual cone (0.0 to 1.0)
+        cone_height=2.0,             # Visual height of the cone representation
+        cone_visible=True            # (Optional, defaults to True) Set to False to hide cone
+    )
+    ```
+
+3.  **Add to Scene**:
+    Add the `SpotLight` instance to your main scene object. The visual cone, being a child of the spotlight, will be rendered automatically if `cone_visible` is true.
+    ```python
+    scene.add(my_spotlight) # Assuming 'scene' is your Scene object
+    ```
+
+## Available Operations
+
+Once a `SpotLight` with a visual cone is created:
+
+*   **Change Position**:
+    ```python
+    my_spotlight.set_position([new_x, new_y, new_z])
+    ```
+    The visual cone will move with the light.
+
+*   **Change Direction**:
+    ```python
+    my_spotlight.set_direction([dir_x, dir_y, dir_z])
+    ```
+    The visual cone will re-orient itself to match the new direction.
+
+*   **Change Angle**:
+    ```python
+    my_spotlight.set_angle(new_angle_degrees)
+    ```
+    The visual cone\'s geometry will be updated to reflect the new cone angle (its radius will change).
+
+*   **Change Light Color (and Cone Color)**:
+    To change the light\'s emission color (which will also update the cone\'s visual color):
+    ```python
+    my_spotlight.color = [new_r, new_g, new_b] # Assuming a 'color' property exists or you modify _color
+                                              # and then update the cone's material uniform.
+    # Currently, direct update requires:
+    # my_spotlight._color = [float(c) for c in new_color_rgb]
+    # if my_spotlight.visual_cone:
+    #     my_spotlight.visual_cone.material.uniform_dict["baseColor"].data = my_spotlight._color
+    ```
+    *Note: A dedicated `set_color()` method that handles updating both `_color` and the cone material\'s uniform would be a good enhancement for `SpotLight`.*
+
+*   **Change Cone Opacity**:
+    To change only the visual cone\'s opacity after creation:
+    ```python
+    # if my_spotlight.visual_cone:
+    #     my_spotlight.visual_cone.material.uniform_dict["opacity"].data = new_opacity_value
+    ```
+    *Note: A dedicated `set_cone_opacity()` method would be a good enhancement.*
+
+*   **Toggle Cone Visibility**:
+    While `cone_visible` is an `__init__` parameter, dynamically toggling would require:
+    ```python
+    # To hide:
+    # if my_spotlight.visual_cone and my_spotlight.visual_cone in my_spotlight.children_list:
+    #     my_spotlight.remove(my_spotlight.visual_cone)
+    #     # Optionally delete or store self.visual_cone = None
+    
+    # To show (if previously hidden and state was managed):
+    # Re-call _create_visual_cone and add it.
+    ```
+    *Note: A dedicated `set_cone_visible(is_visible)` method would be a good enhancement.*
+
+## Rendering Requirements
+
+*   **Blending**: The cone\'s material (`self.cone_material`) uses `blendMode = "additive"`. Your main renderer (`Renderer` class) must enable blending for this effect to work correctly. Typically, this involves:
+    *   `GL.glEnable(GL.GL_BLEND)`
+    *   `GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE)` for additive blending.
+    *   (Or `GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)` if normal alpha blending is preferred and the material\'s `blendMode` is changed accordingly).
+*   **Depth Testing**: Ensure depth testing is enabled. For transparent objects, draw order can matter if using normal alpha blending, but additive blending is less sensitive.
+
+## Future Enhancements for `SpotLight`
+
+*   Add a `set_color(new_color)` method that updates both `_color` and the `visual_cone.material`'s `baseColor` uniform.
+*   Add a `set_cone_opacity(new_opacity)` method.
+*   Add a `set_cone_visible(is_visible)` method to dynamically show/hide the cone.
+*   Consider a more efficient way to update the cone\'s angle/radius in `set_angle` rather than full recreation, perhaps by applying a scale transformation if the geometry was initially built with unit dimensions, or by having an update method in `ConeGeometry`.
+
