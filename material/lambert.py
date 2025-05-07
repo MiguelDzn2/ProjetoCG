@@ -97,7 +97,7 @@ class LambertMaterial(LightedMaterial):
         return """        
             struct Light
             {
-                int lightType;  // 1 = AMBIENT, 2 = DIRECTIONAL, 3 = POINT
+                int lightType;  // 1 = AMBIENT, 2 = DIRECTIONAL, 3 = POINT, 4 = SPOTLIGHT
                 vec3 color;  // used by all lights
                 vec3 direction;  // used by directional lights
                 vec3 position;  // used by point lights
@@ -128,8 +128,36 @@ class LambertMaterial(LightedMaterial):
                                        + light.attenuation[1] * distance 
                                        + light.attenuation[2] * distance * distance);
                 }
+                else if (light.lightType == 4)  // spotlight
+                {
+                    lightDirection = normalize(pointPosition - light.position);
+                    
+                    // Calculate spotlight cone effect
+                    float angle = acos(dot(normalize(light.direction), lightDirection));
+                    float spotFactor = 0.0;
+                    
+                    // Convert 30 degrees to radians for comparison (adjust based on your spotlight angle)
+                    float spotCutoff = radians(30.0);
+                    
+                    if (angle < spotCutoff) {
+                        // Smooth falloff at edges of the spotlight
+                        spotFactor = pow(max(dot(normalize(light.direction), lightDirection), 0.0), 32.0);
+                        
+                        // Distance attenuation
+                        float distance = length(light.position - pointPosition);
+                        attenuation = 1.0 / (light.attenuation[0] 
+                                           + light.attenuation[1] * distance 
+                                           + light.attenuation[2] * distance * distance);
+                        
+                        // Combine spotlight and distance attenuation
+                        attenuation *= spotFactor;
+                    } else {
+                        // Outside the spotlight cone
+                        attenuation = 0.0;
+                    }
+                }
                 
-                if (light.lightType > 1)  // directional or point light
+                if (light.lightType > 1)  // directional, point, or spotlight
                 {
                     pointNormal = normalize(pointNormal);
                     diffuse = max(dot(pointNormal, -lightDirection), 0.0);

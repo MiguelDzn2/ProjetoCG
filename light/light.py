@@ -5,6 +5,7 @@ class Light(Object3D):
     AMBIENT = 1
     DIRECTIONAL = 2
     POINT = 3
+    SPOTLIGHT = 4
 
     def __init__(self, light_type=0):
         super().__init__()

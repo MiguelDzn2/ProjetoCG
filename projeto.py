@@ -38,6 +38,11 @@ from arrow_manager import ArrowManager
 from config import *
 from geometry.parametric import ParametricGeometry
 import numpy as np
+from light.ambient import AmbientLight
+from light.directional import DirectionalLight
+from light.point import PointLight
+from light.spotlight import SpotLight
+from extras.spotlight import SpotLightHelper
 
 class Example(Base):
     """
@@ -430,6 +435,57 @@ class Example(Base):
             # Reset the scale (as highlight_selected_object changes it)
             rig.scale(1) # Scale back to 1
         
+        # Add lighting to enhance the scene
+        
+        # Remove any existing lights from previous phases or runs
+        for obj in self.scene.descendant_list[:]:
+            if isinstance(obj, AmbientLight) or isinstance(obj, DirectionalLight) or isinstance(obj, PointLight) or isinstance(obj, SpotLight):
+                self.scene.remove(obj)
+        
+        # Add ambient light for general illumination
+        ambient_light = AmbientLight(color=[0.2, 0.2, 0.2])
+        self.scene.add(ambient_light)
+        
+        # Add an ambient light beneath the game title
+        title_ambient_light = AmbientLight(color=[0.1, 0.1, 0.3])  # Subtle blue tint
+        title_ambient_light.set_position([0, 108, 0])  # Just beneath the title
+        self.scene.add(title_ambient_light)
+        
+        # Add directional light for overall directionality
+        directional_light = DirectionalLight(color=[0.5, 0.5, 0.5], direction=[-1, -1, -1])
+        self.scene.add(directional_light)
+        
+        # Add spotlights above each selectable object
+        spotlight_colors = [
+            [1.0, 0.2, 0.2],  # Red for Miguel's instrument
+            [0.2, 1.0, 0.2],  # Green for Ze's instrument
+            [0.2, 0.2, 1.0],  # Blue for Ana's instrument
+            [1.0, 1.0, 0.2]   # Yellow for Brandon's instrument
+        ]
+        
+        self.spotlights = []
+        for i, position in enumerate(positions):
+            # Position the spotlight above the object
+            spotlight_pos = [position[0], position[1] + 5, position[2]]
+            # Direct it downward toward the object
+            spotlight_dir = [0, -1, 0]
+            # Create the spotlight with a color matching the instrument
+            spotlight = SpotLight(
+                color=spotlight_colors[i],
+                position=spotlight_pos,
+                direction=spotlight_dir,
+                angle=30,  # 30-degree cone
+                attenuation=(1, 0, 0.05)  # Less attenuation for a stronger effect
+            )
+            self.scene.add(spotlight)
+            
+            # Add a helper to visualize the spotlight
+            helper = SpotLightHelper(spotlight)
+            spotlight.add(helper)
+            
+            # Store the spotlight for later use
+            self.spotlights.append(spotlight)
+        
         # Apply highlighting to the currently selected object
         self.highlight_selected_object()
 
@@ -612,13 +668,39 @@ class Example(Base):
                 # Scale up the highlighted object
                 rig.scale(1.2) # Apply scale
                 
+                # Also make its spotlight brighter if spotlights exist
+                if hasattr(self, 'spotlights') and i < len(self.spotlights):
+                    # Make the selected spotlight brighter
+                    self.spotlights[i]._color = [c * 1.5 for c in self.spotlights[i]._color]  # Increase brightness by 50%
+            else:
+                # Return other spotlights to normal brightness
+                if hasattr(self, 'spotlights') and i < len(self.spotlights):
+                    # Get the original color based on the spotlight_colors list in setup_selection_phase
+                    spotlight_colors = [
+                        [1.0, 0.2, 0.2],  # Red for Miguel's instrument
+                        [0.2, 1.0, 0.2],  # Green for Ze's instrument
+                        [0.2, 0.2, 1.0],  # Blue for Ana's instrument
+                        [1.0, 1.0, 0.2]   # Yellow for Brandon's instrument
+                    ]
+                    self.spotlights[i]._color = spotlight_colors[i]
+
     def remove_highlighting(self):
         # Reset scale for all objects
-        for rig in self.object_rigs:
+        for i, rig in enumerate(self.object_rigs):
             current_pos = rig.local_position # Store position
             rig._matrix = Matrix.make_identity() # Reset matrix (also resets scale)
             rig.set_position(current_pos) # Reapply position
             rig.scale(1) # Ensure scale is 1
+            
+            # Reset spotlight colors
+            if hasattr(self, 'spotlights') and i < len(self.spotlights):
+                spotlight_colors = [
+                    [1.0, 0.2, 0.2],  # Red for Miguel's instrument
+                    [0.2, 1.0, 0.2],  # Green for Ze's instrument
+                    [0.2, 0.2, 1.0],  # Blue for Ana's instrument
+                    [1.0, 1.0, 0.2]   # Yellow for Brandon's instrument
+                ]
+                self.spotlights[i]._color = spotlight_colors[i]
 
     def update_camera_animation(self):
         """
