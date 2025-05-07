@@ -42,7 +42,6 @@ from light.ambient import AmbientLight
 from light.directional import DirectionalLight
 from light.point import PointLight
 from light.spotlight import SpotLight
-from extras.spotlight import SpotLightHelper
 
 class Example(Base):
     """
@@ -478,10 +477,6 @@ class Example(Base):
                 attenuation=(1, 0, 0.05)  # Less attenuation for a stronger effect
             )
             self.scene.add(spotlight)
-            
-            # Add a helper to visualize the spotlight
-            helper = SpotLightHelper(spotlight)
-            spotlight.add(helper)
             
             # Store the spotlight for later use
             self.spotlights.append(spotlight)
