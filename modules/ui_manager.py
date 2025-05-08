@@ -108,22 +108,22 @@ class UIManager:
         collision_texture = TextTexture(
             text=" ",  # Initially empty
             system_font_name="Arial",
-            font_size=48,
+            font_size=32,  # Reduced from 72 to 32 for much smaller text
             font_color=(255, 255, 0),  # Yellow text
             background_color=(0, 0, 0, 128),
             transparent=True,
-            image_width=300,
-            image_height=100,
-            align_horizontal=0.5,
-            align_vertical=0.5,
+            image_width=200,  # Reduced from 500 to 200
+            image_height=60,  # Reduced from 150 to 60
+            align_horizontal=0.5,  # Centered horizontally
+            align_vertical=0.5,  # Centered vertically
             image_border_width=0
         )
         collision_material = TextureMaterial(texture=collision_texture, property_dict={"doubleSide": True})
-        collision_geometry = RectangleGeometry(width=2, height=0.6)
+        collision_geometry = RectangleGeometry(width=1.5, height=0.4)  # Reduced from 4x1.2 to 1.5x0.4
         self.collision_mesh = Mesh(collision_geometry, collision_material)
         self.collision_rig = MovementRig()
         self.collision_rig.add(self.collision_mesh)
-        self.collision_rig.set_position([-2.6, 1.3, -3]) # Position collision status display
+        self.collision_rig.set_position([0, -1.4, -3])  # Moved from [0, 1.5, -3] to [0, -1.4, -3] to position at bottom
         self.collision_texture = collision_texture
     
     def _create_title_display(self):
