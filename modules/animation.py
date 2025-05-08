@@ -33,6 +33,13 @@ class AnimationManager:
         self.original_position = [0, 0, 0]  # Store original object position
         self.original_jump_matrix = None
         
+        # Falling animation properties
+        self.is_falling = False
+        self.fall_start_time = 0
+        self.fall_duration = 0.5  # Duration of falling animation in seconds
+        self.max_fall_angle = math.pi/2  # 90 degrees in radians
+        self.original_fall_matrix = None
+        
         # Forced animation tracking
         self.next_animation_forced = False
         self.forced_animation = None
@@ -53,7 +60,7 @@ class AnimationManager:
             self.is_rotating = True
             self.rotation_start_time = time.time()
             self.rotation_axis = axis
-            self.rotation_direction = direction  # Store rotation direction
+            self.rotation_direction = direction
             
             # Store original matrix and material properties
             if active_object_rig:
@@ -117,24 +124,20 @@ class AnimationManager:
             active_object_rig.rotate_y(current_angle)
         elif self.rotation_axis == 'z':
             active_object_rig.rotate_z(current_angle)
-        
+            
         # Check if animation is complete
         if linear_progress >= 1.0:
             self.is_rotating = False
-            # Reset to original state
+            # Reset the matrix to the original
             active_object_rig._matrix = self.original_matrix.copy()
-            # Restore original specular properties
-            if active_object_rig and self.original_specular_strength is not None:
-                # Get the correct mesh using the index
-                if highlighted_index < len(object_meshes):
-                    active_mesh = object_meshes[highlighted_index]
-                    material = active_mesh.material
-                    if hasattr(material, 'uniform_dict') and "specularStrength" in material.uniform_dict:
-                        material.uniform_dict["specularStrength"].data = self.original_specular_strength
-                        material.uniform_dict["shininess"].data = self.original_shininess
-                # Reset stored values to avoid accidental reuse
-                self.original_specular_strength = None 
-                self.original_shininess = None
+            
+            # Reset the material properties if we changed them
+            if highlighted_index < len(object_meshes):
+                active_mesh = object_meshes[highlighted_index]
+                material = active_mesh.material
+                if hasattr(material, 'uniform_dict') and self.original_specular_strength is not None:
+                    material.uniform_dict["specularStrength"].data = self.original_specular_strength
+                    material.uniform_dict["shininess"].data = self.original_shininess
 
     def start_jump_animation(self, active_object_rig, direction):
         """
@@ -145,7 +148,7 @@ class AnimationManager:
             active_object_rig: The object rig to animate
             direction (list): [x, y, z] direction vector for the jump
         """
-        if not self.is_jumping and not self.is_rotating:  # Only start if no animation is running
+        if not self.is_jumping and not self.is_rotating and not self.is_falling:  # Only start if no animation is running
             self.is_jumping = True
             self.jump_start_time = time.time()
             self.jump_direction = direction
@@ -214,12 +217,145 @@ class AnimationManager:
             ]
             active_object_rig.set_position(final_position)
 
+    def start_falling_animation(self, active_object_rig, highlighted_index, object_meshes):
+        """
+        Start a falling animation where the object falls on its back and rises again.
+        This animation has priority and will interrupt other animations.
+        
+        Parameters:
+            active_object_rig: The object rig to animate
+            highlighted_index: Index of the active object in object_meshes
+            object_meshes: List of all object meshes
+        """
+        # Force stop any current animations to start the falling animation immediately
+        if self.is_rotating or self.is_jumping:
+            print("Interrupting current animation to start falling animation")
+            self.is_rotating = False
+            self.is_jumping = False
+        
+        # Only check if falling animation is already running to avoid duplicate starts
+        if self.is_falling:
+            return
+            
+        self.is_falling = True
+        self.fall_start_time = time.time()
+        
+        # Store original matrix for the animation
+        if active_object_rig:
+            self.original_fall_matrix = active_object_rig._matrix.copy()
+            
+            # Store material properties similar to rotation animation
+            if highlighted_index < len(object_meshes):
+                active_mesh = object_meshes[highlighted_index]
+                material = active_mesh.material 
+                if hasattr(material, 'uniform_dict') and "specularStrength" in material.uniform_dict:
+                    self.original_specular_strength = material.uniform_dict["specularStrength"].data
+                    self.original_shininess = material.uniform_dict["shininess"].data
+                    material.uniform_dict["specularStrength"].data = 0.1 # Reduce significantly
+                    material.uniform_dict["shininess"].data = 10.0      # Reduce shininess
+                else:
+                    self.original_specular_strength = None
+                    self.original_shininess = None
+    
+    def update_falling_animation(self, active_object_rig, highlighted_index, object_meshes):
+        """
+        Update the falling animation based on elapsed time.
+        The object falls on its back (X-axis rotation) and then rises back up.
+        Uses sine-based easing for smooth movement.
+        
+        Parameters:
+            active_object_rig: The object rig being animated
+            highlighted_index: Index of the active object in object_meshes
+            object_meshes: List of all object meshes
+        """
+        if not active_object_rig:
+            self.is_falling = False
+            return
+            
+        # Calculate elapsed time and progress
+        current_time = time.time()
+        elapsed_time = current_time - self.fall_start_time
+        
+        # Normalize progress to [0, 1] range
+        linear_progress = min(1.0, elapsed_time / self.fall_duration)
+        
+        # Create a parabolic motion pattern
+        # For the first half, the object falls backwards
+        # For the second half, it rises back up
+        if linear_progress <= 0.5:
+            # Fall phase (0 to 0.5 -> 0 to max_angle)
+            # Normalize to [0, 1] for just this phase
+            phase_progress = linear_progress * 2  # 0-0.5 -> 0-1
+            
+            # Apply easing for smooth acceleration/deceleration
+            eased_progress = (1 - math.cos(phase_progress * math.pi)) / 2
+            
+            # Calculate rotation angle (0 to max_fall_angle)
+            current_angle = eased_progress * self.max_fall_angle
+            
+            # Calculate vertical position offset (lower as it falls)
+            # As the object rotates backward, it should move down
+            y_offset = -0.5 * eased_progress  # Move down only a bit, enough to touch ground
+            
+            # Add a small forward movement as it falls (to make it more natural)
+            z_offset = 0.3 * eased_progress  # Move forward slightly as it falls
+        else:
+            # Rise phase (0.5 to 1.0 -> max_angle to 0)
+            # Normalize to [0, 1] for just this phase
+            phase_progress = (linear_progress - 0.5) * 2  # 0.5-1.0 -> 0-1
+            
+            # Apply easing for smooth acceleration/deceleration
+            eased_progress = (1 - math.cos(phase_progress * math.pi)) / 2
+            
+            # Calculate rotation angle (max_fall_angle to 0)
+            current_angle = self.max_fall_angle * (1 - eased_progress)
+            
+            # Calculate vertical position offset (rise back up)
+            y_offset = -0.5 * (1 - eased_progress)  # Move from -0.5 back to 0
+            
+            # Return from forward movement
+            z_offset = 0.3 * (1 - eased_progress)  # Move backward to original position
+        
+        # Reset to original matrix
+        active_object_rig._matrix = self.original_fall_matrix.copy()
+        
+        # Get original position
+        original_position = active_object_rig.local_position.copy()
+        
+        # Apply the X-axis rotation to make the object fall backward
+        active_object_rig.rotate_x(current_angle)
+        
+        # Apply position changes to simulate falling to ground with slight forward movement
+        new_position = [
+            original_position[0],
+            original_position[1] + y_offset,  # Lower Y position just enough to touch ground
+            original_position[2] + z_offset   # Slight forward movement for realism
+        ]
+        active_object_rig.set_position(new_position)
+        
+        # Check if animation is complete
+        if linear_progress >= 1.0:
+            self.is_falling = False
+            # Reset to original position and orientation
+            active_object_rig._matrix = self.original_fall_matrix.copy()
+            
+            # Reset material properties if we changed them
+            if highlighted_index < len(object_meshes):
+                active_mesh = object_meshes[highlighted_index]
+                material = active_mesh.material
+                if hasattr(material, 'uniform_dict') and self.original_specular_strength is not None:
+                    material.uniform_dict["specularStrength"].data = self.original_specular_strength
+                    material.uniform_dict["shininess"].data = self.original_shininess
+
     def trigger_random_animation(self, active_object_rig, highlighted_index, object_meshes):
         """
-        Trigger a random animation from the available ones (Q,W,E,R,T,Y).
-        If T is selected, the next one will be Y. If Y is selected, the next one will be T.
-        After a forced alternation, selection returns to random.
-        T and Y each have only a 10% chance of being selected randomly.
+        Trigger a random animation from the available ones (Q,W,E,R,T,Y,U).
+        
+        Animation probabilities:
+        - Rotation animations (Q,W,E,R): 20% each (80% total)
+        - Jump animations (T,Y): 10% each (20% total)
+        - If T is selected, the next one will be Y. If Y is selected, the next one will be T.
+        - U animation (falling) is not randomly selected here but triggered on misses or partial hits.
         
         Parameters:
             active_object_rig: The object rig to animate
@@ -227,7 +363,7 @@ class AnimationManager:
             object_meshes: List of all object meshes
         """
         # Don't trigger animations if already animating
-        if self.is_rotating or self.is_jumping:
+        if self.is_rotating or self.is_jumping or self.is_falling:
             return
             
         import random
@@ -244,6 +380,7 @@ class AnimationManager:
             # Weighted random selection with reduced probability for T and Y
             # Rotations (Q,W,E,R): 20% each (80% total)
             # Jumps (T,Y): 10% each (20% total)
+            # Note: U (falling) is not selected randomly but triggered on misses/partial hits
             random_value = random.random()  # 0.0 to 1.0
             
             if random_value < 0.2:
@@ -269,7 +406,7 @@ class AnimationManager:
                     print(f"Animation: Left jump (T) - will enforce Right jump next time")
                 else:  # selected == 'y'
                     self.forced_animation = 't'
-                    print(f"Animation: Right jump (Y) - will enforce Left jump next time")
+                    print(f"Animation: Left jump (Y) - will enforce Right jump next time")
             else:
                 print(f"Animation: {selected.upper()} rotation")
         
@@ -289,7 +426,9 @@ class AnimationManager:
             self.start_jump_animation(active_object_rig, [-1, 0, 0])  # Jump left
         elif selected == 'y':
             self.start_jump_animation(active_object_rig, [1, 0, 0])   # Jump right
+        elif selected == 'u':
+            self.start_falling_animation(active_object_rig, highlighted_index, object_meshes)  # Fall and get up
 
     def is_animating(self):
         """Return whether any animation is currently active"""
-        return self.is_rotating or self.is_jumping 
+        return self.is_rotating or self.is_jumping or self.is_falling 
