@@ -38,6 +38,8 @@ from modules.ui_manager import UIManager
 from extras.axes import AxesHelper
 from extras.grid import GridHelper
 from extras.movement_rig import MovementRig
+from light.ambient import AmbientLight
+from light.directional import DirectionalLight
 
 class Game(Base):
     """
@@ -83,9 +85,12 @@ class Game(Base):
         # Set up core framework
         self.renderer = Renderer()
         self.scene = Scene()
-        self.camera = Camera(aspect_ratio=1280/720)
         
-        # Set up camera rig for movement
+        # Add a global ambient light
+        ambient_light = AmbientLight(color=[0.2, 0.2, 0.2]) # Adjust color as needed
+        self.scene.add(ambient_light)
+
+        self.camera = Camera(aspect_ratio=1280/720)
         self.camera_rig = MovementRig()
         self.camera_rig.add(self.camera)
         self.scene.add(self.camera_rig)

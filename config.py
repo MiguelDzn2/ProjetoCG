@@ -23,4 +23,14 @@ ARROW_START_POSITION = [-3, 0, 8]  # X, Y, Z
 ARROW_UNITS_PER_SECOND = 4.0 # Placeholder value, adjust as needed
 
 # Screen Configuration
-SCREEN_SIZE = [1280, 720] 
+SCREEN_SIZE = [1280, 720]
+
+# Selection Phase Configuration
+SELECTION_SPACING = 3.0 # Spacing between objects in selection phase
+
+# SSAO Settings
+SSAO_KERNEL_SIZE = 64
+SSAO_RADIUS = 1.0
+SSAO_BIAS = 0.01
+SSAO_POWER = 1.0
+SSAO_NOISE_TEXTURE_SIZE = 4 # e.g., 4x4 noise texture 

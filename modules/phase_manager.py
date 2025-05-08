@@ -4,11 +4,13 @@ Phase manager module for handling game phase transitions and setup.
 
 import math
 from game_phases import GamePhase
+from light.light import Light
 from light.ambient import AmbientLight
 from light.directional import DirectionalLight
 from light.spotlight import SpotLight
 from core.matrix import Matrix
 from config import CAMERA_INITIAL_POSITION, CAMERA_INITIAL_ROTATION
+import config
 from geometry.rectangle import RectangleGeometry
 from core_ext.mesh import Mesh
 from core_ext.texture import Texture
@@ -90,59 +92,59 @@ class PhaseManager:
             # Reset the scale (as highlight_selected_object changes it)
             rig.scale(1)  # Scale back to 1
         
-        # Remove any existing lights from previous phases or runs
+        # Remove any existing lights *except AmbientLight* from previous phases or runs
         for obj in self.scene.descendant_list[:]:
-            if isinstance(obj, AmbientLight) or isinstance(obj, DirectionalLight) or isinstance(obj, SpotLight):
+            if isinstance(obj, Light) and not isinstance(obj, AmbientLight): # Keep AmbientLight
                 self.scene.remove(obj)
         
-        # Add ambient light for general illumination
-        ambient_light = AmbientLight(color=[0.7, 0.7, 0.7])  # Increased for texture visibility
-        self.scene.add(ambient_light)
+        # Add ambient light specific to this phase if needed, or rely on the global one.
+        # The existing code added its own AmbientLight - let's keep it for now, 
+        # but maybe reduce its intensity if we now have a global one.
+        # Alternatively, remove this one if the global one is sufficient.
+        phase_ambient_light = AmbientLight(color=[0.1, 0.1, 0.1]) # Reduced intensity a bit
+        self.scene.add(phase_ambient_light)
         
         # Add an ambient light beneath the game title
-        title_ambient_light = AmbientLight(color=[0.05, 0.05, 0.15])  # Kept low
-        title_ambient_light.set_position([0, 108, 0])
-        self.scene.add(title_ambient_light)
+        # title_ambient_light = AmbientLight(color=[0.05, 0.05, 0.15]) # Keep this? Or rely on global?
+        # title_ambient_light.set_position([0, 108, 0])
+        # self.scene.add(title_ambient_light)
         
         # Add directional light for overall directionality
         directional_light = DirectionalLight(color=[0.3, 0.3, 0.3], direction=[-1, -1, -1])
         self.scene.add(directional_light)
         
         # Add spotlights above each selectable object
-        spotlight_colors = [
-            [0.4, 0.08, 0.08],  # Red (for cones and specular highlights)
-            [0.08, 0.4, 0.08],  # Green (for cones and specular highlights)
-            [0.08, 0.08, 0.4],  # Blue (for cones and specular highlights)
-            [0.4, 0.4, 0.08]    # Yellow (for cones and specular highlights)
-        ]
-        
         self.spotlights = []
-        spotlight_y_offset = 8  # Increased offset to move lights higher
+        spotlight_y_offset = 8
+        spotlight_colors = [
+            [0.4, 0.08, 0.08],  # Red
+            [0.08, 0.4, 0.08],  # Green
+            [0.08, 0.08, 0.4],  # Blue
+            [0.4, 0.4, 0.08]    # Yellow
+        ]
+        positions = [
+            [-config.SELECTION_SPACING * 1.5, 0, 0], # Pos for obj 0
+            [-config.SELECTION_SPACING * 0.5, 0, 0], # Pos for obj 1
+            [ config.SELECTION_SPACING * 0.5, 0, 0], # Pos for obj 2
+            [ config.SELECTION_SPACING * 1.5, 0, 0]  # Pos for obj 3
+        ]
         for i, position in enumerate(positions):
-            # Position the spotlight above the object
             spotlight_pos = [position[0], position[1] + spotlight_y_offset, position[2]]
-            # Direct it downward toward the object
             spotlight_dir = [0, -1, 0]
-            # Create the spotlight with a color matching the instrument
             spotlight = SpotLight(
                 color=spotlight_colors[i],
                 position=spotlight_pos,
                 direction=spotlight_dir,
-                angle=35,                  # Cone angle (degrees)
-                attenuation=(1, 0.01, 0.005),  # Standard attenuation
-                cone_visible=True,         # Ensure cone is visible
-                cone_opacity=0.35,         # Increased opacity for cones
-                cone_height=4.0            # Visual height of the cone
+                angle=35,
+                attenuation=(1, 0.01, 0.005),
+                cone_visible=True,
+                cone_opacity=0.35,
+                cone_height=4.0
             )
             self.scene.add(spotlight)
-            
-            # Store the spotlight for later use
             self.spotlights.append(spotlight)
         
-        # Apply highlighting to the currently selected object
         self.highlight_selected_object()
-        
-        # Set current phase
         self.current_phase = GamePhase.SELECTION
     
     def setup_gameplay_phase(self):
