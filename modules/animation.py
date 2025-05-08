@@ -355,7 +355,7 @@ class AnimationManager:
         - Rotation animations (Q,W,E,R): 20% each (80% total)
         - Jump animations (T,Y): 10% each (20% total)
         - If T is selected, the next one will be Y. If Y is selected, the next one will be T.
-        - U animation (falling) is not randomly selected here but triggered on misses or partial hits.
+        - U animation (falling) is not randomly selected here but triggered only on complete misses.
         
         Parameters:
             active_object_rig: The object rig to animate

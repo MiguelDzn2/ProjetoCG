@@ -524,12 +524,12 @@ class Game(Base):
                 # Trigger random animation only on perfect hit
                 self.animation_manager.trigger_random_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
             else:
-                # Partial hit - update score and trigger falling animation
+                # Partial hit - update score, don't trigger falling animation
                 self.ui_manager.update_score(score_value, is_perfect=False)
                 self.ui_manager.update_collision_text("HIT!")
                 
-                # For partial hits, play the falling animation (U)
-                self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
+                # For partial hits, trigger a random animation similar to perfect hits
+                self.animation_manager.trigger_random_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
             
             # Mark arrow as scored
             arrow.scored = True
