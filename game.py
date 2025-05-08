@@ -134,6 +134,10 @@ class Game(Base):
             
         # Set up the selection phase initially
         self.phase_manager.setup_selection_phase()
+        
+        # Load and play selection music
+        self.music_system.load_selection_music()
+        self.music_system.play_selection_music()
     
     def _print_instructions(self):
         """Print game instructions to console"""
@@ -395,35 +399,10 @@ class Game(Base):
             corner_distances.append(dist)
         
         # The arrow is considered to have passed the ring if it's center is beyond the ring center
-        # This allows for quicker miss detection compared to waiting for the entire arrow to pass
         has_passed_center = arrow_pos[0] > ring_pos[0]
         
         # Check if arrow has passed the ring completely (beyond outer radius)
         has_passed_ring = min_x > ring_pos[0] + outer_radius
-        
-        # Reset waiting state if arrow has passed the ring center
-        if has_passed_center and hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
-            arrow.waiting_for_keypress = False
-            print(f"Arrow[{arrow.unique_id}]: Stopped waiting - passed ring center")
-        
-        # First check if arrow has passed the ring center without colliding
-        if has_passed_center:
-            # If arrow is marked as scored, it collided at some point
-            if hasattr(arrow, 'scored') and arrow.scored:
-                # Return the previously determined score
-                return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
-            else:
-                # Arrow has passed the center without a hit - this is a miss
-                # But only trigger the falling animation once
-                if not hasattr(arrow, 'miss_animation_played') or not arrow.miss_animation_played:
-                    print(f"Arrow[{arrow.unique_id}]: Immediate miss detection at center")
-                    self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
-                    arrow.miss_animation_played = True
-                    
-                    # Mark the arrow as processed so we don't trigger multiple animations
-                    if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.processed_arrow_uuids:
-                        self.processed_arrow_uuids.append(arrow.unique_id)
-                return 0
         
         # Determine collision status
         # Perfect hit: all corners of the bounding box are inside the inner ring
@@ -431,6 +410,21 @@ class Game(Base):
         
         # Partial hit: at least one corner is inside the outer ring
         any_corner_in_outer = any(dist < outer_radius for dist in corner_distances)
+        
+        # Mark arrow as missed when it passes the center without hitting,
+        # but don't trigger the animation immediately
+        if has_passed_center:
+            # If arrow is marked as scored, it collided at some point
+            if hasattr(arrow, 'scored') and arrow.scored:
+                # Return the previously determined score
+                return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
+            else:
+                # Just mark the arrow as missed, but don't trigger animation yet
+                if not hasattr(arrow, 'marked_as_miss'):
+                    print(f"Arrow[{arrow.unique_id}]: Marked as miss")
+                    arrow.marked_as_miss = True
+                
+                # Don't return here - let the arrow continue to be tracked as it leaves the ring
         
         # Calculate potential collision value
         if all_corners_in_inner:
@@ -450,9 +444,27 @@ class Game(Base):
             arrow.potential_collision_value = 0.5
         else:
             # Arrow is completely outside the ring
-            # If arrow was previously waiting, log that it's now outside ring
+            # Check if the arrow was previously inside the ring but now outside
             if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value > 0:
                 print(f"Arrow[{arrow.unique_id}]: Now outside ring (value: 0)")
+                
+                # Only now stop waiting for keypress when the arrow completely exits the ring
+                if hasattr(arrow, 'waiting_for_keypress') and arrow.waiting_for_keypress:
+                    arrow.waiting_for_keypress = False
+                    print(f"Arrow[{arrow.unique_id}]: Stopped waiting - completely exited ring")
+                
+                # If the arrow was marked as a miss and now it's completely outside the ring,
+                # trigger the falling animation for complete misses
+                if (hasattr(arrow, 'marked_as_miss') and arrow.marked_as_miss and 
+                   (not hasattr(arrow, 'miss_animation_played') or not arrow.miss_animation_played)):
+                    print(f"Arrow[{arrow.unique_id}]: Triggering miss animation after completely exiting ring")
+                    self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
+                    arrow.miss_animation_played = True
+                    
+                    # Mark the arrow as processed
+                    if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.processed_arrow_uuids:
+                        self.processed_arrow_uuids.append(arrow.unique_id)
+                        
             arrow.potential_collision_value = 0
         
         # Check if any arrow key is pressed
@@ -512,7 +524,7 @@ class Game(Base):
                 # Trigger random animation only on perfect hit
                 self.animation_manager.trigger_random_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
             else:
-                # Partial hit - reset streak
+                # Partial hit - update score and trigger falling animation
                 self.ui_manager.update_score(score_value, is_perfect=False)
                 self.ui_manager.update_collision_text("HIT!")
                 
@@ -603,16 +615,11 @@ class Game(Base):
             if not arrow.isVisible():
                 arrows_to_remove.append(i)
                 
-                # If this was a missed arrow, reset streak
+                # If this was a missed arrow, reset streak but DON'T trigger the falling animation here
+                # since that will now be handled in check_arrow_ring_collision when arrow exits the ring
                 if not hasattr(arrow, 'scored') or not arrow.scored:
                     self.ui_manager.update_score(0, is_perfect=False)  # Reset streak
                     self.ui_manager.update_collision_text("MISS!")
-                    
-                    # Arrow was missed - trigger the falling animation
-                    # But only if we haven't already played the animation for this arrow
-                    if not hasattr(arrow, 'miss_animation_played') or not arrow.miss_animation_played:
-                        self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
-                        arrow.miss_animation_played = True
         
         # Process all arrows for collision
         for arrow in self.arrows:
@@ -672,8 +679,12 @@ class Game(Base):
         # Create a general animation state check
         is_animating = self.animation_manager.is_animating()
         
-        # Handle animations with Q, W, E, R, T, Y, U keys (only in gameplay phase when not animating)
-        if not is_animating:
+        # Check for U key (falling animation) first - it has priority and will interrupt other animations
+        if self.input.is_key_down('u'):
+            # Always trigger falling animation immediately, even if another animation is running
+            self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
+        # For other animations (Q, W, E, R, T, Y), only start if nothing is currently animating
+        elif not is_animating:
             if self.input.is_key_down('q'):
                 self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'x', 1)
             elif self.input.is_key_down('e'):
@@ -686,8 +697,6 @@ class Game(Base):
                 self.animation_manager.start_jump_animation(self.active_object_rig, [-1, 0, 0])
             elif self.input.is_key_down('y'):
                 self.animation_manager.start_jump_animation(self.active_object_rig, [1, 0, 0])
-            elif self.input.is_key_down('u'):
-                self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
 
         # Update animations if active
         if self.animation_manager.is_rotating:

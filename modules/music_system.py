@@ -27,6 +27,7 @@ class MusicSystem:
         self.current_keyframe_index = 0
         self.timing_adjustment = 0.9  # Default timing adjustment
         self.arrow_travel_time = 0.0  # To be calculated later
+        self.selection_music_playing = False
         
         # Initialize pygame mixer
         try:
@@ -54,6 +55,9 @@ class MusicSystem:
                 "keyframes": "keyframes/keyframes_4.json"
             }
         }
+        
+        # Define selection music
+        self.SELECTION_MUSIC = "music/selection.mp3"
     
     def set_arrow_travel_time(self, time_value):
         """Set the time it takes for arrows to travel from spawn to target"""
@@ -84,17 +88,22 @@ class MusicSystem:
             self.music_file = None
             return False
             
-    def play_music(self):
+    def play_music(self, loop=False):
         """
         Start music playback and record start time.
         
+        Parameters:
+            loop: Whether to loop the music (default: False)
+            
         Returns:
             True if successful, False otherwise
         """
         if self.music_loaded:
             try:
                 print(f"Attempting to play music: {self.music_file}")
-                pygame.mixer.music.play()
+                # Set loop count (-1 for infinite loop, 0 for no loop)
+                loop_count = -1 if loop else 0
+                pygame.mixer.music.play(loops=loop_count)
                 self.music_playing = True
                 self.music_start_time = time.time()
                 self.current_keyframe_index = 0
@@ -105,6 +114,51 @@ class MusicSystem:
                 return False
         print("Music not loaded, cannot play.")
         return False
+
+    def load_selection_music(self):
+        """
+        Load the selection menu background music.
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        result = self.load_music(self.SELECTION_MUSIC)
+        if result:
+            # Stop any previously playing music first
+            if self.music_playing:
+                self.stop_music()
+            # Mark that we're not playing gameplay music
+            self.music_playing = False
+        return result
+    
+    def play_selection_music(self):
+        """
+        Play the selection menu background music in a loop.
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        success = self.play_music(loop=True)
+        if success:
+            self.selection_music_playing = True
+        return success
+    
+    def stop_music(self):
+        """
+        Stop any currently playing music.
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            pygame.mixer.music.stop()
+            self.music_playing = False
+            self.selection_music_playing = False
+            print("Music playback stopped.")
+            return True
+        except Exception as e:
+            print(f"Error stopping music: {e}")
+            return False
 
     def load_keyframes(self, keyframe_file):
         """
@@ -196,6 +250,11 @@ class MusicSystem:
         Returns:
             True if successful, False otherwise
         """
+        # Stop any selection music that might be playing
+        if self.selection_music_playing:
+            self.stop_music()
+            self.selection_music_playing = False
+            
         track_info = self.INSTRUMENT_TRACKS.get(instrument_index)
         
         if track_info:
