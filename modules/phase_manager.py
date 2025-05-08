@@ -9,6 +9,10 @@ from light.directional import DirectionalLight
 from light.spotlight import SpotLight
 from core.matrix import Matrix
 from config import CAMERA_INITIAL_POSITION, CAMERA_INITIAL_ROTATION
+from geometry.rectangle import RectangleGeometry
+from core_ext.mesh import Mesh
+from core_ext.texture import Texture
+from material.texture import TextureMaterial
 
 class PhaseManager:
     """
@@ -32,6 +36,7 @@ class PhaseManager:
         self.object_rigs = []
         self.active_object_rig = None
         self.spotlights = []
+        self.background = None
     
     def set_object_rigs(self, object_rigs):
         """Set the list of object rigs to manage"""
@@ -43,6 +48,30 @@ class PhaseManager:
         """Configure the scene for selection phase"""
         # Update UI for selection phase
         self.ui_manager.show_ui_for_selection_phase()
+        
+        # Add background with background3500x3500.jpg
+        if self.background in self.scene.descendant_list:
+            self.scene.remove(self.background)
+            
+        # Create a large rectangle for the background
+        # Using a wider rectangle to maintain the image aspect ratio
+        background_geometry = RectangleGeometry(width=80, height=40)
+        # Load background3500x3500.jpg texture
+        grid_texture = Texture(file_name="images/background3500x3500.jpg")
+        # Create material with the background texture
+        background_material = TextureMaterial(
+            texture=grid_texture,
+            property_dict={
+                "doubleSide": True,
+                "repeatUV": [2, 1]  # Repeat the texture horizontally to avoid black sides
+            }
+        )
+        # Create mesh for the background
+        self.background = Mesh(background_geometry, background_material)
+        # Position the background behind everything
+        self.background.set_position([0.5, 105, -15])  # Centered position and moved further back
+        # Add the background to the scene
+        self.scene.add(self.background)
 
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
@@ -120,6 +149,10 @@ class PhaseManager:
         """Configure the scene for gameplay phase"""
         # Update UI for gameplay phase
         self.ui_manager.show_ui_for_gameplay_phase()
+        
+        # Remove the background if it exists
+        if self.background in self.scene.descendant_list:
+            self.scene.remove(self.background)
         
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
