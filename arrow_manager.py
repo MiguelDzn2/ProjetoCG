@@ -231,3 +231,41 @@ class ArrowManager:
                 del arrow
         
         return collision_results 
+
+    def create_random_arrow(self, arrow_type=None):
+        """Create an arrow with random type at the spawn position"""
+        # Choose a random arrow type if none is specified
+        if arrow_type is None:
+            arrow_type = random.choice([
+                Game.ARROW_TYPE_UP,
+                Game.ARROW_TYPE_DOWN,
+                Game.ARROW_TYPE_LEFT,
+                Game.ARROW_TYPE_RIGHT
+            ])
+        
+        # Convert arrow_type values to fixed angles for better readability
+        angle_map = {
+            Game.ARROW_TYPE_UP: 0,
+            Game.ARROW_TYPE_DOWN: 180,
+            Game.ARROW_TYPE_LEFT: 90,
+            Game.ARROW_TYPE_RIGHT: 270
+        }
+        
+        # Use the angle_map to get a consistent angle for each arrow type
+        # Defaulting to 0 degrees if the arrow_type doesn't match (shouldn't happen)
+        angle = angle_map.get(arrow_type, 0)
+        
+        # Create arrow with the specific angle and ensure color is RGB only (3 components)
+        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0], debug_mode=self.debug_mode)
+        
+        # Set arrow angle based on the type
+        arrow.rotate(math.radians(angle))
+        
+        # Set position at the spawn point
+        arrow.set_position(self.spawn_position)
+        
+        # Add to the scene
+        arrow.add_to_scene(self.scene)
+        
+        # Return the arrow for tracking
+        return arrow 

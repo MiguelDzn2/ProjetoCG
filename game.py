@@ -56,16 +56,11 @@ class Game(Base):
         "right": ARROW_TYPE_RIGHT
     }
     
-    def initialize(self):
-        """Initialize the game"""
-        print("Initializing game...")
-        
-        # Initialize debug mode
-        self.debug_mode = False  # Set to True to enable debug features
-        print(f"\n==== Game running with debug_mode = {self.debug_mode} ====\n")
-        
-        # Print control instructions
-        self._print_instructions()
+    def __init__(self, screen_size=(512, 512), debug_mode=False):
+        """Initialize the game with optional debug mode"""
+        super().__init__(screen_size=screen_size)
+        self.debug_mode = debug_mode
+        print(f"\n==== Game initialized with debug_mode = {self.debug_mode} ====\n")
         
         # Initialize game state
         self.current_phase = GamePhase.SELECTION
@@ -103,16 +98,12 @@ class Game(Base):
         self.instrument_loader = InstrumentLoader(self.scene)
         self.object_rigs, self.object_meshes = self.instrument_loader.load_instruments(debug_mode=self.debug_mode)
         
-        # Initialize active object
-        if self.object_rigs:
-            self.active_object_rig = self.object_rigs[self.highlighted_index]
-        else:
-            print("Warning: No objects loaded. Active object rig not set.")
-            self.active_object_rig = None
-        
         # Initialize phase manager
         self.phase_manager = PhaseManager(self.scene, self.camera_rig, self.ui_manager)
         self.phase_manager.set_object_rigs(self.object_rigs)
+        
+        # Initialize active object from phase manager
+        self.active_object_rig = self.phase_manager.active_object_rig
         
         # Initialize animation manager
         self.animation_manager = AnimationManager()
@@ -138,6 +129,11 @@ class Game(Base):
         # Load and play selection music
         self.music_system.load_selection_music()
         self.music_system.play_selection_music()
+    
+    def initialize(self):
+        """Initialize the game"""
+        # Just print instructions - all initialization is already done in __init__
+        self._print_instructions()
     
     def _print_instructions(self):
         """Print game instructions to console"""
@@ -715,6 +711,8 @@ class Game(Base):
             if phase_changed:
                 self.current_phase = GamePhase.GAMEPLAY
                 self.highlighted_index = selected_index
+                # Synchronize active object with PhaseManager
+                self.active_object_rig = self.phase_manager.active_object_rig
                 
                 # Load and play music for the selected instrument
                 self.music_system.load_track_for_instrument(selected_index)

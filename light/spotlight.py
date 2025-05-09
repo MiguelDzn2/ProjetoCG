@@ -140,8 +140,9 @@ class SpotLight(Light):
         
         self.cone_material = BasicMaterial(vertex_shader_code=cone_vertex_shader_code, 
                                            fragment_shader_code=cone_fragment_shader_code)
-        # visual_cone_color_floats now comes from self._color
-        self.cone_material.add_uniform("vec3", "baseColor", visual_cone_color_floats)
+        # Ensure we only use the RGB components (first 3 values) of the color
+        rgb_color = visual_cone_color_floats[:3] if len(visual_cone_color_floats) >= 3 else visual_cone_color_floats
+        self.cone_material.add_uniform("vec3", "baseColor", rgb_color)
         self.cone_material.add_uniform("float", "opacity", cone_opacity_float)
         self.cone_material.locate_uniforms()
         self.cone_material.setting_dict["blendMode"] = "additive" 
@@ -208,6 +209,23 @@ class SpotLight(Light):
     def remove(self, child):
         super().remove(child)
 
+    def set_color(self, color):
+        """
+        Set the color of the spotlight and its visual cone.
+        
+        Parameters:
+            color: List of RGB or RGBA values. If RGBA, the alpha component is ignored for the light.
+        """
+        # Ensure color is a list of floats with at least 3 components
+        if len(color) >= 3:
+            # Only use the RGB components for the light itself
+            self._color = [float(c) for c in color[:3]]
+            
+            # Update the visual cone material if it exists
+            if self.visual_cone:
+                rgb_color = self._color[:3]  # Ensure it's only RGB
+                self.visual_cone.material.uniform_dict["baseColor"].data = rgb_color
+    
 # Example usage:
 # from core_ext.scene import Scene
 # scene = Scene()

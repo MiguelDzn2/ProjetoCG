@@ -22,6 +22,11 @@ class Arrow:
         # Print debug mode setting to verify it's being passed correctly
         print(f"\n==== Arrow created with debug_mode={debug_mode} ====\n")
         
+        # Ensure color only has 3 components for vec3 uniforms
+        if len(color) > 3:
+            color = color[:3]
+            print(f"Warning: Arrow color had more than 3 components. Truncated to RGB: {color}")
+        
         self.attribute_dict = {
             "vertexPosition": None,
             "vertexColor": None,
@@ -146,6 +151,7 @@ class Arrow:
             # Update direct debug box position to match new collision bounds
             if hasattr(self, 'direct_debug_box') and self.direct_debug_box:
                 try:
+                    print("\n=== Updating direct debug box position ===")
                     # Get updated bounding rect
                     min_x, min_z, max_x, max_z = self.get_bounding_rect()
                     center_x = (min_x + max_x) / 2
@@ -156,6 +162,7 @@ class Arrow:
                     
                     # Update corner markers
                     if hasattr(self, 'direct_corner_markers'):
+                        print("Updating corner marker positions")
                         corners = [
                             (min_x, min_z),  # Bottom-left
                             (max_x, min_z),  # Bottom-right
@@ -175,6 +182,7 @@ class Arrow:
             # Remove direct debug box if it exists
             if hasattr(self, 'direct_debug_box') and self.direct_debug_box and hasattr(self, 'scene') and self.scene:
                 try:
+                    print("\n=== Removing debug visualization ===")
                     self.scene.remove(self.direct_debug_box)
                     self.direct_debug_box = None
                     
@@ -189,6 +197,7 @@ class Arrow:
         # Update standard debug visualization if enabled
         if self.debug_mode and self.debug_rect_mesh is not None:
             try:
+                print("\n=== Updating standard debug visualization ===")
                 self.update_debug_rect_visualization()
             except Exception as e:
                 print(f"Error updating debug visualization: {e}")
@@ -219,6 +228,11 @@ class Arrow:
         
     def change_color(self, color):
         """Changes the color of both parts of the arrow"""
+        # Ensure color only has 3 components for vec3 uniforms
+        if len(color) > 3:
+            color = color[:3]
+            print(f"Warning: Arrow color change had more than 3 components. Truncated to RGB: {color}")
+        
         # Change body color
         if hasattr(self, 'body_mesh') and self.body_mesh:
             self.body_mesh.material.set_properties({"baseColor": color})
@@ -330,10 +344,11 @@ class Arrow:
             # Create a simple material with solid yellow color - avoid any fancy settings
             debug_material = SurfaceMaterial(
                 property_dict={
-                    "baseColor": [1.0, 1.0, 0.0, 1.0],  # Bright yellow, fully opaque
+                    "baseColor": [1.0, 1.0, 0.0],  # Bright yellow (removed alpha)
                     "wireframe": False,  # Make it solid
                     "doubleSide": True,  # Visible from both sides
-                    "useVertexColors": False  # Don't use vertex colors
+                    "useVertexColors": False,  # Don't use vertex colors
+                    "opacity": 1.0  # Set opacity separately if the material supports it
                 }
             )
             
@@ -419,6 +434,7 @@ class Arrow:
         if not self.debug_mode or self.debug_rect_mesh is None:
             return
         
+        print("\n=== Inside update_debug_rect_visualization ===")
         # Remove previous debug meshes
         try:
             # Keep track of whether we need to recreate the debug rect
@@ -426,11 +442,13 @@ class Arrow:
             
             # Try to remove existing debug visualization
             if self.debug_rect_mesh is not None:
+                print("Removing existing debug rect mesh")
                 self.rig.remove(self.debug_rect_mesh)
                 self.debug_rect_mesh = None
             
             # Remove corner markers if they exist
             if hasattr(self, 'debug_corner_markers'):
+                print("Removing existing corner markers")
                 for marker in self.debug_corner_markers:
                     self.rig.remove(marker)
                 self.debug_corner_markers = []
@@ -442,16 +460,21 @@ class Arrow:
         width = max_x - min_x
         height = max_z - min_z
         
+        print("Creating new debug rect visualization")
         # Create a new rectangle with updated dimensions
         debug_geometry = RectangleGeometry(width=width, height=height)
+        print("Setting material color for debug rect")
         debug_material = SurfaceMaterial(
             property_dict={
-                "baseColor": [1.0, 0.0, 0.0, 0.4],  # Red with transparency
+                "baseColor": [1.0, 0.0, 0.0],  # Red
                 "wireframe": False,  # Solid fill for better visibility
                 "doubleSide": True,  # Visible from both sides
                 "lineWidth": 3.0     # Thicker lines
             }
         )
+        # Add opacity as a separate uniform
+        debug_material.add_uniform("float", "opacity", 0.4)
+        debug_material.locate_uniforms()
         
         # Create new mesh
         self.debug_rect_mesh = Mesh(debug_geometry, debug_material)
@@ -463,9 +486,11 @@ class Arrow:
         self.debug_rect_mesh.set_position([center_x, arrow_pos[1], center_z])
         
         # Add to rig
+        print("Adding new debug rect mesh to rig")
         self.rig.add(self.debug_rect_mesh)
         
         # Update corner markers
+        print("Updating corner markers")
         self.update_corner_markers(min_x, min_z, max_x, max_z)
 
     def update_corner_markers(self, min_x, min_z, max_x, max_z):
@@ -511,20 +536,26 @@ class Arrow:
     def create_direct_debug_box(self):
         """Create a debug box that's added directly to the scene, not to the arrow rig"""
         try:
+            print("\n=== Creating direct debug box ===")
             # Get EXACT bounding rect used for collision - must match what's used in collision detection
             min_x, min_z, max_x, max_z = self.get_bounding_rect()
             width = max_x - min_x
             height = max_z - min_z
             
-            # Create box geometry matching the EXACT bounds used in collision detection
-            box_geometry = RectangleGeometry(width=width, height=height)
+            print(f"Setting material color for direct debug box")
             box_material = SurfaceMaterial(
                 property_dict={
-                    "baseColor": [1.0, 0.0, 0.0, 0.7],  # Red with transparency
+                    "baseColor": [1.0, 0.0, 0.0],  # Red color
                     "wireframe": False, 
                     "doubleSide": True
                 }
             )
+            # Add opacity as a separate uniform
+            box_material.add_uniform("float", "opacity", 0.7)
+            box_material.locate_uniforms()
+            
+            # Create box geometry matching the EXACT bounds used in collision detection
+            box_geometry = RectangleGeometry(width=width, height=height)
             
             # Create mesh
             self.direct_debug_box = Mesh(box_geometry, box_material)
@@ -557,6 +588,7 @@ class Arrow:
         if not hasattr(self, 'scene') or not self.scene:
             return
             
+        print("\n=== Creating direct corner markers ===")
         # Store corner markers for cleanup
         self.direct_corner_markers = []
         
@@ -570,15 +602,19 @@ class Arrow:
         
         # Create a marker at each corner
         for i, (x, z) in enumerate(corners):
-            marker_geo = RectangleGeometry(width=0.05, height=0.05)
+            print(f"Setting material color for corner marker {i}")
             marker_mat = SurfaceMaterial(
                 property_dict={
-                    "baseColor": [1.0, 1.0, 0.0, 1.0],  # Yellow
+                    "baseColor": [1.0, 1.0, 0.0],  # Yellow
                     "wireframe": False,
                     "doubleSide": True
                 }
             )
+            # Add opacity as a separate uniform
+            marker_mat.add_uniform("float", "opacity", 1.0)
+            marker_mat.locate_uniforms()
             
+            marker_geo = RectangleGeometry(width=0.05, height=0.05)
             marker = Mesh(marker_geo, marker_mat)
             arrow_pos = self.rig.local_position
             marker.set_position([x, arrow_pos[1] + 0.04, z])

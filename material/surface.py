@@ -27,3 +27,22 @@ class SurfaceMaterial(BasicMaterial):
         else:
             GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
         GL.glLineWidth(self._setting_dict["lineWidth"])
+
+    def set_properties(self, property_dict):
+        """
+        Set properties of material:
+        baseColor, wireframe, doubleSide, lineWidth, etc.
+        """
+        if property_dict is None:
+            property_dict = {}
+        
+        for name, data in property_dict.items():
+            # Ensure baseColor values only have 3 components for vec3 uniforms
+            if name == "baseColor" and isinstance(data, list) and len(data) > 3:
+                data = data[:3]
+                print(f"Warning: baseColor had more than 3 components. Truncated to RGB: {data}")
+            
+            if name in self._uniform_dict:
+                self._uniform_dict[name].data = data
+            elif name in self._setting_dict:
+                self._setting_dict[name] = data

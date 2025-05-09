@@ -110,10 +110,10 @@ class PhaseManager:
         
         # Add spotlights above each selectable object
         spotlight_colors = [
-            [0.4, 0.08, 0.08],  # Red (for cones and specular highlights)
-            [0.08, 0.4, 0.08],  # Green (for cones and specular highlights)
-            [0.08, 0.08, 0.4],  # Blue (for cones and specular highlights)
-            [0.4, 0.4, 0.08]    # Yellow (for cones and specular highlights)
+            [1.0, 1.0, 1.0],  # White for all spotlights
+            [1.0, 1.0, 1.0],  # White for all spotlights
+            [1.0, 1.0, 1.0],  # White for all spotlights
+            [1.0, 1.0, 1.0]   # White for all spotlights
         ]
         
         self.spotlights = []
@@ -282,18 +282,41 @@ class PhaseManager:
                 # Also make its spotlight brighter if spotlights exist
                 if hasattr(self, 'spotlights') and i < len(self.spotlights):
                     # Make the selected spotlight brighter
-                    self.spotlights[i]._color = [c * 1.5 for c in self.spotlights[i]._color]  # Increase brightness by 50%
+                    spotlight = self.spotlights[i]
+                    # Get the original color based on the spotlight_colors list
+                    spotlight_colors = [
+                        [1.0, 1.0, 1.0],  # White for all spotlights
+                        [1.0, 1.0, 1.0],  # White for all spotlights
+                        [1.0, 1.0, 1.0],  # White for all spotlights
+                        [1.0, 1.0, 1.0]   # White for all spotlights
+                    ]
+                    # Increase brightness by 50%
+                    brighter_color = [c * 1.5 for c in spotlight_colors[i]]
+                    # Ensure spotlight._color has only RGB components (no alpha)
+                    spotlight._color = brighter_color[:3] if len(brighter_color) > 3 else brighter_color
+                    # Update the cone material if it exists
+                    if spotlight.visual_cone:
+                        # Ensure baseColor only gets RGB components
+                        rgb_color = brighter_color[:3] if len(brighter_color) > 3 else brighter_color
+                        spotlight.visual_cone.material.uniform_dict["baseColor"].data = rgb_color
             else:
                 # Return other spotlights to normal brightness
                 if hasattr(self, 'spotlights') and i < len(self.spotlights):
                     # Get the original color based on the spotlight_colors list
                     spotlight_colors = [
-                        [0.4, 0.08, 0.08],  # Red
-                        [0.08, 0.4, 0.08],  # Green
-                        [0.08, 0.08, 0.4],  # Blue
-                        [0.4, 0.4, 0.08]    # Yellow
+                        [1.0, 1.0, 1.0],  # White for all spotlights
+                        [1.0, 1.0, 1.0],  # White for all spotlights
+                        [1.0, 1.0, 1.0],  # White for all spotlights
+                        [1.0, 1.0, 1.0]   # White for all spotlights
                     ]
-                    self.spotlights[i]._color = spotlight_colors[i]
+                    spotlight = self.spotlights[i]
+                    # Ensure spotlight._color has only RGB components (no alpha)
+                    spotlight._color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                    # Update the cone material if it exists
+                    if spotlight.visual_cone:
+                        # Ensure baseColor only gets RGB components
+                        rgb_color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                        spotlight.visual_cone.material.uniform_dict["baseColor"].data = rgb_color
     
     def remove_highlighting(self):
         """Remove highlighting from all objects"""
@@ -307,12 +330,19 @@ class PhaseManager:
             # Reset spotlight colors
             if hasattr(self, 'spotlights') and i < len(self.spotlights):
                 spotlight_colors = [
-                    [0.4, 0.08, 0.08],  # Red
-                    [0.08, 0.4, 0.08],  # Green
-                    [0.08, 0.08, 0.4],  # Blue
-                    [0.4, 0.4, 0.08]    # Yellow
+                    [1.0, 1.0, 1.0],  # White for all spotlights
+                    [1.0, 1.0, 1.0],  # White for all spotlights
+                    [1.0, 1.0, 1.0],  # White for all spotlights
+                    [1.0, 1.0, 1.0]   # White for all spotlights
                 ]
-                self.spotlights[i]._color = spotlight_colors[i]
+                spotlight = self.spotlights[i]
+                # Ensure spotlight._color has only RGB components (no alpha)
+                spotlight._color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                # Update the cone material if it exists
+                if spotlight.visual_cone:
+                    # Ensure baseColor only gets RGB components
+                    rgb_color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                    spotlight.visual_cone.material.uniform_dict["baseColor"].data = rgb_color
     
     def handle_selection_input(self, input_handler):
         """
