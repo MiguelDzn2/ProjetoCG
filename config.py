@@ -52,7 +52,7 @@ SELECTION_PHASE_SPOTLIGHT_COLORS = [
     [1.0, 1.0, 1.0],  # White for Miguel's spotlight
     [1.0, 1.0, 1.0],  # White for Ze's spotlight
     [1.0, 1.0, 1.0],  # White for Ana's spotlight
-    [1.0, 1.0, 1.0]   # White for Brandon's spotlight
+    [1.0, 1.0, 1.0]   # White for Brandon's spotlight 
 ]
 SELECTION_PHASE_SPOTLIGHT_BRIGHTNESS_MULTIPLIER = 1.5  # For highlighted object
 
@@ -192,4 +192,22 @@ INSTRUMENT_INITIAL_POSITIONS = {
 # NightClub Configuration
 NIGHTCLUB_OBJECT_PATH = "geometry/nightClub.obj"
 NIGHTCLUB_POSITION = [0, -2.5, 10]
-NIGHTCLUB_SCALE_FACTOR = 3 
+NIGHTCLUB_SCALE_FACTOR = 3
+
+# Music and Keyframe Paths for Instruments
+INSTRUMENT_MUSIC_PATHS = {
+    "miguel": "music/fitnessgram.mp3",
+    "ze": "music/track2.mp3",
+    "ana": "music/track3.mp3",
+    "brandon": "music/track4.mp3"
+}
+
+INSTRUMENT_KEYFRAME_PATHS = {
+    "miguel": "keyframes/keyframes_1.json",
+    "ze": "keyframes/keyframes_2.json",
+    "ana": "keyframes/keyframes_3.json",
+    "brandon": "keyframes/keyframes_4.json"
+}
+
+# Selection Phase Music
+SELECTION_MUSIC_PATH = "music/selection.mp3" 

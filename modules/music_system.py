@@ -5,6 +5,7 @@ Music system module for handling music playback and keyframe management.
 import time
 import json
 import pygame
+from config import INSTRUMENT_MUSIC_PATHS, INSTRUMENT_KEYFRAME_PATHS, SELECTION_MUSIC_PATH
 
 class MusicSystem:
     """
@@ -36,28 +37,28 @@ class MusicSystem:
         except Exception as e:
             print(f"Error initializing pygame mixer: {e}")
             
-        # Define instrument tracks
+        # Define instrument tracks using config values
         self.INSTRUMENT_TRACKS = {
             0: {  # Miguel's instrument
-                "music": "music/fitnessgram.mp3",
-                "keyframes": "keyframes/keyframes_1.json"
+                "music": INSTRUMENT_MUSIC_PATHS["miguel"],
+                "keyframes": INSTRUMENT_KEYFRAME_PATHS["miguel"]
             },
             1: {  # Ze's instrument
-                "music": "music/track2.mp3",
-                "keyframes": "keyframes/keyframes_2.json"
+                "music": INSTRUMENT_MUSIC_PATHS["ze"],
+                "keyframes": INSTRUMENT_KEYFRAME_PATHS["ze"]
             },
             2: {  # Ana's instrument
-                "music": "music/track3.mp3",
-                "keyframes": "keyframes/keyframes_3.json"
+                "music": INSTRUMENT_MUSIC_PATHS["ana"],
+                "keyframes": INSTRUMENT_KEYFRAME_PATHS["ana"]
             },
             3: {  # Brandon's instrument
-                "music": "music/track4.mp3",
-                "keyframes": "keyframes/keyframes_4.json"
+                "music": INSTRUMENT_MUSIC_PATHS["brandon"],
+                "keyframes": INSTRUMENT_KEYFRAME_PATHS["brandon"]
             }
         }
         
-        # Define selection music
-        self.SELECTION_MUSIC = "music/selection.mp3"
+        # Define selection music from config
+        self.SELECTION_MUSIC = SELECTION_MUSIC_PATH
     
     def set_arrow_travel_time(self, time_value):
         """Set the time it takes for arrows to travel from spawn to target"""
