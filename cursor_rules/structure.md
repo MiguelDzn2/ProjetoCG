@@ -9,7 +9,7 @@ ProjetoCG/
 ├── core/                  # Core framework components
 │   ├── base.py            # Base application class
 │   ├── matrix.py          # Matrix transformation operations
-│   ├── obj_reader2.py     # OBJ file parser
+│   ├── obj_reader2.py     # Custom OBJ file parser
 │   └── ...                # Other core utilities
 │
 ├── core_ext/              # Extended core functionality
@@ -17,6 +17,7 @@ ProjetoCG/
 │   ├── mesh.py            # Mesh handling
 │   ├── renderer.py        # Rendering pipeline
 │   ├── scene.py           # Scene graph management
+│   ├── texture.py         # Texture loading/handling
 │   └── ...                # Other extensions
 │
 ├── geometry/              # Geometric primitives and custom models
@@ -24,8 +25,14 @@ ProjetoCG/
 │   ├── zeinstrument.py       # Ze's instrument model
 │   ├── anainstrument.py      # Ana's instrument model
 │   ├── brandoninstrument.py  # Brandon's instrument model
-│   ├── miguelOBJ.obj         # 3D model files
-│   └── ...                   # Basic geometric shapes
+│   ├── arrow.py           # Arrow geometry for gameplay
+│   ├── ring.py            # Ring geometry for gameplay target
+│   ├── rectangle.py       # Rectangle geometry (used for UI)
+│   ├── cone.py            # Cone geometry (used for spotlight)
+│   ├── geometry.py        # Base geometry class
+│   ├── nightClub.py       # Geometry/logic for nightclub scene
+│   ├── miguelOBJ.obj      # 3D model files for instruments...
+│   └── ...                # Basic geometric shapes
 │
 ├── material/              # Material definitions
 │   ├── surface.py         # Surface material properties
@@ -34,29 +41,128 @@ ProjetoCG/
 ├── extras/                # Additional utilities
 │   ├── axes.py            # Axes visualization helper
 │   ├── grid.py            # Grid visualization helper
-│   └── movement_rig.py    # Movement controls for objects/camera
+│   ├── movement_rig.py    # Movement controls for objects/camera
+│   └── text_texture.py    # Utility to create textures from text
 │
 ├── images/                # Texture images and other visual assets
+│   ├── miguelJPG.jpg      # Textures for instruments...
+│   ├── game_title_transparent.png # Game title image
+│   └── ...
+│
+├── modules/               # Modular components of the game
+│   ├── __init__.py        # Package initialization
+│   ├── animation.py       # Animation manager for rotations and jumps
+│   ├── instrument_loader.py # Instrument model loading and setup
+│   ├── music_system.py    # Music playback and keyframe management
+│   ├── phase_manager.py   # Game phase transitions and setup
+│   └── ui_manager.py      # UI elements management
+│
+├── light/                 # Light source implementations
+│   ├── ambient.py         # Ambient light implementation
+│   ├── directional.py     # Directional light implementation
+│   ├── spotlight.py       # Spotlight implementation with cone visualization
+│   ├── point.py           # Point light implementation
+│   └── light.py           # Base light class
+│
+├── music/                 # Music files for gameplay
+│   └── ...                # Various MP3 files
+│
+├── keyframes/             # JSON files defining arrow spawn timing
+│   └── ...                # Various keyframe JSON files 
 │
 ├── cursor_rules/          # Project documentation
 │   ├── dependencies.md    # List of project dependencies
 │   ├── structure.md       # This file - project structure
 │   └── phases.md          # Game phases documentation
 │
-├── projeto.py             # Main application file
-├── phase_explanation.md   # Detailed explanation of game phases
-└── analysis.md            # Analysis of the project code
+├── main.py                # Main entry point for the application
+├── game.py                # Central game class integrating all modules
+├── arrow_manager.py       # Arrow spawning and management
+├── game_phases.py         # Phase enumeration definition
+├── config.py              # Game configuration constants
+├── arrow_implementation.md # Documentation specific to arrow feature
+├── uniform_explanation.md  # Documentation specific to uniforms
+├── phase_explanation.md   # Documentation specific to phases
+├── requirements.txt       # Python requirements (non-Poetry)
+├── pyproject.toml         # Project metadata and dependencies (Poetry)
+├── poetry.lock            # Exact dependency versions (Poetry)
+└── README.md              # Project README file
 ```
 
 ## Main Components
 
-### Main Application File (`projeto.py`)
+### Main Entry Point (`main.py`)
 
-The main application file contains the `Example` class which inherits from `Base` and implements:
-- Game phase management (Selection and Gameplay)
-- Scene setup for both phases
-- Input handling for both phases
-- Camera and object movement control
+The main entry point is simple and focused:
+- Imports the Game class
+- Handles command-line arguments including debug mode
+- Starts the game with configured screen size
+
+### Central Game Class (`game.py`)
+
+The central game class integrates all modular components and manages:
+- Scene setup and initialization
+- Game loop management
+- Phase transitions via the PhaseManager
+- Input handling (phase-specific)
+- Collision detection
+- Arrow creation and management
+- Camera animation
+
+### Modular System
+
+The game is organized into specialized modules:
+
+1. **AnimationManager** (`modules/animation.py`)
+   - Manages object rotations and jumps
+   - Handles animation timing and transitions
+   - Ensures smooth easing for movements
+
+2. **InstrumentLoader** (`modules/instrument_loader.py`)
+   - Loads instrument models and textures
+   - Sets up materials and meshes
+   - Adds instruments to the scene graph
+
+3. **MusicSystem** (`modules/music_system.py`)
+   - Handles music file loading and playback
+   - Manages keyframe processing for arrow spawning
+   - Synchronizes music with gameplay events
+
+4. **PhaseManager** (`modules/phase_manager.py`)
+   - Manages game phase transitions
+   - Configures scene setup for each phase
+   - Handles phase-specific input
+   - Controls camera positioning between phases
+
+5. **UIManager** (`modules/ui_manager.py`)
+   - Creates and manages score display
+   - Handles streak counting and multipliers
+   - Manages game title and collision status display
+
+### Support Systems
+
+The game relies on several supporting systems:
+
+1. **ArrowManager** (`arrow_manager.py`)
+   - Spawns and tracks arrows
+   - Manages arrow movement
+   - Handles arrow visibility and cleanup
+
+2. **Configuration** (`config.py`)
+   - Stores game constants (positions, speeds, sizes)
+   - Centralizes configuration for easy tuning
+
+3. **Game Phases** (`game_phases.py`)
+   - Defines the GamePhase enumeration (SELECTION, GAMEPLAY)
+
+### Light System
+
+The lighting system includes:
+- Base Light class for common functionality
+- AmbientLight for general illumination
+- DirectionalLight for directional illumination
+- SpotLight with visual cone implementation
+- PointLight for localized illumination
 
 ### Core Framework
 
@@ -64,7 +170,7 @@ The core framework provides the foundation for the application:
 - Application lifecycle management
 - Input handling
 - Mathematical operations
-- File parsing
+- Custom OBJ file parsing (`obj_reader2.py`)
 
 ### Rendering System
 
@@ -77,28 +183,27 @@ The rendering system is built on:
 ### Geometry System
 
 The geometry system includes:
-- Basic geometric primitives (box, sphere, etc.)
+- Basic geometric primitives (e.g., `RectangleGeometry`)
 - Custom instrument models for each team member
-- OBJ file loading capabilities
+- Gameplay-specific geometry (`Arrow`, `RingGeometry`)
+- Nightclub scene geometry (`nightClub.py`)
+- OBJ file loading capabilities using `obj_reader2`
 
 ### Materials and Textures
 
 The material system supports:
 - Surface materials with adjustable properties
-- Texture-based materials with image loading
-
-### Movement Controls
-
-Movement is implemented through:
-- MovementRig class for hierarchical transformations
-- Input mapping for keyboard controls
-- Phase-specific input handling
+- Texture-based materials with image loading (`Texture`)
+- Dynamic text rendering to textures (`TextTexture`)
 
 ## Architectural Patterns
 
 The project follows several architectural patterns:
-1. **Scene Graph**: Hierarchical organization of 3D objects
-2. **Component-Based Design**: Objects composed of geometry and material components
-3. **State Machine**: Phase management using enumeration states
-4. **Input Observer**: Input events trigger appropriate responses
-5. **Transformation Hierarchy**: Parent-child relationships for transformations 
+1. **Modular Design**: Separating functionality into specialized modules
+2. **Scene Graph**: Hierarchical organization of 3D objects
+3. **Component-Based Design**: Objects composed of geometry and material components
+4. **State Machine**: Phase management using `GamePhase` enumeration
+5. **Input Observer**: Input events trigger appropriate responses
+6. **Transformation Hierarchy**: Parent-child relationships for transformations
+7. **UI Elements**: Using `TextTexture` and basic geometry for on-screen display
+8. **Singleton-like Managers**: Specialized managers for different aspects of the game 
