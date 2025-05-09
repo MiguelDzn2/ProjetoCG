@@ -7,6 +7,7 @@ from extras.movement_rig import MovementRig
 from core_ext.texture import Texture
 from material.phong import PhongMaterial
 from core.obj_reader2 import load_multimaterial_from_object
+import config
 
 class InstrumentLoader:
     """
@@ -32,17 +33,14 @@ class InstrumentLoader:
             A tuple of (object_rigs, object_meshes)
         """
         # Load textures for each instrument
-        miguel_texture = Texture(file_name="images/miguelJPG.jpg")
-        ze_texture = Texture(file_name="images/zeJPG.jpg")
-        ana_texture = Texture(file_name="images/anaJPG.jpg")
-        brandon_texture = Texture(file_name="images/brandonPNG.png")
+        miguel_texture = Texture(file_name=config.INSTRUMENT_TEXTURE_PATHS["miguel"])
+        ze_texture = Texture(file_name=config.INSTRUMENT_TEXTURE_PATHS["ze"])
+        ana_texture = Texture(file_name=config.INSTRUMENT_TEXTURE_PATHS["ana"])
+        brandon_texture = Texture(file_name=config.INSTRUMENT_TEXTURE_PATHS["brandon"])
 
-        # Define common Phong material properties
-        phong_properties = {
-            "baseColor": [1.0, 1.0, 1.0],     # White, so texture is the primary color source
-            "specularStrength": 3.0,          # Increased for stronger highlights
-            "shininess": 80                   # Increased for sharper highlights
-        }
+        # Define common Phong material properties from config
+        phong_properties = config.INSTRUMENT_MATERIAL_PROPERTIES
+        
         # Number of light sources: 1 Ambient + 1 Directional + 4 SpotLights = 7
         num_light_sources = 7
 
@@ -58,51 +56,67 @@ class InstrumentLoader:
         from geometry.anainstrument import AnaGeometry
         from geometry.brandoninstrument import BrandonGeometry
 
-        # Configurations for loading instrument models
+        # Configurations for loading instrument models from config
         instrument_configs = [
             {
                 "name": "miguel", 
-                "obj_path": "geometry/miguelOBJ.obj", 
+                "obj_path": config.INSTRUMENT_OBJECT_PATHS["miguel"], 
                 "geom_class": MiguelGeometry, 
                 "material": miguel_material, 
-                "pos": [-3, 0, 0], 
-                "geom_args": (1, 1, 1) # width, height, depth
+                "pos": config.INSTRUMENT_INITIAL_POSITIONS["miguel"], 
+                "geom_args": (
+                    config.INSTRUMENT_GEOMETRIES["miguel"]["width"],
+                    config.INSTRUMENT_GEOMETRIES["miguel"]["height"],
+                    config.INSTRUMENT_GEOMETRIES["miguel"]["depth"]
+                )
             },
             {
                 "name": "ze", 
-                "obj_path": "geometry/zeOBJ.obj", 
+                "obj_path": config.INSTRUMENT_OBJECT_PATHS["ze"], 
                 "geom_class": ZeGeometry, 
                 "material": ze_material, 
-                "pos": [-1, 0, 0], 
-                "geom_args": (1, 1, 1)
+                "pos": config.INSTRUMENT_INITIAL_POSITIONS["ze"], 
+                "geom_args": (
+                    config.INSTRUMENT_GEOMETRIES["ze"]["width"],
+                    config.INSTRUMENT_GEOMETRIES["ze"]["height"],
+                    config.INSTRUMENT_GEOMETRIES["ze"]["depth"]
+                )
             },
             {
                 "name": "ana", 
-                "obj_path": "geometry/anaOBJ.obj", 
+                "obj_path": config.INSTRUMENT_OBJECT_PATHS["ana"], 
                 "geom_class": AnaGeometry, 
                 "material": ana_material, 
-                "pos": [1, 0, 0], 
-                "geom_args": (1, 1, 1)
+                "pos": config.INSTRUMENT_INITIAL_POSITIONS["ana"], 
+                "geom_args": (
+                    config.INSTRUMENT_GEOMETRIES["ana"]["width"],
+                    config.INSTRUMENT_GEOMETRIES["ana"]["height"],
+                    config.INSTRUMENT_GEOMETRIES["ana"]["depth"]
+                )
             },
             {
                 "name": "brandon", 
-                "obj_path": "geometry/brandonOBJ.obj", 
+                "obj_path": config.INSTRUMENT_OBJECT_PATHS["brandon"], 
                 "geom_class": BrandonGeometry, 
                 "material": brandon_material, 
-                "pos": [3, 0, 0], 
-                "geom_args": (2, 2, 1)
+                "pos": config.INSTRUMENT_INITIAL_POSITIONS["brandon"], 
+                "geom_args": (
+                    config.INSTRUMENT_GEOMETRIES["brandon"]["width"],
+                    config.INSTRUMENT_GEOMETRIES["brandon"]["height"],
+                    config.INSTRUMENT_GEOMETRIES["brandon"]["depth"]
+                )
             },
         ]
 
         # Load instrument models
-        for config in instrument_configs:
+        for config_item in instrument_configs:
             rig = self._load_instrument_model(
-                name=config["name"],
-                obj_path=config["obj_path"],
-                geometry_class=config["geom_class"],
-                material_instance=config["material"],
-                initial_pos=config["pos"],
-                geom_constructor_args=config["geom_args"]
+                name=config_item["name"],
+                obj_path=config_item["obj_path"],
+                geometry_class=config_item["geom_class"],
+                material_instance=config_item["material"],
+                initial_pos=config_item["pos"],
+                geom_constructor_args=config_item["geom_args"]
             )
             if rig:
                 self.object_rigs.append(rig)

@@ -18,7 +18,14 @@ from core.matrix import Matrix
 
 # Project modules
 from arrow_manager import ArrowManager
-from config import *
+from config import (
+    ARROW_START_POSITION, ARROW_UNITS_PER_SECOND, ARROW_SPAWN_INTERVAL,
+    CAMERA_INITIAL_POSITION, CAMERA_INITIAL_ROTATION, CAMERA_FINAL_POSITION, CAMERA_FINAL_ROTATION, CAMERA_TRANSITION_TIME,
+    RING_POSITION, RING_INNER_RADIUS, RING_OUTER_RADIUS, RING_SCALE,
+    NIGHTCLUB_OBJECT_PATH, NIGHTCLUB_POSITION, NIGHTCLUB_SCALE_FACTOR,
+    MOVE_AMOUNT_MULTIPLIER, ROTATE_AMOUNT_MULTIPLIER,
+    SCREEN_SIZE
+)
 from game_phases import GamePhase
 from geometry.arrow import Arrow
 from geometry.ring import RingGeometry
@@ -165,7 +172,12 @@ class Game(Base):
     
     def _setup_nightclub(self):
         """Set up nightclub elements"""
-        self.nightClub = nightclub.NightClub(self.scene, "geometry/nightClub.obj", [0, -2.5, 10], 3)
+        self.nightClub = nightclub.NightClub(
+            self.scene, 
+            NIGHTCLUB_OBJECT_PATH, 
+            NIGHTCLUB_POSITION, 
+            NIGHTCLUB_SCALE_FACTOR
+        )
         self.nightClub_rig = self.nightClub.get_rig()
         self.scene.add(self.nightClub_rig)
     

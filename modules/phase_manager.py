@@ -8,7 +8,16 @@ from light.ambient import AmbientLight
 from light.directional import DirectionalLight
 from light.spotlight import SpotLight
 from core.matrix import Matrix
-from config import CAMERA_INITIAL_POSITION, CAMERA_INITIAL_ROTATION
+from config import (
+    CAMERA_INITIAL_POSITION, CAMERA_INITIAL_ROTATION,
+    SELECTION_PHASE_OBJECTS_Y, SELECTION_PHASE_CAMERA_POSITION,
+    SELECTION_PHASE_POSITIONS, SELECTION_PHASE_SPOTLIGHT_Y_OFFSET,
+    SELECTION_PHASE_SPOTLIGHT_COLORS, SELECTION_PHASE_SPOTLIGHT_BRIGHTNESS_MULTIPLIER,
+    SELECTION_PHASE_BACKGROUND_POSITION, SELECTION_PHASE_BACKGROUND_WIDTH,
+    SELECTION_PHASE_BACKGROUND_HEIGHT, SELECTION_PHASE_BACKGROUND_IMAGE,
+    GAMEPLAY_PHASE_POSITIONS, GAMEPLAY_PHASE_ROTATIONS,
+    GAMEPLAY_SELECTED_INSTRUMENT_POSITION, GAMEPLAY_SELECTED_INSTRUMENT_POSITIONS
+)
 from geometry.rectangle import RectangleGeometry
 from core_ext.mesh import Mesh
 from core_ext.texture import Texture
@@ -49,44 +58,45 @@ class PhaseManager:
         # Update UI for selection phase
         self.ui_manager.show_ui_for_selection_phase()
         
-        # Add background with background3500x3500.jpg
+        # Add background with configured background image
         if self.background in self.scene.descendant_list:
             self.scene.remove(self.background)
+        # Also check if attached to camera and remove
+        if self.background in self.camera_rig.descendant_list:
+            self.camera_rig.remove(self.background)
             
-        # Create a large rectangle for the background
-        # Using a wider rectangle to maintain the image aspect ratio
-        background_geometry = RectangleGeometry(width=80, height=40)
-        # Load background3500x3500.jpg texture
-        grid_texture = Texture(file_name="images/background3500x3500.jpg")
+        # Create a rectangle for the background using configured dimensions
+        background_geometry = RectangleGeometry(
+            width=SELECTION_PHASE_BACKGROUND_WIDTH,
+            height=SELECTION_PHASE_BACKGROUND_HEIGHT
+        )
+        # Load background texture from configured path
+        background_texture = Texture(file_name=SELECTION_PHASE_BACKGROUND_IMAGE)
         # Create material with the background texture
         background_material = TextureMaterial(
-            texture=grid_texture,
+            texture=background_texture,
             property_dict={
-                "doubleSide": True,
-                "repeatUV": [2, 1]  # Repeat the texture horizontally to avoid black sides
+                "doubleSide": True
             }
         )
         # Create mesh for the background
         self.background = Mesh(background_geometry, background_material)
-        # Position the background behind everything
-        self.background.set_position([0.5, 105, -15])  # Centered position and moved further back
+        # Position the background using configured position
+        self.background.set_position(SELECTION_PHASE_BACKGROUND_POSITION)
         # Add the background to the scene
         self.scene.add(self.background)
 
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
         # Position camera high up and facing "backwards" to see all objects
-        objects_y = 100  # Set the Y coordinate for the objects
-        camera_y = objects_y + 5  # Position camera slightly above objects
-        self.camera_rig.set_position([0.5, camera_y, 15])
+        self.camera_rig.set_position(SELECTION_PHASE_CAMERA_POSITION)
         
         # Reset all objects to their original positions and rotations with increased spacing, high up
-        positions = [[-4.5, objects_y, 0], [-1.5, objects_y, 0], [1.5, objects_y, 0], [4.5, objects_y, 1.5]]
         for i, rig in enumerate(self.object_rigs):
             # Reset the transformation matrix to identity
             rig._matrix = Matrix.make_identity()
             # Set the initial position
-            rig.set_position(positions[i])
+            rig.set_position(SELECTION_PHASE_POSITIONS[i])
             # Reset the scale (as highlight_selected_object changes it)
             rig.scale(1)  # Scale back to 1
         
@@ -109,23 +119,15 @@ class PhaseManager:
         self.scene.add(directional_light)
         
         # Add spotlights above each selectable object
-        spotlight_colors = [
-            [1.0, 1.0, 1.0],  # White for all spotlights
-            [1.0, 1.0, 1.0],  # White for all spotlights
-            [1.0, 1.0, 1.0],  # White for all spotlights
-            [1.0, 1.0, 1.0]   # White for all spotlights
-        ]
-        
         self.spotlights = []
-        spotlight_y_offset = 8  # Increased offset to move lights higher
-        for i, position in enumerate(positions):
+        for i, position in enumerate(SELECTION_PHASE_POSITIONS):
             # Position the spotlight above the object
-            spotlight_pos = [position[0], position[1] + spotlight_y_offset, position[2]]
+            spotlight_pos = [position[0], position[1] + SELECTION_PHASE_SPOTLIGHT_Y_OFFSET, position[2]]
             # Direct it downward toward the object
             spotlight_dir = [0, -1, 0]
             # Create the spotlight with a color matching the instrument
             spotlight = SpotLight(
-                color=spotlight_colors[i],
+                color=SELECTION_PHASE_SPOTLIGHT_COLORS[i],
                 position=spotlight_pos,
                 direction=spotlight_dir,
                 angle=35,                  # Cone angle (degrees)
@@ -153,6 +155,9 @@ class PhaseManager:
         # Remove the background if it exists
         if self.background in self.scene.descendant_list:
             self.scene.remove(self.background)
+        # Also check if the background is a child of the camera_rig
+        if self.background in self.camera_rig.descendant_list:
+            self.camera_rig.remove(self.background)
         
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
@@ -171,78 +176,12 @@ class PhaseManager:
         # Remove highlighting and reset active object
         self.remove_highlighting()
         self.active_object_rig._matrix = Matrix.make_identity()
-        self.active_object_rig.set_position([0, 0, 0])
         
         # Get the index of the selected instrument
         selected_index = self.object_rigs.index(self.active_object_rig)
         
-        # Define positions and rotations based on which instrument was selected
-        # Format: [positions for instrument 0, positions for instrument 1, positions for instrument 2, positions for instrument 3]
-        # Each "positions for instrument X" is a list of 3 [x,y,z] positions for the other instruments
-        positions_by_selection = [
-            # Positions when Miguel's instrument (index 0) is selected
-            [
-                None,                   # No position for Miguel (selected)
-                [10, -0.45, 10.5],      # Position for Ze's instrument
-                [12, -0.45, 7.2],       # Position for Ana's instrument
-                [10, -1, 4.5]           # Position for Brandon's instrument
-            ],
-            # Positions when Ze's instrument (index 1) is selected
-            [
-                [10, -0.45, 10.5],      # Position for Miguel's instrument
-                None,                   # No position for Ze (selected)
-                [12, -0.45, 7.2],       # Position for Ana's instrument
-                [10, -1, 4.5]           # Position for Brandon's instrument
-            ],
-            # Positions when Ana's instrument (index 2) is selected
-            [
-                [10, -0.45, 10.5],      # Position for Miguel's instrument
-                [12, -0.45, 7.2],       # Position for Ze's instrument
-                None,                   # No position for Ana (selected)
-                [10, -1, 4.5]           # Position for Brandon's instrument
-            ],
-            # Positions when Brandon's instrument (index 3) is selected
-            [
-                [10, -0.45, 10.5],      # Position for Miguel's instrument
-                [12, -0.45, 7.2],       # Position for Ze's instrument
-                [10, -1, 4.5],          # Position for Ana's instrument
-                None                    # No position for Brandon (selected)
-            ]
-        ]
-        
-        # Define rotations based on which instrument was selected
-        # Format similar to positions_by_selection
-        rotations_by_selection = [
-            # Rotations when Miguel's instrument (index 0) is selected
-            # the rotation axis are (x,y,z)
-            [
-                None,                       # No rotation for Miguel (selected)
-                [math.pi/4, math.pi/6, 0],          # Rotation for Ze's instrument
-                [math.pi/10, math.pi/2, 0],         # Rotation for Ana's instrument
-                [-math.pi/4, -math.pi/8, -math.pi/4]          # Rotation for Brandon's instrument
-            ],
-            # Rotations when Ze's instrument (index 1) is selected
-            [
-                [math.pi/4, math.pi/6, 0],          # Rotation for Miguel's instrument
-                None,                       # No rotation for Ze (selected)
-                [math.pi/10, math.pi/2, 0],         # Rotation for Ana's instrument
-                [-math.pi/4, -math.pi/8, -math.pi/4]          # Rotation for Brandon's instrument
-            ],
-            # Rotations when Ana's instrument (index 2) is selected
-            [
-                [math.pi/4, math.pi/6, 0],          # Rotation for Miguel's instrument
-                [math.pi/4, math.pi/6, 0],          # Rotation for Ze's instrument
-                None,                       # No rotation for Ana (selected)
-                [-math.pi/4, -math.pi/8, -math.pi/4]          # Rotation for Brandon's instrument
-            ],
-            # Rotations when Brandon's instrument (index 3) is selected
-            [
-                [math.pi/4, math.pi/6, 0],          # Rotation for Miguel's instrument
-                [math.pi/4, math.pi/6, 0],          # Rotation for Ze's instrument
-                [math.pi/10, math.pi/2, 0],         # Rotation for Ana's instrument
-                None                        # No rotation for Brandon (selected)
-            ]
-        ]
+        # Set position based on which instrument was selected
+        self.active_object_rig.set_position(GAMEPLAY_SELECTED_INSTRUMENT_POSITIONS[selected_index])
         
         # Apply positions and rotations based on selection
         for i, rig in enumerate(self.object_rigs):
@@ -250,8 +189,8 @@ class PhaseManager:
                 rig._matrix = Matrix.make_identity()
                 
                 # Get position and rotation for this instrument based on which one was selected
-                position = positions_by_selection[selected_index][i]
-                rotation = rotations_by_selection[selected_index][i]
+                position = GAMEPLAY_PHASE_POSITIONS[selected_index][i]
+                rotation = GAMEPLAY_PHASE_ROTATIONS[selected_index][i]
                 
                 if position:
                     rig.set_position(position)
@@ -284,14 +223,8 @@ class PhaseManager:
                     # Make the selected spotlight brighter
                     spotlight = self.spotlights[i]
                     # Get the original color based on the spotlight_colors list
-                    spotlight_colors = [
-                        [1.0, 1.0, 1.0],  # White for all spotlights
-                        [1.0, 1.0, 1.0],  # White for all spotlights
-                        [1.0, 1.0, 1.0],  # White for all spotlights
-                        [1.0, 1.0, 1.0]   # White for all spotlights
-                    ]
-                    # Increase brightness by 50%
-                    brighter_color = [c * 1.5 for c in spotlight_colors[i]]
+                    # Increase brightness by specified multiplier
+                    brighter_color = [c * SELECTION_PHASE_SPOTLIGHT_BRIGHTNESS_MULTIPLIER for c in SELECTION_PHASE_SPOTLIGHT_COLORS[i]]
                     # Ensure spotlight._color has only RGB components (no alpha)
                     spotlight._color = brighter_color[:3] if len(brighter_color) > 3 else brighter_color
                     # Update the cone material if it exists
@@ -302,20 +235,14 @@ class PhaseManager:
             else:
                 # Return other spotlights to normal brightness
                 if hasattr(self, 'spotlights') and i < len(self.spotlights):
-                    # Get the original color based on the spotlight_colors list
-                    spotlight_colors = [
-                        [1.0, 1.0, 1.0],  # White for all spotlights
-                        [1.0, 1.0, 1.0],  # White for all spotlights
-                        [1.0, 1.0, 1.0],  # White for all spotlights
-                        [1.0, 1.0, 1.0]   # White for all spotlights
-                    ]
+                    # Get the original color
                     spotlight = self.spotlights[i]
                     # Ensure spotlight._color has only RGB components (no alpha)
-                    spotlight._color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                    spotlight._color = SELECTION_PHASE_SPOTLIGHT_COLORS[i][:3] if len(SELECTION_PHASE_SPOTLIGHT_COLORS[i]) > 3 else SELECTION_PHASE_SPOTLIGHT_COLORS[i]
                     # Update the cone material if it exists
                     if spotlight.visual_cone:
                         # Ensure baseColor only gets RGB components
-                        rgb_color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                        rgb_color = SELECTION_PHASE_SPOTLIGHT_COLORS[i][:3] if len(SELECTION_PHASE_SPOTLIGHT_COLORS[i]) > 3 else SELECTION_PHASE_SPOTLIGHT_COLORS[i]
                         spotlight.visual_cone.material.uniform_dict["baseColor"].data = rgb_color
     
     def remove_highlighting(self):
@@ -329,19 +256,13 @@ class PhaseManager:
             
             # Reset spotlight colors
             if hasattr(self, 'spotlights') and i < len(self.spotlights):
-                spotlight_colors = [
-                    [1.0, 1.0, 1.0],  # White for all spotlights
-                    [1.0, 1.0, 1.0],  # White for all spotlights
-                    [1.0, 1.0, 1.0],  # White for all spotlights
-                    [1.0, 1.0, 1.0]   # White for all spotlights
-                ]
                 spotlight = self.spotlights[i]
                 # Ensure spotlight._color has only RGB components (no alpha)
-                spotlight._color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                spotlight._color = SELECTION_PHASE_SPOTLIGHT_COLORS[i][:3] if len(SELECTION_PHASE_SPOTLIGHT_COLORS[i]) > 3 else SELECTION_PHASE_SPOTLIGHT_COLORS[i]
                 # Update the cone material if it exists
                 if spotlight.visual_cone:
                     # Ensure baseColor only gets RGB components
-                    rgb_color = spotlight_colors[i][:3] if len(spotlight_colors[i]) > 3 else spotlight_colors[i]
+                    rgb_color = SELECTION_PHASE_SPOTLIGHT_COLORS[i][:3] if len(SELECTION_PHASE_SPOTLIGHT_COLORS[i]) > 3 else SELECTION_PHASE_SPOTLIGHT_COLORS[i]
                     spotlight.visual_cone.material.uniform_dict["baseColor"].data = rgb_color
     
     def handle_selection_input(self, input_handler):
