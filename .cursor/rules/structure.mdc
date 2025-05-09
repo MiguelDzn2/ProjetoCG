@@ -33,6 +33,7 @@ ProjetoCG/
 │   ├── arrow.py           # Arrow geometry for gameplay
 │   ├── ring.py            # Ring geometry for gameplay target
 │   ├── rectangle.py       # Rectangle geometry (used for UI)
+│   ├── cone.py            # Cone geometry (used for spotlight)
 │   ├── geometry.py        # Base geometry class
 │   ├── nightClub.py       # Geometry/logic for nightclub scene
 │   ├── miguelOBJ.obj      # 3D model files for instruments...
@@ -65,7 +66,8 @@ ProjetoCG/
 │   ├── ambient.py         # Ambient light implementation
 │   ├── directional.py     # Directional light implementation
 │   ├── spotlight.py       # Spotlight implementation with cone visualization
-│   └── point.py           # Point light implementation
+│   ├── point.py           # Point light implementation
+│   └── light.py           # Base light class
 │
 ├── music/                 # Music files for gameplay
 │   └── ...                # Various MP3 files
@@ -73,15 +75,10 @@ ProjetoCG/
 ├── keyframes/             # JSON files defining arrow spawn timing
 │   └── ...                # Various keyframe JSON files 
 │
-├── .cursor/               # Cursor-specific configuration
-│   └── rules/             # Cursor rules documentation
-│       ├── coding_standards.mdc
-│       ├── phases.mdc
-│       ├── project_files.mdc
-│       └── structure.mdc
-│
-├── .git/                  # Git repository data
-├── .idea/                 # IDE configuration (e.g., PyCharm)
+├── cursor_rules/          # Project documentation
+│   ├── dependencies.md    # List of project dependencies
+│   ├── structure.md       # This file - project structure
+│   └── phases.md          # Game phases documentation
 │
 ├── main.py                # Main entry point for the application
 ├── game.py                # Central game class integrating all modules
@@ -90,10 +87,11 @@ ProjetoCG/
 ├── config.py              # Game configuration constants
 ├── arrow_implementation.md # Documentation specific to arrow feature
 ├── uniform_explanation.md  # Documentation specific to uniforms
-├── README.md              # Project README file
+├── phase_explanation.md   # Documentation specific to phases
+├── requirements.txt       # Python requirements (non-Poetry)
 ├── pyproject.toml         # Project metadata and dependencies (Poetry)
 ├── poetry.lock            # Exact dependency versions (Poetry)
-└── .gitattributes         # Git file handling configuration
+└── README.md              # Project README file
 ```
 
 ## Main Components
@@ -102,6 +100,7 @@ ProjetoCG/
 
 The main entry point is simple and focused:
 - Imports the Game class
+- Handles command-line arguments including debug mode
 - Starts the game with configured screen size
 
 ### Central Game Class (`game.py`)
@@ -160,6 +159,15 @@ The game relies on several supporting systems:
 
 3. **Game Phases** (`game_phases.py`)
    - Defines the GamePhase enumeration (SELECTION, GAMEPLAY)
+
+### Light System
+
+The lighting system includes:
+- Base Light class for common functionality
+- AmbientLight for general illumination
+- DirectionalLight for directional illumination
+- SpotLight with visual cone implementation
+- PointLight for localized illumination
 
 ### Core Framework
 
