@@ -466,11 +466,20 @@ class Game(Base):
                 # trigger the falling animation for complete misses
                 if (hasattr(arrow, 'marked_as_miss') and arrow.marked_as_miss and 
                    (not hasattr(arrow, 'miss_animation_played') or not arrow.miss_animation_played)):
-                    print(f"Arrow[{arrow.unique_id}]: Triggering miss animation after completely exiting ring")
+                    
+                    # Apply penalty if not scored and not already penalized for being a miss
+                    if (not hasattr(arrow, 'scored') or not arrow.scored) and \
+                       (not hasattr(arrow, 'penalized_as_miss') or not arrow.penalized_as_miss):
+                        print(f"Arrow[{arrow.unique_id if hasattr(arrow, 'unique_id') else 'N/A'}]: Penalizing -25 for MISS (exited ring).")
+                        self.ui_manager.update_score(-25, is_perfect=False)
+                        self.ui_manager.update_collision_text("MISS!")
+                        arrow.penalized_as_miss = True
+                    
+                    print(f"Arrow[{arrow.unique_id if hasattr(arrow, 'unique_id') else 'N/A'}]: Triggering miss animation after completely exiting ring")
                     self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
                     arrow.miss_animation_played = True
                     
-                    # Mark the arrow as processed
+                    # Mark the arrow as processed if it has a unique_id
                     if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.processed_arrow_uuids:
                         self.processed_arrow_uuids.append(arrow.unique_id)
                         
@@ -627,11 +636,20 @@ class Game(Base):
             if not arrow.isVisible():
                 arrows_to_remove.append(i)
                 
-                # If this was a missed arrow, reset streak but DON'T trigger the falling animation here
-                # since that will now be handled in check_arrow_ring_collision when arrow exits the ring
-                if not hasattr(arrow, 'scored') or not arrow.scored:
-                    self.ui_manager.update_score(0, is_perfect=False)  # Reset streak
-                    self.ui_manager.update_collision_text("MISS!")
+                # If this was a missed arrow, not scored and not already penalized, apply penalty
+                if (not hasattr(arrow, 'scored') or not arrow.scored) and \
+                   (not hasattr(arrow, 'penalized_as_miss') or not arrow.penalized_as_miss):
+                    print(f"Arrow[{arrow.unique_id if hasattr(arrow, 'unique_id') else 'N/A'}]: Penalizing -25 for MISS (off-screen).")
+                    self.ui_manager.update_score(-25, is_perfect=False) # Apply -25 penalty
+                    arrow.penalized_as_miss = True
+                    # Ensure it's added to processed_arrow_uuids if it has an ID, as it's now fully handled
+                    if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.processed_arrow_uuids:
+                        self.processed_arrow_uuids.append(arrow.unique_id)
+                # If it wasn't scored (even if already penalized), still update UI text and reset streak if applicable
+                elif not hasattr(arrow, 'scored') or not arrow.scored:
+                    self.ui_manager.update_score(0, is_perfect=False) # Reset streak (no points change if already penalized)
+                
+                self.ui_manager.update_collision_text("MISS!") # Always show MISS if not scored
         
         # Process all arrows for collision
         for arrow in self.arrows:
