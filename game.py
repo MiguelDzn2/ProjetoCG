@@ -75,6 +75,7 @@ class Game(Base):
         self.processed_arrow_uuids = []
         self.current_waiting_arrow_id = None
         self.arrows = []
+        self.gameplay_key_press_consumed_by_hit_this_frame = False
         
         # Initialize debug pause state
         self.debug_paused = False
@@ -505,6 +506,8 @@ class Game(Base):
             not arrow.collision_checked and
             not (hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection)):
             
+            self.gameplay_key_press_consumed_by_hit_this_frame = True
+
             # Debug print collision information
             collision_type = "PERFECT" if arrow.potential_collision_value == 1 else "PARTIAL"
             print(f"COLLISION DETECTED - Arrow[{arrow.unique_id}]: {collision_type} (Value {arrow.potential_collision_value})")
@@ -533,6 +536,7 @@ class Game(Base):
                 self.animation_manager.trigger_random_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
             else:
                 # Partial hit - update score, don't trigger falling animation
+                print(f"DEBUG: Partial hit score. Arrow ID: {arrow.unique_id if hasattr(arrow, 'unique_id') else 'N/A'}, collision_value: {arrow.collision_value:.2f}, score_value: {score_value}")
                 self.ui_manager.update_score(score_value, is_perfect=False)
                 self.ui_manager.update_collision_text("HIT!")
                 
@@ -734,6 +738,7 @@ class Game(Base):
             self.renderer.render(self.scene, self.camera)
             
         elif self.current_phase == GamePhase.GAMEPLAY:
+            self.gameplay_key_press_consumed_by_hit_this_frame = False
             # Handle input for gameplay phase
             self.handle_gameplay_input()
             
@@ -763,6 +768,35 @@ class Game(Base):
                 
                 # Continue handling movement and removal of existing arrows
                 self.handle_arrows(self.delta_time)
+
+                # --- BEGIN PENALTY LOGIC FOR PRESSING KEY WHEN NO ARROW IN RING ---
+                # Check if any gameplay arrow key was pressed down this frame
+                up_key_down = self.input.is_key_down('up')
+                down_key_down = self.input.is_key_down('down')
+                left_key_down = self.input.is_key_down('left')
+                right_key_down = self.input.is_key_down('right')
+
+                any_gameplay_arrow_key_down_this_frame = up_key_down or down_key_down or left_key_down or right_key_down
+
+                if any_gameplay_arrow_key_down_this_frame and not self.gameplay_key_press_consumed_by_hit_this_frame:
+                    # Check if any active, scorable arrow is currently inside the ring.
+                    # This is still needed to differentiate between a key press that *could* have hit something
+                    # (but was the wrong key) vs. a key press when nothing was hittable.
+                    an_arrow_is_hittable_in_ring = False
+                    for arrow_candidate in self.arrows:
+                        if not (hasattr(arrow_candidate, 'ineligible_for_detection') and arrow_candidate.ineligible_for_detection) and \
+                           (hasattr(arrow_candidate, 'unique_id') and arrow_candidate.unique_id not in self.processed_arrow_uuids) and \
+                           (hasattr(arrow_candidate, 'potential_collision_value') and arrow_candidate.potential_collision_value > 0):
+                            an_arrow_is_hittable_in_ring = True
+                            break
+                    
+                    if not an_arrow_is_hittable_in_ring:
+                        # Apply penalty: An arrow key was pressed, it did not result in a hit, 
+                        # and no arrow was in a hittable position.
+                        self.ui_manager.update_score(-50, is_perfect=False)
+                        # Optionally, set a specific UI message for this type of miss, e.g.:
+                        # self.ui_manager.update_collision_text("EMPTY MISS!")
+                # --- END PENALTY LOGIC ---
             
             # Render scene with current camera
             self.renderer.render(self.scene, self.camera) 
