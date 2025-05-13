@@ -146,7 +146,7 @@ INSTRUMENT_OBJECT_PATHS = {
 INSTRUMENT_TEXTURE_PATHS = {
     "miguel": "images/miguelJPG.jpg",
     "ze": "images/zeJPG.jpg",
-    "ana": "images/anaJPG.jpg",
+    "ana": "images/anaPNG.png",
     "brandon": "images/brandonPNG.png"
 }
 
