@@ -73,30 +73,30 @@ GAMEPLAY_SELECTED_INSTRUMENT_POSITION = [0, 0, 0]  # Default center position [y,
 GAMEPLAY_PHASE_POSITIONS = [
     # Positions when Miguel's instrument (index 0) is selected
     [
-        None,                   # No position for Miguel (selected)
-        [10, -0.45, 10.5],      # Position for Ze's instrument
-        [12, -0.45, 7.2],       # Position for Ana's instrument
+        None,                   # No position for Miguel (selected) 
+        [10, -0.17, 10.5],      # Position for Ze's instrument [x,z,y]
+        [12, -0.60, 7.2],       # Position for Ana's instrument
         [10, -1, 4.5]           # Position for Brandon's instrument
     ],
     # Positions when Ze's instrument (index 1) is selected
     [
         [10, -0.45, 10.5],      # Position for Miguel's instrument
         None,                   # No position for Ze (selected)
-        [12, -0.45, 7.2],       # Position for Ana's instrument
+        [12, -0.60, 7.2],       # Position for Ana's instrument
         [10, -1, 4.5]           # Position for Brandon's instrument
     ],
     # Positions when Ana's instrument (index 2) is selected
     [
         [10, -0.45, 10.5],      # Position for Miguel's instrument
-        [12, -0.45, 7.2],       # Position for Ze's instrument
+        [12, 0.2, 7.2],       # Position for Ze's instrument [x,z,y]
         None,                   # No position for Ana (selected)
         [10, -1, 4.5]           # Position for Brandon's instrument
     ],
     # Positions when Brandon's instrument (index 3) is selected
     [
         [10, -0.45, 10.5],      # Position for Miguel's instrument
-        [12, -0.45, 7.2],       # Position for Ze's instrument
-        [10, -1, 4.5],          # Position for Ana's instrument
+        [12, 0.2, 7.2],       # Position for Ze's instrument [x,z,y]
+        [10, -0.8, 4],          # Position for Ana's instrument
         None                    # No position for Brandon (selected)
     ]
 ]
@@ -107,7 +107,8 @@ GAMEPLAY_PHASE_ROTATIONS = [
     # Rotations when Miguel's instrument (index 0) is selected
     [
         None,                            # No rotation for Miguel (selected)
-        [math.pi/4, math.pi/6, 0],       # Rotation for Ze's instrument
+        #[math.pi/4, math.pi/6, 0],       # Rotation for Ze's instrument
+        [0, 0, 0], # Ze
         [math.pi/10, math.pi/2, 0],      # Rotation for Ana's instrument
         [-math.pi/4, -math.pi/8, -math.pi/4]  # Rotation for Brandon's instrument
     ],
