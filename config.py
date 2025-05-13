@@ -76,21 +76,21 @@ GAMEPLAY_PHASE_POSITIONS = [
         None,                   # No position for Miguel (selected) 
         [10, -0.17, 10.5],      # Position for Ze's instrument [x,z,y]
         [12, -0.60, 7.2],       # Position for Ana's instrument
-        [10, -1, 4.5]           # Position for Brandon's instrument
+        [10, -0.5, 4]           # Position for Brandon's instrument
     ],
     # Positions when Ze's instrument (index 1) is selected
     [
         [10, -0.45, 10.5],      # Position for Miguel's instrument
         None,                   # No position for Ze (selected)
         [12, -0.60, 7.2],       # Position for Ana's instrument
-        [10, -1, 4.5]           # Position for Brandon's instrument
+        [10, -0.5, 4]           # Position for Brandon's instrument
     ],
     # Positions when Ana's instrument (index 2) is selected
     [
         [10, -0.45, 10.5],      # Position for Miguel's instrument
         [12, 0.2, 7.2],       # Position for Ze's instrument [x,z,y]
         None,                   # No position for Ana (selected)
-        [10, -1, 4.5]           # Position for Brandon's instrument
+        [10, -0.5, 4]           # Position for Brandon's instrument
     ],
     # Positions when Brandon's instrument (index 3) is selected
     [
