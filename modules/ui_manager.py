@@ -37,6 +37,9 @@ class UIManager:
         self.collision_mesh = None
         self.collision_rig = None
         self.collision_texture = None
+        self.debug_info_mesh = None
+        self.debug_info_rig = None
+        self.debug_info_texture = None
         self.streak_arrows = []
         
         # Create UI elements
@@ -44,6 +47,7 @@ class UIManager:
         self._create_streak_display()
         self._create_collision_display()
         self._create_title_display()
+        self._create_debug_info_display()
     
     def _create_score_display(self):
         """Create the score display UI element"""
@@ -135,6 +139,35 @@ class UIManager:
         self.title_rig = MovementRig()
         self.title_rig.add(self.title_mesh)
         # Title rig position is set when adding to scene
+    
+    def _create_debug_info_display(self):
+        """Create the debug info display UI element (only shown in debug mode)"""
+        debug_info_texture = TextTexture(
+            text="DEBUG INFO",
+            system_font_name="Arial",
+            font_size=36,  # Increased font size for better visibility
+            font_color=(255, 255, 0),  # Yellow text
+            background_color=(0, 0, 100, 200),  # Semi-transparent blue background
+            transparent=True,
+            image_width=800,  # Wider to fit all text on one line with Z rotation
+            image_height=80,   # Reduced height since we only have one line
+            align_horizontal=0.5,  # Center text horizontally
+            align_vertical=0.5,  # Vertically centered
+            image_border_width=3,  # Thicker border
+            image_border_color=(255, 255, 0)  # Yellow border
+        )
+        debug_info_material = TextureMaterial(texture=debug_info_texture, property_dict={"doubleSide": True})
+        debug_info_geometry = RectangleGeometry(width=8.0, height=0.8)  # Wider rectangle for compact text
+        self.debug_info_mesh = Mesh(debug_info_geometry, debug_info_material)
+        
+        # Create the debug info rig
+        self.debug_info_rig = MovementRig()
+        self.debug_info_rig.add(self.debug_info_mesh)
+        # Position in center of screen
+        self.debug_info_rig.set_position([0, 0, -3])
+        
+        # Store the debug info texture for updates
+        self.debug_info_texture = debug_info_texture
     
     def show_ui_for_selection_phase(self):
         """Configure UI for selection phase"""
@@ -236,4 +269,13 @@ class UIManager:
 
     def is_arrow_in_streak(self, arrow_id):
         """Check if arrow is already counted in streak"""
-        return arrow_id in self.streak_arrows 
+        return arrow_id in self.streak_arrows
+
+    def update_debug_info(self, text):
+        """Update the debug info text (only for debug mode)"""
+        if self.debug_info_texture is not None:
+            self.debug_info_texture.update_text(text)
+            
+            # Add debug info to camera if not already there
+            if self.debug_info_rig is not None and self.debug_info_rig not in self.camera.descendant_list:
+                self.camera.add(self.debug_info_rig) 

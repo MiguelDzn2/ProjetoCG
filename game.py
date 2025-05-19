@@ -6,6 +6,9 @@ Integrates all modules into a cohesive gameplay experience.
 import math
 import time
 import random
+import os
+import numpy as np
+from datetime import datetime
 from enum import Enum, auto
 
 # Core framework
@@ -21,6 +24,7 @@ from arrow_manager import ArrowManager
 from config import (
     ARROW_START_POSITION, ARROW_UNITS_PER_SECOND, ARROW_SPAWN_INTERVAL,
     CAMERA_INITIAL_POSITION, CAMERA_INITIAL_ROTATION, CAMERA_FINAL_POSITION, CAMERA_FINAL_ROTATION, CAMERA_TRANSITION_TIME,
+    CAMERA_WAYPOINTS,
     RING_POSITION, RING_INNER_RADIUS, RING_OUTER_RADIUS, RING_SCALE,
     NIGHTCLUB_OBJECT_PATH, NIGHTCLUB_POSITION, NIGHTCLUB_SCALE_FACTOR,
     MOVE_AMOUNT_MULTIPLIER, ROTATE_AMOUNT_MULTIPLIER,
@@ -32,7 +36,6 @@ from geometry.ring import RingGeometry
 from material.surface import SurfaceMaterial
 import geometry.nightClub as nightclub
 from geometry.parametric import ParametricGeometry
-import numpy as np
 
 # Custom modules
 from modules.animation import AnimationManager
@@ -126,6 +129,18 @@ class Game(Base):
         
         # Initialize camera animation properties
         self.camera_animation_time = 0
+        self.active_waypoint_index = -1
+        self.waypoint_transition_start_time = 0
+        self.waypoint_transition_duration = 4.0  # Each waypoint transition takes 4 seconds
+        self.start_position = list(CAMERA_FINAL_POSITION)
+        self.start_rotation = list(CAMERA_FINAL_ROTATION)
+        self.target_position = None
+        self.target_rotation = None
+        self.target_waypoint = None
+        
+        # Validate CAMERA_WAYPOINTS at initialization
+        if len(CAMERA_WAYPOINTS) != 10:
+            print(f"Warning: Expected 10 camera waypoints, but found {len(CAMERA_WAYPOINTS)}")
         
         # Set up debug visualization if in debug mode
         if self.debug_mode:
@@ -196,6 +211,9 @@ class Game(Base):
         )
         grid.rotate_x(-math.pi / 2)
         self.scene.add(grid)
+        
+        # Initialize the debug info display
+        self.update_camera_debug_text()
     
     def _add_ring_debug_visualization(self):
         """Add visual indicators for the inner and outer ring boundaries"""
@@ -248,49 +266,122 @@ class Game(Base):
         self.camera.add(self.debug_text_mesh)  # Add to camera so it's always visible
     
     def update_camera_animation(self):
-        """Update camera position based on animation time"""
+        """Update camera position based on animation time and waypoints"""
         # During the first 0.1 seconds, use initial position without interpolation
         if self.camera_animation_time < 0.1:
             self.camera_rig._matrix = Matrix.make_identity()
             self.camera_rig.set_position(CAMERA_INITIAL_POSITION)
-            if CAMERA_INITIAL_ROTATION[0] != 0: self.camera_rig.rotate_x(CAMERA_INITIAL_ROTATION[0])
-            if CAMERA_INITIAL_ROTATION[1] != 0: self.camera_rig.rotate_y(CAMERA_INITIAL_ROTATION[1])
-            if CAMERA_INITIAL_ROTATION[2] != 0: self.camera_rig.rotate_z(CAMERA_INITIAL_ROTATION[2])
+            # Convert degrees to radians when applying rotations
+            if CAMERA_INITIAL_ROTATION[0] != 0: 
+                self.camera_rig.rotate_x(math.radians(CAMERA_INITIAL_ROTATION[0]))
+            if CAMERA_INITIAL_ROTATION[1] != 0: 
+                self.camera_rig.rotate_y(math.radians(CAMERA_INITIAL_ROTATION[1]))
+            if CAMERA_INITIAL_ROTATION[2] != 0: 
+                self.camera_rig.rotate_z(math.radians(CAMERA_INITIAL_ROTATION[2]))
             return
         
-        # If animation time is beyond transition time, use final position
-        if self.camera_animation_time >= CAMERA_TRANSITION_TIME + 0.1:
+        # Initial transition from initial to final/secondary position
+        initial_transition_end_time = CAMERA_TRANSITION_TIME + 0.1
+        if self.camera_animation_time < initial_transition_end_time:
+            # During transition, interpolate between initial and final positions
+            t = (self.camera_animation_time - 0.1) / CAMERA_TRANSITION_TIME  # Normalized time (0 to 1)
+            
+            # Linear interpolation for position and rotation
+            new_position = [
+                CAMERA_INITIAL_POSITION[0] + (CAMERA_FINAL_POSITION[0] - CAMERA_INITIAL_POSITION[0]) * t,
+                CAMERA_INITIAL_POSITION[1] + (CAMERA_FINAL_POSITION[1] - CAMERA_INITIAL_POSITION[1]) * t,
+                CAMERA_INITIAL_POSITION[2] + (CAMERA_FINAL_POSITION[2] - CAMERA_INITIAL_POSITION[2]) * t
+            ]
+            
+            new_rotation = [
+                CAMERA_INITIAL_ROTATION[0] + (CAMERA_FINAL_ROTATION[0] - CAMERA_INITIAL_ROTATION[0]) * t,
+                CAMERA_INITIAL_ROTATION[1] + (CAMERA_FINAL_ROTATION[1] - CAMERA_INITIAL_ROTATION[1]) * t,
+                CAMERA_INITIAL_ROTATION[2] + (CAMERA_FINAL_ROTATION[2] - CAMERA_INITIAL_ROTATION[2]) * t
+            ]
+            
+            # Apply new transforms
             self.camera_rig._matrix = Matrix.make_identity()
-            self.camera_rig.set_position(CAMERA_FINAL_POSITION)
-            if CAMERA_FINAL_ROTATION[0] != 0: self.camera_rig.rotate_x(CAMERA_FINAL_ROTATION[0])
-            if CAMERA_FINAL_ROTATION[1] != 0: self.camera_rig.rotate_y(CAMERA_FINAL_ROTATION[1])
-            if CAMERA_FINAL_ROTATION[2] != 0: self.camera_rig.rotate_z(CAMERA_FINAL_ROTATION[2])
+            self.camera_rig.set_position(new_position)
+            
+            # Apply all rotations - convert from degrees to radians for the rotation methods
+            self.camera_rig.rotate_x(math.radians(new_rotation[0]))
+            self.camera_rig.rotate_y(math.radians(new_rotation[1]))
+            self.camera_rig.rotate_z(math.radians(new_rotation[2]))
             return
         
-        # During transition, interpolate between initial and final positions
-        t = (self.camera_animation_time - 0.1) / CAMERA_TRANSITION_TIME  # Normalized time (0 to 1)
+        # After initial transition, handle waypoint transitions
         
-        # Linear interpolation for position and rotation
-        new_position = [
-            CAMERA_INITIAL_POSITION[0] + (CAMERA_FINAL_POSITION[0] - CAMERA_INITIAL_POSITION[0]) * t,
-            CAMERA_INITIAL_POSITION[1] + (CAMERA_FINAL_POSITION[1] - CAMERA_INITIAL_POSITION[1]) * t,
-            CAMERA_INITIAL_POSITION[2] + (CAMERA_FINAL_POSITION[2] - CAMERA_INITIAL_POSITION[2]) * t
-        ]
+        # Get current music time from music system
+        current_music_time = self.music_system.get_music_time()
         
-        new_rotation = [
-            CAMERA_INITIAL_ROTATION[0] + (CAMERA_FINAL_ROTATION[0] - CAMERA_INITIAL_ROTATION[0]) * t,
-            CAMERA_INITIAL_ROTATION[1] + (CAMERA_FINAL_ROTATION[1] - CAMERA_INITIAL_ROTATION[1]) * t,
-            CAMERA_INITIAL_ROTATION[2] + (CAMERA_FINAL_ROTATION[2] - CAMERA_INITIAL_ROTATION[2]) * t
-        ]
+        # Check if we need to start a transition to a new waypoint
+        next_waypoint_index = self.active_waypoint_index + 1
+        if next_waypoint_index < len(CAMERA_WAYPOINTS):
+            next_waypoint = CAMERA_WAYPOINTS[next_waypoint_index]
+            
+            # Start transition to next waypoint when music time reaches waypoint time
+            if current_music_time >= next_waypoint["time"]:
+                print(f"Starting camera transition to waypoint {next_waypoint_index} at music time {current_music_time:.2f}s")
+                
+                # Store starting values for this transition
+                if self.active_waypoint_index < 0:
+                    # First waypoint after initial transition
+                    self.start_position = list(CAMERA_FINAL_POSITION)
+                    self.start_rotation = list(CAMERA_FINAL_ROTATION)
+                else:
+                    # Previous waypoint's target values
+                    self.start_position = list(self.target_waypoint["position"])
+                    self.start_rotation = list(self.target_waypoint["rotation"])
+                
+                # Update state for new waypoint
+                self.active_waypoint_index = next_waypoint_index
+                self.waypoint_transition_start_time = current_music_time
+                self.target_waypoint = next_waypoint
+                self.target_position = list(next_waypoint["position"])
+                self.target_rotation = list(next_waypoint["rotation"])
+                
+                print(f"Camera transition: {self.start_position} → {self.target_position}, rotation: {self.start_rotation} → {self.target_rotation}")
         
-        # Apply new transforms
-        self.camera_rig._matrix = Matrix.make_identity()
-        self.camera_rig.set_position(new_position)
-        
-        # Apply rotations
-        if new_rotation[0] != 0: self.camera_rig.rotate_x(new_rotation[0])
-        if new_rotation[1] != 0: self.camera_rig.rotate_y(new_rotation[1])
-        if new_rotation[2] != 0: self.camera_rig.rotate_z(new_rotation[2])
+        # If we have an active waypoint transition, update camera position/rotation
+        if self.active_waypoint_index >= 0 and hasattr(self, 'target_position') and hasattr(self, 'start_position'):
+            # Calculate how far we are through the current transition (0 to 1)
+            transition_elapsed = current_music_time - self.waypoint_transition_start_time
+            t = min(transition_elapsed / self.waypoint_transition_duration, 1.0)  # Clamped to [0,1]
+            
+            if t < 1.0:  # Still transitioning
+                # Linear interpolation for position
+                new_position = [
+                    self.start_position[0] + (self.target_position[0] - self.start_position[0]) * t,
+                    self.start_position[1] + (self.target_position[1] - self.start_position[1]) * t,
+                    self.start_position[2] + (self.target_position[2] - self.start_position[2]) * t
+                ]
+                
+                # Linear interpolation for rotation
+                new_rotation = [
+                    self.start_rotation[0] + (self.target_rotation[0] - self.start_rotation[0]) * t,
+                    self.start_rotation[1] + (self.target_rotation[1] - self.start_rotation[1]) * t,
+                    self.start_rotation[2] + (self.target_rotation[2] - self.start_rotation[2]) * t
+                ]
+                
+                # Apply new transforms
+                self.camera_rig._matrix = Matrix.make_identity()
+                self.camera_rig.set_position(new_position)
+                
+                # Apply all rotations - convert from degrees to radians for the rotation methods
+                self.camera_rig.rotate_x(math.radians(new_rotation[0]))
+                self.camera_rig.rotate_y(math.radians(new_rotation[1]))
+                self.camera_rig.rotate_z(math.radians(new_rotation[2]))
+            elif t >= 1.0:
+                # Transition complete, position camera exactly at target
+                self.camera_rig._matrix = Matrix.make_identity()
+                self.camera_rig.set_position(self.target_position)
+                self.camera_rig.rotate_x(math.radians(self.target_rotation[0]))
+                self.camera_rig.rotate_y(math.radians(self.target_rotation[1]))
+                self.camera_rig.rotate_z(math.radians(self.target_rotation[2]))
+                
+                # If we've reached the final waypoint, log completion
+                if self.active_waypoint_index == len(CAMERA_WAYPOINTS) - 1:
+                    print(f"Completed all camera waypoints at music time {current_music_time:.2f}s")
     
     def calculate_arrow_travel_time(self):
         """Calculate how long it takes an arrow to travel from spawn to target ring"""
@@ -604,17 +695,8 @@ class Game(Base):
             return 0
     
     def handle_arrows(self, delta_time):
-        """
-        Update all arrows and handle their collisions.
-        
-        Parameters:
-            delta_time: Time elapsed since last frame
-        """
-        # If we're paused in debug mode, don't update arrows
-        if self.debug_mode and self.debug_paused:
-            return
-        
-        # Check if any arrow key is pressed
+        """Handle arrow movement, collision detection, and removal"""
+        # Check for any arrow key press this frame
         is_arrow_key_pressed = (self.input.is_key_pressed('up') or 
                                self.input.is_key_pressed('down') or 
                                self.input.is_key_pressed('left') or 
@@ -649,7 +731,9 @@ class Game(Base):
                 elif not hasattr(arrow, 'scored') or not arrow.scored:
                     self.ui_manager.update_score(0, is_perfect=False) # Reset streak (no points change if already penalized)
                 
-                self.ui_manager.update_collision_text("MISS!") # Always show MISS if not scored
+                # Only show MISS if not in debug mode (to avoid overwriting camera info)
+                if not self.debug_mode:
+                    self.ui_manager.update_collision_text("MISS!")
         
         # Process all arrows for collision
         for arrow in self.arrows:
@@ -685,18 +769,40 @@ class Game(Base):
         
         # Camera controls only available in debug mode
         if self.debug_mode:
-            # Camera rotation with I and P keys
+            # Camera rotation with I, J, K, L keys
             if self.input.is_key_pressed('i'):
-                self.camera_rig.rotate_y(rotate_amount)
-            if self.input.is_key_pressed('p'):
-                self.camera_rig.rotate_y(-rotate_amount)
-            
-            # Camera position movement with J, K, L keys
-            if self.input.is_key_pressed('j'):
-                self.camera_rig.translate(-move_amount, 0, 0)  # Move left
+                self.camera_rig.rotate_x(rotate_amount)  # Look up
+                # Update rotation tracking
+                if hasattr(self.camera_rig, 'x_rotation'):
+                    self.camera_rig.x_rotation += rotate_amount * (180/math.pi)
             if self.input.is_key_pressed('k'):
-                self.camera_rig.translate(0, 0, move_amount)   # Move backward
+                self.camera_rig.rotate_x(-rotate_amount) # Look down
+                # Update rotation tracking
+                if hasattr(self.camera_rig, 'x_rotation'):
+                    self.camera_rig.x_rotation -= rotate_amount * (180/math.pi)
+            if self.input.is_key_pressed('j'):
+                self.camera_rig.rotate_y(rotate_amount)  # Turn left
+                # y rotation is tracked in the rotate_y method
             if self.input.is_key_pressed('l'):
+                self.camera_rig.rotate_y(-rotate_amount) # Turn right
+                # y rotation is tracked in the rotate_y method
+                
+            # Add Z rotation controls with O and P keys
+            if self.input.is_key_pressed('o'):
+                self.camera_rig.rotate_z(rotate_amount)  # Roll left
+                # z rotation is tracked in the rotate_z method
+            if self.input.is_key_pressed('p'):
+                self.camera_rig.rotate_z(-rotate_amount) # Roll right
+                # z rotation is tracked in the rotate_z method
+            
+            # Camera position movement with W, A, S, D keys
+            if self.input.is_key_pressed('w'):
+                self.camera_rig.translate(0, 0, -move_amount)  # Move forward
+            if self.input.is_key_pressed('s'):
+                self.camera_rig.translate(0, 0, move_amount)   # Move backward
+            if self.input.is_key_pressed('a'):
+                self.camera_rig.translate(-move_amount, 0, 0)  # Move left
+            if self.input.is_key_pressed('d'):
                 self.camera_rig.translate(move_amount, 0, 0)   # Move right
                 
             # Allow immediate resume from pause with spacebar
@@ -705,6 +811,9 @@ class Game(Base):
                 self.debug_pause_arrow = None
                 self.ui_manager.update_collision_text(" ")
                 print("Debug pause canceled by user")
+            
+            # Update camera position and rotation text
+            self.update_camera_debug_text()
         
         # Create a general animation state check
         is_animating = self.animation_manager.is_animating()
@@ -735,6 +844,33 @@ class Game(Base):
             self.animation_manager.update_jump_animation(self.active_object_rig)
         if self.animation_manager.is_falling:
             self.animation_manager.update_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
+    
+    def update_camera_debug_text(self):
+        """Display camera position and rotation text in debug mode"""
+        if self.debug_mode:
+            # Get camera position
+            pos = self.camera_rig.global_position
+            
+            # Get camera rotation using the new tracking method
+            rotation = {'x': 0, 'y': 0, 'z': 0}
+            if hasattr(self.camera_rig, 'get_rotation_values'):
+                try:
+                    rotation = self.camera_rig.get_rotation_values()
+                    # Normalize rotation values to -360 to 360 degrees range
+                    for axis in ['x', 'y', 'z']:
+                        # Use modulo to wrap the value, then handle the -360 to 0 range
+                        rotation[axis] %= 360
+                        # If value is greater than 180, convert to negative equivalent
+                        if rotation[axis] > 180:
+                            rotation[axis] -= 360
+                except Exception as e:
+                    print(f"Warning: Could not get camera rotation values: {e}")
+            
+            # Format the debug text - very compact format with all three rotation values
+            debug_text = f"Pos: ({pos[0]:.1f},{pos[1]:.1f},{pos[2]:.1f}), Rot: ({rotation['x']:.1f},{rotation['y']:.1f},{rotation['z']:.1f})"
+            
+            # Update the dedicated debug info display
+            self.ui_manager.update_debug_info(debug_text)
     
     def update(self):
         """Update game logic (called every frame)"""
@@ -776,6 +912,10 @@ class Game(Base):
                 if self.debug_pause_timer >= self.debug_pause_duration or self.input.is_key_down('space'):
                     self.debug_paused = False
                     self.debug_pause_arrow = None
+                    # In debug mode, restore camera debug info
+                    if self.debug_mode:
+                        self.update_camera_debug_text()
+                    # Always clear the collision text
                     self.ui_manager.update_collision_text(" ")
                     print("Debug pause ended - game resumed")
             else:
@@ -812,8 +952,9 @@ class Game(Base):
                         # Apply penalty: An arrow key was pressed, it did not result in a hit, 
                         # and no arrow was in a hittable position.
                         self.ui_manager.update_score(-50, is_perfect=False)
-                        # Optionally, set a specific UI message for this type of miss, e.g.:
-                        # self.ui_manager.update_collision_text("EMPTY MISS!")
+                        # Show penalty message (only in non-debug mode)
+                        if not self.debug_mode:
+                            self.ui_manager.update_collision_text("EMPTY MISS!")
                 # --- END PENALTY LOGIC ---
             
             # Render scene with current camera

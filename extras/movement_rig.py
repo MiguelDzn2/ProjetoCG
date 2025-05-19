@@ -19,6 +19,11 @@ class MovementRig(Object3D):
         # Control rate of movement
         self._units_per_second = units_per_second
         self._degrees_per_second = degrees_per_second
+        
+        # Track rotation values for debug display
+        self.x_rotation = 0  # Look up/down (pitch)
+        self.y_rotation = 0  # Turn left/right (yaw)
+        self.z_rotation = 0  # Roll
 
         # Customizable key mappings.
         # Defaults: W, A, S, D, R, F (move), Q, E (turn), T, G (look)
@@ -62,5 +67,30 @@ class MovementRig(Object3D):
             self.rotate_y(rotate_amount)
         if input_object.is_key_pressed(self.KEY_LOOK_UP):
             self._look_attachment.rotate_x(rotate_amount)
+            self.x_rotation += rotate_amount * (180/math.pi)  # Track rotation in degrees
         if input_object.is_key_pressed(self.KEY_LOOK_DOWN):
             self._look_attachment.rotate_x(-rotate_amount)
+            self.x_rotation -= rotate_amount * (180/math.pi)  # Track rotation in degrees
+
+    def rotate_y(self, angle):
+        """Override rotate_y to track rotation values"""
+        self.y_rotation += angle * (180/math.pi)  # Convert to degrees for tracking
+        super().rotate_y(angle)
+        
+    def rotate_x(self, angle):
+        """Override rotate_x to track rotation values"""
+        self.x_rotation += angle * (180/math.pi)  # Convert to degrees for tracking
+        super().rotate_x(angle)
+        
+    def rotate_z(self, angle):
+        """Override rotate_z to track rotation values"""
+        self.z_rotation += angle * (180/math.pi)  # Convert to degrees for tracking
+        super().rotate_z(angle)
+
+    def get_rotation_values(self):
+        """Return rotation values in degrees for debugging"""
+        return {
+            'x': self.x_rotation,  # Pitch (look up/down)
+            'y': self.y_rotation,  # Yaw (turn left/right)
+            'z': self.z_rotation   # Roll
+        }

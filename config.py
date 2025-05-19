@@ -8,10 +8,68 @@ RING_POSITION = [1, -0.02, 8]  # [x, z, y]
 
 # Camera Configuration
 CAMERA_INITIAL_POSITION = [0, 1.2, 7]  # X, Y, Z
-CAMERA_INITIAL_ROTATION = [0, -math.pi/2, 0]  # X, Y, Z rotations in radians
+CAMERA_INITIAL_ROTATION = [0, -90, 0]  # X, Y, Z rotations in degrees
 CAMERA_FINAL_POSITION = [-3, 1.2, 12.5]
-CAMERA_FINAL_ROTATION = [0, -math.pi/4, 0]
+CAMERA_FINAL_ROTATION = [0, -45, 0]  # X, Y, Z rotations in degrees
 CAMERA_TRANSITION_TIME = 4.0
+
+# Camera waypoints configuration - visited after secondary position
+# Each waypoint has:
+# - time: at which the transition begins (in seconds of music time)
+# - position: target XZY coordinates
+# - rotation: target XYZ Euler angles (in degrees)
+CAMERA_WAYPOINTS = [
+    {
+        "time": 8.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+    {
+        "time": 12.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+    {
+        "time": 16.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+        {
+        "time": 20.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+        {
+        "time": 24.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+        {
+        "time": 28.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+        {
+        "time": 32.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+        {
+        "time": 36.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+        {
+        "time": 40.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+        {
+        "time": 44.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    }
+]
 
 # Movement Configuration
 MOVE_AMOUNT_MULTIPLIER = 2
