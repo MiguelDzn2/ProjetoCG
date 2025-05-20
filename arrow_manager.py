@@ -85,7 +85,7 @@ class ArrowManager:
             self.arrows.append(self.create_single_arrow())
 
     def check_arrow_ring_collision(self, arrow):
-        """Check for collision between an arrow and the target ring, using pivot-relative positions."""
+        """Check for collision between an arrow and the target ring, using global positions."""
         # If arrow has been marked as ineligible for detection, immediately return 0
         if hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection:
             return 0
@@ -94,43 +94,53 @@ class ArrowManager:
         if hasattr(arrow, 'unique_id') and arrow.unique_id in self.processed_arrow_uuids:
             return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
             
-        # Use local_position of the target_ring, which is relative to the arrow_ring_pivot
-        ring_pos = self.target_ring.local_position 
+        # Use global_position of the target_ring, since pivot is now under camera
+        ring_pos = self.target_ring.global_position 
         
-        # Ring radii are based on its geometry and scale, assumed to be correct in local space
+        # Ring radii are based on its geometry and scale, adjusted to world scale if needed
         inner_radius = self.target_ring.geometry.inner_radius * self.target_ring.scale_factors[0]
         outer_radius = self.target_ring.geometry.outer_radius * self.target_ring.scale_factors[0]
         
-        # Arrow's bounding rectangle should be in its local space or compatible pivot space
-        min_x, min_z, max_x, max_z = arrow.get_bounding_rect() # Assuming this gives local coords or pivot-relative
+        # Get arrow's bounding rectangle in its local space
+        min_x, min_z, max_x, max_z = arrow.get_bounding_rect()
         
-        # Arrow's position is also local to its parent (the pivot)
-        arrow_pos = arrow.rig.local_position
+        # Get arrow's global position for calculations
+        arrow_pos = arrow.rig.global_position
         
-        # Calculate distance between arrow center and ring center (all in pivot's local XZ plane)
+        # Calculate distance between arrow center and ring center in global space
         dx = arrow_pos[0] - ring_pos[0]
         dz = arrow_pos[2] - ring_pos[2]  # Use Z coordinate for vertical ring
         center_distance = math.sqrt(dx*dx + dz*dz)
         
-        # Calculate the corner points of the bounding rectangle
-        # For a vertical ring, we need the points in the XZ plane
-        corner_points = [
-            (min_x, min_z),  # Bottom-left
-            (max_x, min_z),  # Bottom-right
-            (max_x, max_z),  # Top-right
-            (min_x, max_z)   # Top-left
+        # Define corner points in the local space of the arrow
+        local_corners = [
+            [min_x, min_z],  # Bottom-left
+            [max_x, min_z],  # Bottom-right
+            [max_x, max_z],  # Top-right
+            [min_x, max_z]   # Top-left
         ]
         
-        # Calculate distances from each corner of the bounding box to the ring center
+        # Calculate distances from each corner to the ring center
         corner_distances = []
-        for corner_x, corner_z in corner_points:
-            # Use XZ distance for vertical ring
-            dist = math.sqrt((corner_x - ring_pos[0])**2 + (corner_z - ring_pos[2])**2)
+        for local_x, local_z in local_corners:
+            # Convert the local corner position to global
+            global_x = arrow_pos[0] + local_x
+            global_z = arrow_pos[2] + local_z
+            
+            # Calculate distance to ring center
+            dist = math.sqrt((global_x - ring_pos[0])**2 + (global_z - ring_pos[2])**2)
             corner_distances.append(dist)
         
         # Visual debug: Update corner markers if in debug mode and the arrow has debug corner markers
         if self.debug_mode and hasattr(arrow, 'debug_corner_markers'):
-            for i, ((corner_x, corner_z), dist) in enumerate(zip(corner_points, corner_distances)):
+            # Create global corner coordinates for the debug markers
+            global_corners = []
+            for local_x, local_z in local_corners:
+                global_x = arrow_pos[0] + local_x
+                global_z = arrow_pos[2] + local_z
+                global_corners.append((global_x, global_z))
+                
+            for i, ((global_x, global_z), dist) in enumerate(zip(global_corners, corner_distances)):
                 # Determine color based on whether the corner is inside inner ring, outer ring, or outside
                 if dist < inner_radius:
                     color = [0, 1, 0]  # Green for inside inner ring
@@ -142,7 +152,7 @@ class ArrowManager:
                 # Update marker position and color
                 marker = arrow.debug_corner_markers[i]
                 # For visual debug, place markers in 3D space at their actual positions
-                marker.set_position([corner_x, arrow_pos[1], corner_z])
+                marker.set_position([global_x, arrow_pos[1], global_z])
                 marker.material.set_properties({"baseColor": color})
         
         # Check if arrow has passed the ring completely (still using X coordinate)
@@ -208,7 +218,7 @@ class ArrowManager:
         # Track arrows to remove
         arrows_to_remove = []
         
-        # Get ring position for distance calculations
+        # Get ring position for distance calculations - use global position since pivot is now under camera
         ring_pos = self.target_ring.global_position
         arrow_distances = []
         
@@ -225,8 +235,8 @@ class ArrowManager:
             if not is_arrow_key_pressed and hasattr(arrow, 'collision_checked'):
                 arrow.collision_checked = False
             
-            # Calculate distance to ring
-            arrow_pos = arrow.rig.local_position
+            # Calculate distance to ring using global positions
+            arrow_pos = arrow.rig.global_position
             dx = arrow_pos[0] - ring_pos[0]
             dz = arrow_pos[2] - ring_pos[2]
             distance = math.sqrt(dx*dx + dz*dz)

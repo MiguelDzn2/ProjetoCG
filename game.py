@@ -102,7 +102,10 @@ class Game(Base):
         
         # Create the pivot node for arrows and ring
         self._setup_arrow_ring_pivot()
-
+        
+        # Calculate initial arrow travel time
+        self.calculate_arrow_travel_time()
+        
         # Setup target ring as a child of the pivot
         self._setup_target_ring()
         
@@ -131,9 +134,8 @@ class Game(Base):
         # Initialize nightclub elements
         self._setup_nightclub()
         
-        # Initialize music system after other components
-        self.music_system = MusicSystem(self.arrow_manager)
-        self.calculate_arrow_travel_time()
+        # Initialize music system after other components, passing self for travel time calculations
+        self.music_system = MusicSystem(self.arrow_manager, self)
         self.music_system.set_arrow_travel_time(self.arrow_travel_time)
         
         # Initialize camera animation properties
@@ -186,7 +188,8 @@ class Game(Base):
         self.arrow_ring_pivot.rotate_x(math.radians(ARROW_RING_PIVOT_ROTATION[0]))
         self.arrow_ring_pivot.rotate_y(math.radians(ARROW_RING_PIVOT_ROTATION[1]))
         self.arrow_ring_pivot.rotate_z(math.radians(ARROW_RING_PIVOT_ROTATION[2]))
-        self.scene.add(self.arrow_ring_pivot)
+        # Add to camera instead of scene, so the pivot moves with the camera
+        self.camera.add(self.arrow_ring_pivot)
 
     def _setup_target_ring(self):
         """Set up the target ring for gameplay as a child of the pivot."""
@@ -360,7 +363,7 @@ class Game(Base):
             print(f"Target position: {target_waypoint['position']}, rotation: {target_waypoint['rotation']}")
     
     def calculate_arrow_travel_time(self):
-        """Calculate how long it takes an arrow to travel from spawn to target ring"""
+        """Calculate how long it takes an arrow to travel from spawn to target ring, considering world coordinates"""
         if ARROW_START_POSITION is None or RING_POSITION is None or ARROW_UNITS_PER_SECOND is None:
             print("Error: Arrow positioning or speed constants not defined. Cannot calculate travel time.")
             self.arrow_travel_time = -1  # Indicate error
@@ -371,6 +374,9 @@ class Game(Base):
             self.arrow_travel_time = float('inf')
             return float('inf')
 
+        # Since we're using the pivot relative to the camera, the arrows will always travel 
+        # the same distance in local space, regardless of camera position/rotation
+        # Just use the local x-positions as in the original implementation
         arrow_start_x = ARROW_START_POSITION[0]
         ring_x = RING_POSITION[0]
         
@@ -378,7 +384,11 @@ class Game(Base):
         
         self.arrow_travel_time = distance / ARROW_UNITS_PER_SECOND
         
-        print(f"Arrow travel time calculated: {self.arrow_travel_time:.2f} seconds (Distance: {distance}, Speed: {ARROW_UNITS_PER_SECOND} units/sec)")
+        print(f"Arrow travel time calculated: {self.arrow_travel_time:.2f} seconds")
+        print(f"  Arrow local position: {ARROW_START_POSITION}")
+        print(f"  Ring local position: {RING_POSITION}")
+        print(f"  Distance: {distance}, Speed: {ARROW_UNITS_PER_SECOND} units/sec")
+        
         return self.arrow_travel_time
     
     def create_single_arrow(self, arrow_type_str=None):
@@ -909,6 +919,9 @@ class Game(Base):
             else:
                 # Only process game updates if not paused
                 if self.music_system.music_playing:
+                    # Dynamically update the arrow travel time based on current camera and pivot position
+                    self.music_system.update_arrow_travel_time()
+                    
                     # Use callback function to create arrows at the right time
                     self.music_system.update_keyframe_arrows(self.create_single_arrow)
                 

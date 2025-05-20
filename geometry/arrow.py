@@ -544,47 +544,61 @@ class Arrow:
                 self.debug_mode = False
 
     def create_direct_debug_box(self):
-        """Create a debug box that's added directly to the scene, not to the arrow rig"""
+        """Create a debug box visualization directly in the scene for clearer collision viz"""
+        if not hasattr(self, 'scene') or not self.scene:
+            print("Error: Cannot create direct debug box - no scene reference")
+            return False
+            
         try:
-            print("\n=== Creating direct debug box ===")
-            # Get EXACT bounding rect used for collision - must match what's used in collision detection
+            print("\n=== Creating direct debug box visualization ===")
+            # Get current bounding rect
             min_x, min_z, max_x, max_z = self.get_bounding_rect()
             width = max_x - min_x
             height = max_z - min_z
             
-            print(f"Setting material color for direct debug box")
-            box_material = SurfaceMaterial(
-                property_dict={
-                    "baseColor": [1.0, 0.0, 0.0],  # Red color
-                    "wireframe": False, 
-                    "doubleSide": True
-                }
-            )
-            # Add opacity as a separate uniform
-            box_material.add_uniform("float", "opacity", 0.7)
-            box_material.locate_uniforms()
-            
-            # Create box geometry matching the EXACT bounds used in collision detection
-            box_geometry = RectangleGeometry(width=width, height=height)
-            
-            # Create mesh
-            self.direct_debug_box = Mesh(box_geometry, box_material)
-            
-            # Position box at the EXACT center of the bounding rect
+            # Calculate center position relative to the arrow's current position
+            current_pos = self.rig.global_position  # Use global position for debug visualization
             center_x = (min_x + max_x) / 2
             center_z = (min_z + max_z) / 2
-            arrow_pos = self.rig.local_position
-            self.direct_debug_box.set_position([center_x, arrow_pos[1] + 0.02, center_z])
             
-            # Add directly to scene
-            if hasattr(self, 'scene') and self.scene:
-                self.scene.add(self.direct_debug_box)
-                print(f"Added direct debug box MATCHING COLLISION BOUNDS: [{min_x:.2f}, {min_z:.2f}] to [{max_x:.2f}, {max_z:.2f}]")
-                
-                # Also add corner markers for better visualization
-                self.create_direct_corner_markers(min_x, min_z, max_x, max_z)
-            else:
-                print("Could not add direct debug box - scene reference not available")
+            # Debug output
+            print(f"Debug Box: Width={width}, Height={height}")
+            print(f"Arrow Position: {current_pos}")
+            print(f"Bounding Rect: ({min_x}, {min_z}) to ({max_x}, {max_z})")
+            print(f"Center relative to arrow: ({center_x}, {center_z})")
+            
+            # Create a rectangle geometry for the debug box
+            from geometry.rectangle import RectangleGeometry
+            debug_rect_geo = RectangleGeometry(width=width, height=height)
+            
+            # Create a wireframe material
+            from material.surface import SurfaceMaterial
+            debug_rect_mat = SurfaceMaterial(
+                property_dict={
+                    "baseColor": [0, 0, 1, 0.5],  # Semi-transparent blue
+                    "wireframe": True,
+                    "doubleSide": True,
+                    "receiveShadow": False
+                }
+            )
+            
+            # Create mesh and position it
+            from core_ext.mesh import Mesh
+            self.direct_debug_box = Mesh(debug_rect_geo, debug_rect_mat)
+            
+            # Position the debug box - offset slightly from the arrow to avoid Z-fighting
+            # Using the arrow's global position to ensure it's in the same reference frame
+            self.direct_debug_box.set_position([
+                current_pos[0] + center_x, 
+                current_pos[1] + 0.02,  # Slight offset in Y to avoid Z-fighting
+                current_pos[2] + center_z
+            ])
+            
+            # Add to the scene
+            self.scene.add(self.direct_debug_box)
+            
+            # Create corner markers
+            self.direct_corner_markers = self.create_direct_corner_markers(min_x, min_z, max_x, max_z)
             
             return True
         except Exception as e:
@@ -594,44 +608,69 @@ class Arrow:
             return False
             
     def create_direct_corner_markers(self, min_x, min_z, max_x, max_z):
-        """Create corner markers at the exact corners of the bounding rectangle"""
+        """Create bright markers at the corners of the bounding rectangle"""
         if not hasattr(self, 'scene') or not self.scene:
-            return
+            print("Error: Cannot create corner markers - no scene reference")
+            return []
             
-        print("\n=== Creating direct corner markers ===")
-        # Store corner markers for cleanup
-        self.direct_corner_markers = []
-        
-        # Define corner positions
-        corners = [
-            (min_x, min_z),  # Bottom-left
-            (max_x, min_z),  # Bottom-right
-            (max_x, max_z),  # Top-right
-            (min_x, max_z)   # Top-left
-        ]
-        
-        # Create a marker at each corner
-        for i, (x, z) in enumerate(corners):
-            print(f"Setting material color for corner marker {i}")
-            marker_mat = SurfaceMaterial(
-                property_dict={
-                    "baseColor": [1.0, 1.0, 0.0],  # Yellow
-                    "wireframe": False,
-                    "doubleSide": True
-                }
-            )
-            # Add opacity as a separate uniform
-            marker_mat.add_uniform("float", "opacity", 1.0)
-            marker_mat.locate_uniforms()
+        try:
+            print("\n=== Creating direct corner markers ===")
+            corner_markers = []
             
-            marker_geo = RectangleGeometry(width=0.05, height=0.05)
-            marker = Mesh(marker_geo, marker_mat)
-            arrow_pos = self.rig.local_position
-            marker.set_position([x, arrow_pos[1] + 0.04, z])
+            # Get arrow's current global position for proper placement
+            arrow_pos = self.rig.global_position
             
-            self.scene.add(marker)
-            self.direct_corner_markers.append(marker)
+            # Define the corner positions in world space
+            corner_positions = [
+                [min_x + arrow_pos[0], arrow_pos[1] + 0.04, min_z + arrow_pos[2]],  # Bottom-left
+                [max_x + arrow_pos[0], arrow_pos[1] + 0.04, min_z + arrow_pos[2]],  # Bottom-right
+                [max_x + arrow_pos[0], arrow_pos[1] + 0.04, max_z + arrow_pos[2]],  # Top-right
+                [min_x + arrow_pos[0], arrow_pos[1] + 0.04, max_z + arrow_pos[2]]   # Top-left
+            ]
             
-        print(f"Added {len(corners)} corner markers at exact bounding rectangle corners")
+            # Create a marker for each corner with different colors for identification
+            colors = [
+                [1, 0, 0],  # Red (bottom-left)
+                [0, 1, 0],  # Green (bottom-right)
+                [0, 0, 1],  # Blue (top-right)
+                [1, 1, 0]   # Yellow (top-left)
+            ]
+            
+            for i, (pos, color) in enumerate(zip(corner_positions, colors)):
+                # Create tiny sphere geometry for the marker
+                from geometry.parametric import ParametricGeometry
+                import numpy as np
+                
+                def sphere_function(u, v):
+                    theta = u * 2 * np.pi
+                    phi = v * np.pi
+                    x = 0.05 * np.sin(phi) * np.cos(theta)  # Small 0.05 unit radius
+                    y = 0.05 * np.sin(phi) * np.sin(theta)
+                    z = 0.05 * np.cos(phi)
+                    return [x, y, z]
+                
+                marker_geo = ParametricGeometry(0, 1, 8, 0, 1, 8, sphere_function)
+                
+                # Create a bright material for better visibility
+                from material.surface import SurfaceMaterial
+                marker_mat = SurfaceMaterial(property_dict={"baseColor": color, "doubleSide": True})
+                
+                # Create and position the marker
+                from core_ext.mesh import Mesh
+                marker = Mesh(marker_geo, marker_mat)
+                marker.set_position(pos)
+                
+                # Add to scene and to our list
+                self.scene.add(marker)
+                corner_markers.append(marker)
+                
+                print(f"Added corner marker {i} at position {pos}, color {color}")
+            
+            return corner_markers
+        except Exception as e:
+            print(f"Error creating corner markers: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
 
 

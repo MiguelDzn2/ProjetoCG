@@ -238,8 +238,8 @@ INSTRUMENT_KEYFRAME_PATHS = {
 SELECTION_MUSIC_PATH = "music/selection.mp3"
 
 # Arrow and Ring Pivot Configuration
-ARROW_RING_PIVOT_POSITION = [0.0, 1.2, 0.0]  # Initial position [x, y, z] of the pivot
-ARROW_RING_PIVOT_ROTATION = [0.0, 25, 0.0]  # Initial rotation [x_degrees, y_degrees, z_degrees] of the pivot
+ARROW_RING_PIVOT_POSITION = [0, -2, 0]  # Initial position [x, y, z] of the pivot
+ARROW_RING_PIVOT_ROTATION = [0.0, 0.0, 0.0]  # Initial rotation [x_degrees, y_degrees, z_degrees] of the pivot
 
 # Arrow Type Constants (moved from Game class for centralized access)
 ARROW_TYPE_UP = 0

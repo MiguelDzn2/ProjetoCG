@@ -12,22 +12,24 @@ class MusicSystem:
     Manages music playback and keyframe processing for the game.
     """
     
-    def __init__(self, arrow_manager):
+    def __init__(self, arrow_manager, game_instance=None):
         """
         Initialize the music system.
         
         Parameters:
             arrow_manager: The arrow manager instance to spawn arrows
+            game_instance: Reference to the Game instance for recalculating travel time
         """
         self.arrow_manager = arrow_manager
+        self.game_instance = game_instance  # Store reference to game instance
         self.music_loaded = False
         self.music_playing = False
         self.music_start_time = 0
         self.music_file = None
         self.keyframes = []
         self.current_keyframe_index = 0
-        self.timing_adjustment = 0.0 # Temporarily set to 0.0 for diagnosing arrival time issues
-        self.arrow_travel_time = 0.0  # To be calculated later
+        self.timing_adjustment = 0.0 # Initial value before dynamic calculation
+        self.arrow_travel_time = 0.0  # To be calculated dynamically
         self.selection_music_playing = False
         
         # Initialize pygame mixer
@@ -295,6 +297,9 @@ class MusicSystem:
         if not self.music_playing or self.selection_music_playing or not self.keyframes: # Added selection_music_playing
             return
 
+        # Recalculate arrow travel time based on current camera and pivot position
+        self.update_arrow_travel_time()
+        
         current_music_time = self.get_music_time()
 
         while self.current_keyframe_index < len(self.keyframes):
@@ -328,3 +333,26 @@ class MusicSystem:
                 # if the current music time hasn't reached the spawn_trigger_time
                 # for the current keyframe.
                 break 
+
+    def update_arrow_travel_time(self):
+        """Recalculate arrow travel time dynamically based on current camera and pivot position"""
+        if self.game_instance is not None:
+            # Request a fresh calculation from the game instance
+            new_travel_time = self.game_instance.calculate_arrow_travel_time()
+            
+            # Update the arrow travel time if calculation successful
+            if new_travel_time > 0:
+                # Keep track of the old travel time for logging purposes
+                old_travel_time = self.arrow_travel_time
+                self.arrow_travel_time = new_travel_time
+                
+                # Log the change
+                print(f"Arrow travel time updated dynamically: {old_travel_time:.2f}s -> {self.arrow_travel_time:.2f}s")
+                
+                # Adjust the timing based on observed discrepancy, if applicable
+                observed_discrepancy = 0.21  # Seconds, hardcoded to match existing adjustment
+                self.arrow_travel_time = new_travel_time - observed_discrepancy
+                
+                return True
+        
+        return False 
