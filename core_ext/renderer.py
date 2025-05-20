@@ -82,10 +82,6 @@ class Renderer:
         # Extract list of all Mesh instances in scene
         descendant_list = scene.descendant_list
         mesh_list = list(filter(lambda x: isinstance(x, Mesh), descendant_list))
-        
-        # Sort meshes by renderOrder (lower values rendered first, higher values on top)
-        mesh_list.sort(key=lambda x: x.material.setting_dict.get("renderOrder", 0))
-        
         # Extract list of all Light instances in scene
         light_list = list(filter(lambda x: isinstance(x, Light), descendant_list))
         for mesh in mesh_list:
