@@ -101,8 +101,8 @@ class UIManager:
         # Create the streak rig but don't add to scene directly - will be added to camera
         self.streak_rig = MovementRig()
         self.streak_rig.add(self.streak_mesh)
-        # Position streak below score
-        self.streak_rig.set_position([2.6, 0.8, -3])
+        # Position streak closer to score
+        self.streak_rig.set_position([2.6, 1.1, -3])  # Changed from [2.6, 0.8, -3] to [2.6, 1.0, -3] to position closer to score
         
         # Store the streak texture for updates
         self.streak_texture = streak_texture
@@ -127,7 +127,7 @@ class UIManager:
         self.collision_mesh = Mesh(collision_geometry, collision_material)
         self.collision_rig = MovementRig()
         self.collision_rig.add(self.collision_mesh)
-        self.collision_rig.set_position([0, -1.4, -3])  # Moved from [0, 1.5, -3] to [0, -1.4, -3] to position at bottom
+        self.collision_rig.set_position([0, -1, -3])  # Changed from [0, -1.4, -3] to [0, -0.5, -3] to position it higher up above the ring
         self.collision_texture = collision_texture
     
     def _create_title_display(self):
