@@ -1164,9 +1164,104 @@ class Game(Base):
                         if not self.debug_mode:
                             self._update_collision_text("EMPTY MISS!")
                 # --- END PENALTY LOGIC ---
+                
+                # Check if music has finished and transition to end screen
+                if not self.debug_mode and self.music_system.is_music_finished():
+                    print("Music has finished - transitioning to end screen")
+                    self._transition_to_end_screen()
             
             # Render scene with active camera (main or debug)
             if self.debug_mode and self.debug_camera_active:
                 self.renderer.render(self.scene, self.debug_camera)
             else:
-                self.renderer.render(self.scene, self.camera) 
+                self.renderer.render(self.scene, self.camera)
+                
+        elif self.current_phase == GamePhase.END_SCREEN:
+            # Handle input for end screen
+            self.handle_end_screen_input()
+            
+            # Render scene with current camera
+            self.renderer.render(self.scene, self.camera)
+    
+    def _transition_to_end_screen(self):
+        """Transition from gameplay to end screen phase"""
+        self.current_phase = GamePhase.END_SCREEN
+        
+        # Get the final score
+        final_score = self.ui_manager.score
+        
+        # Hide the arrow ring
+        self._hide_arrow_ring()
+        
+        # Clear any existing arrows
+        for arrow in self.arrows[:]:
+            if arrow.rig in self.arrow_ring_pivot.descendant_list:
+                self.arrow_ring_pivot.remove(arrow.rig)
+        self.arrows = []
+        self.processed_arrow_uuids = []
+        
+        # Show the end screen
+        self.ui_manager.show_ui_for_end_screen(final_score)
+        
+    def _hide_arrow_ring(self):
+        """Hide the arrow ring and target ring"""
+        if hasattr(self, 'arrow_ring_visible') and self.arrow_ring_visible:
+            self.arrow_ring_visible = False
+            
+            # Hide arrow ring pivot and all its children (including arrows)
+            if hasattr(self, 'arrow_ring_pivot') and self.arrow_ring_pivot in self.camera.descendant_list:
+                self.camera.remove(self.arrow_ring_pivot)
+            
+            # Since the target ring is already a child of arrow_ring_pivot, we don't need to remove it separately
+    
+    def handle_end_screen_input(self):
+        """Handle user input on the end screen"""
+        # Handle 'R' key to replay with the same character
+        if self.input.is_key_down('r'):
+            print("Replaying with the same character")
+            self._replay_with_same_character()
+            
+        # Handle 'C' key to return to character selection
+        elif self.input.is_key_down('c'):
+            print("Returning to character selection")
+            self._return_to_character_selection()
+    
+    def _replay_with_same_character(self):
+        """Restart gameplay with the same character"""
+        # Hide the end screen
+        self.ui_manager.hide_end_screen()
+        
+        # Reset gameplay phase
+        self.current_phase = GamePhase.GAMEPLAY
+        
+        # Make the arrow and ring visible again
+        self._make_arrow_ring_visible()
+        
+        # Load and play music for the selected instrument
+        self.music_system.load_track_for_instrument(self.highlighted_index)
+        self.music_system.play_music()
+        
+        # Reset score
+        self.ui_manager.show_ui_for_gameplay_phase()
+    
+    def _return_to_character_selection(self):
+        """Return to character selection phase"""
+        # Hide the end screen
+        self.ui_manager.hide_end_screen()
+        
+        # Reset to selection phase
+        self.current_phase = GamePhase.SELECTION
+        
+        # Set up selection phase
+        self.phase_manager.setup_selection_phase()
+        
+        # Reset highlighted index and active object rig
+        self.highlighted_index = 0
+        self.active_object_rig = self.phase_manager.active_object_rig
+        
+        # Hide arrow ring
+        self._hide_arrow_ring()
+        
+        # Load and play selection music
+        self.music_system.load_selection_music()
+        self.music_system.play_selection_music() 

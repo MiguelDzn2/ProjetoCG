@@ -355,4 +355,23 @@ class MusicSystem:
                 
                 return True
         
-        return False 
+        return False
+        
+    def is_music_finished(self):
+        """
+        Check if the currently playing music track has finished.
+        
+        Returns:
+            True if music has finished or is not playing, False otherwise
+        """
+        if not self.music_playing:
+            return True
+            
+        # Check if pygame is playing the music
+        if pygame.mixer.music.get_busy():
+            return False
+        else:
+            # Music has finished playing
+            self.music_playing = False
+            print("Music track has finished playing")
+            return True 

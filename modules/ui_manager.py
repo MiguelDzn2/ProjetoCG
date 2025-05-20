@@ -40,6 +40,23 @@ class UIManager:
         self.debug_info_mesh = None
         self.debug_info_rig = None
         self.debug_info_texture = None
+        
+        # End screen elements
+        self.end_screen_rig = None
+        self.end_screen_bg_mesh = None
+        self.end_screen_title_mesh = None
+        self.end_screen_title_texture = None
+        self.end_screen_score_mesh = None
+        self.end_screen_score_texture = None
+        self.end_screen_replay_mesh = None
+        self.end_screen_replay_texture = None
+        self.end_screen_return_mesh = None
+        self.end_screen_return_texture = None
+        self.end_screen_r_key_mesh = None
+        self.end_screen_r_key_texture = None
+        self.end_screen_c_key_mesh = None
+        self.end_screen_c_key_texture = None
+        
         self.streak_arrows = []
         
         # Create UI elements
@@ -48,6 +65,7 @@ class UIManager:
         self._create_collision_display()
         self._create_title_display()
         self._create_debug_info_display()
+        # Don't create end screen right away - create when needed
     
     def _create_score_display(self):
         """Create the score display UI element"""
@@ -169,6 +187,172 @@ class UIManager:
         # Store the debug info texture for updates
         self.debug_info_texture = debug_info_texture
     
+    def _create_end_screen_display(self):
+        """Create the end screen display with score and replay instructions"""
+        # Create background panel with a dark semi-transparent background
+        end_screen_background_texture = TextTexture(
+            text="",
+            system_font_name="Arial",
+            font_size=1,  # Minimal font size since we're just using this for background
+            font_color=(255, 255, 255),
+            background_color=(0, 0, 0, 230),  # Almost opaque black background
+            transparent=False,
+            image_width=1000,  # Reduced width
+            image_height=700,  # Reduced height
+            align_horizontal=0.5,
+            align_vertical=0.5,
+            image_border_width=8,  # Thinner border
+            image_border_color=(255, 215, 0)  # Gold border
+        )
+        end_screen_bg_material = TextureMaterial(texture=end_screen_background_texture, property_dict={"doubleSide": True})
+        end_screen_bg_geometry = RectangleGeometry(width=10, height=7)  # Smaller background
+        self.end_screen_bg_mesh = Mesh(end_screen_bg_geometry, end_screen_bg_material)
+        
+        # Create title text for the end screen
+        title_texture = TextTexture(
+            text="GAME OVER",
+            system_font_name="Arial",
+            font_size=72,  # Smaller font
+            font_color=(255, 215, 0),  # Gold text
+            background_color=(0, 0, 0, 0),  # Transparent background
+            transparent=True,
+            image_width=600,
+            image_height=150,
+            align_horizontal=0.5,
+            align_vertical=0.5
+        )
+        title_material = TextureMaterial(texture=title_texture, property_dict={"doubleSide": True})
+        title_geometry = RectangleGeometry(width=6, height=1.5)
+        self.end_screen_title_mesh = Mesh(title_geometry, title_material)
+        
+        # Create score display
+        score_texture = TextTexture(
+            text="Final Score: 0",
+            system_font_name="Arial",
+            font_size=60,  # Reduced font size
+            font_color=(255, 255, 255),  # White text
+            background_color=(0, 0, 0, 0),  # Transparent background
+            transparent=True,
+            image_width=600,  # Narrower
+            image_height=120,
+            align_horizontal=0.5,
+            align_vertical=0.5
+        )
+        score_material = TextureMaterial(texture=score_texture, property_dict={"doubleSide": True})
+        score_geometry = RectangleGeometry(width=6, height=1.2)
+        self.end_screen_score_mesh = Mesh(score_geometry, score_material)
+        
+        # Create replay instruction
+        replay_texture = TextTexture(
+            text="Press 'R' to Replay with the same character",
+            system_font_name="Arial",
+            font_size=36,  # Even smaller font
+            font_color=(255, 255, 255),  # White text
+            background_color=(0, 0, 0, 0),  # Transparent background
+            transparent=True,
+            image_width=800,  # Wider to fit text
+            image_height=70,
+            align_horizontal=0.0,  # Left-aligned
+            align_vertical=0.5
+        )
+        replay_material = TextureMaterial(texture=replay_texture, property_dict={"doubleSide": True})
+        replay_geometry = RectangleGeometry(width=8, height=0.7)
+        self.end_screen_replay_mesh = Mesh(replay_geometry, replay_material)
+        
+        # Create return instruction
+        return_texture = TextTexture(
+            text="Press 'C' to return to Character Selection",
+            system_font_name="Arial",
+            font_size=36,  # Even smaller font
+            font_color=(255, 255, 255),  # White text
+            background_color=(0, 0, 0, 0),  # Transparent background
+            transparent=True,
+            image_width=800,  # Wider to fit text
+            image_height=70,
+            align_horizontal=0.0,  # Left-aligned
+            align_vertical=0.5
+        )
+        return_material = TextureMaterial(texture=return_texture, property_dict={"doubleSide": True})
+        return_geometry = RectangleGeometry(width=8, height=0.7)
+        self.end_screen_return_mesh = Mesh(return_geometry, return_material)
+        
+        # Add key highlights (R and C keys with special emphasis)
+        r_key_texture = TextTexture(
+            text="R",  # Removed quotes for cleaner look
+            system_font_name="Arial",
+            font_size=38,  # Size between title and instructions
+            font_color=(255, 255, 0),  # Yellow text for emphasis
+            background_color=(50, 50, 150, 150),  # Bluish semi-transparent background
+            transparent=True,
+            image_width=60,  # Smaller
+            image_height=60,  # Smaller
+            align_horizontal=0.5,
+            align_vertical=0.5,
+            image_border_width=2,  # Thinner border
+            image_border_color=(255, 255, 255)  # White border
+        )
+        r_key_material = TextureMaterial(texture=r_key_texture, property_dict={"doubleSide": True})
+        r_key_geometry = RectangleGeometry(width=0.6, height=0.6)  # Smaller
+        self.end_screen_r_key_mesh = Mesh(r_key_geometry, r_key_material)
+        
+        c_key_texture = TextTexture(
+            text="C",  # Removed quotes for cleaner look
+            system_font_name="Arial",
+            font_size=38,  # Size between title and instructions
+            font_color=(255, 255, 0),  # Yellow text for emphasis
+            background_color=(50, 50, 150, 150),  # Bluish semi-transparent background
+            transparent=True,
+            image_width=60,  # Smaller
+            image_height=60,  # Smaller
+            align_horizontal=0.5,
+            align_vertical=0.5,
+            image_border_width=2,  # Thinner border
+            image_border_color=(255, 255, 255)  # White border
+        )
+        c_key_material = TextureMaterial(texture=c_key_texture, property_dict={"doubleSide": True})
+        c_key_geometry = RectangleGeometry(width=0.6, height=0.6)  # Smaller
+        self.end_screen_c_key_mesh = Mesh(c_key_geometry, c_key_material)
+        
+        # Create the end screen rig to hold all elements
+        self.end_screen_rig = MovementRig()
+        
+        # Add all elements to the rig with proper positioning
+        self.end_screen_rig.add(self.end_screen_bg_mesh)
+        
+        # Title positioned at the top
+        self.end_screen_title_mesh.set_position([0, 2.4, 0.1])  # Adjusted position
+        self.end_screen_rig.add(self.end_screen_title_mesh)
+        
+        # Score positioned in the middle
+        self.end_screen_score_mesh.set_position([0, 0.8, 0.1])  # Adjusted position
+        self.end_screen_rig.add(self.end_screen_score_mesh)
+        
+        # Replay instruction positioned lower
+        self.end_screen_replay_mesh.set_position([1.0, -1.0, 0.1])  # Moved further right
+        self.end_screen_rig.add(self.end_screen_replay_mesh)
+        
+        # Return instruction positioned at the bottom
+        self.end_screen_return_mesh.set_position([1.0, -2.2, 0.1])  # Moved further right
+        self.end_screen_rig.add(self.end_screen_return_mesh)
+        
+        # Position the key highlights
+        self.end_screen_r_key_mesh.set_position([-3.3, -1.0, 0.2])  # Further left
+        self.end_screen_rig.add(self.end_screen_r_key_mesh)
+        
+        self.end_screen_c_key_mesh.set_position([-3.3, -2.2, 0.2])  # Further left
+        self.end_screen_rig.add(self.end_screen_c_key_mesh)
+        
+        # Position the entire rig in front of the camera
+        self.end_screen_rig.set_position([0, 0, -6])  # Moved further from camera for better fit
+        
+        # Store the textures for updates
+        self.end_screen_title_texture = title_texture
+        self.end_screen_score_texture = score_texture
+        self.end_screen_replay_texture = replay_texture
+        self.end_screen_return_texture = return_texture
+        self.end_screen_r_key_texture = r_key_texture
+        self.end_screen_c_key_texture = c_key_texture
+    
     def show_ui_for_selection_phase(self):
         """Configure UI for selection phase"""
         # Remove score and streak displays from camera if present
@@ -249,8 +433,9 @@ class UIManager:
         self.collision_texture.update_text(" ")
     
     def update_collision_text(self, text):
-        """Update the collision status text"""
-        self.collision_texture.update_text(text)
+        """Update the collision status text display"""
+        if hasattr(self, 'collision_texture') and self.collision_texture:
+            self.collision_texture.update_text(text)
     
     def add_arrow_to_streak(self, arrow_id):
         """
@@ -272,10 +457,37 @@ class UIManager:
         return arrow_id in self.streak_arrows
 
     def update_debug_info(self, text):
-        """Update the debug info text (only for debug mode)"""
-        if self.debug_info_texture is not None:
+        """Update the debug info text"""
+        if hasattr(self, 'debug_info_texture') and self.debug_info_texture:
             self.debug_info_texture.update_text(text)
+    
+    def show_ui_for_end_screen(self, final_score):
+        """Configure UI for end screen phase"""
+        # Ensure the end screen display is created
+        if not hasattr(self, 'end_screen_rig') or not self.end_screen_rig:
+            self._create_end_screen_display()
             
-            # Add debug info to camera if not already there
-            if self.debug_info_rig is not None and self.debug_info_rig not in self.camera.descendant_list:
-                self.camera.add(self.debug_info_rig) 
+        # Remove score and streak displays from camera if present
+        if self.score_rig in self.camera.descendant_list:
+            self.camera.remove(self.score_rig)
+        if self.streak_rig in self.camera.descendant_list:
+            self.camera.remove(self.streak_rig)
+        if self.collision_rig in self.camera.descendant_list:
+            self.camera.remove(self.collision_rig)
+            
+        # Add end screen display to camera
+        if self.end_screen_rig not in self.camera.descendant_list:
+            self.camera.add(self.end_screen_rig)
+            
+        # Update end screen with final score
+        self.update_end_screen(final_score)
+    
+    def update_end_screen(self, final_score):
+        """Update the end screen with the final score"""
+        if hasattr(self, 'end_screen_score_texture') and self.end_screen_score_texture:
+            self.end_screen_score_texture.update_text(f"Final Score: {int(final_score)}")
+    
+    def hide_end_screen(self):
+        """Hide the end screen UI"""
+        if hasattr(self, 'end_screen_rig') and self.end_screen_rig in self.camera.descendant_list:
+            self.camera.remove(self.end_screen_rig) 
