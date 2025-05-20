@@ -20,14 +20,14 @@ CAMERA_TRANSITION_TIME = 4.0
 # - rotation: target XYZ Euler angles (in degrees)
 CAMERA_WAYPOINTS = [
     {
-        "time": 35.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+        "time": 6.0,
+        "position": [0, 1.2, 7],
+        "rotation": [0, -90, 0]  # Converted from math.pi/12, -math.pi/2
     },
    {
-        "time": 36.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+        "time": 8.0,
+        "position": [-3, 1.2, 12.5],
+        "rotation": [0, -45, 0]  # Converted from math.pi/12, -math.pi/2
     }, 
     {
         "time": 37.0,
