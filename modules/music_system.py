@@ -62,8 +62,13 @@ class MusicSystem:
     
     def set_arrow_travel_time(self, time_value):
         """Set the time it takes for arrows to travel from spawn to target"""
-        self.arrow_travel_time = time_value
-        print(f"Arrow travel time set to: {self.arrow_travel_time:.2f} seconds")
+        # time_value is the calculated nominal travel time (e.g., Distance / Speed)
+        # Logs show arrows arriving ~0.21s earlier than this nominal time.
+        # Adjust the travel time used for spawning to this observed actual travel time.
+        observed_discrepancy = 0.21  # Seconds, from TIMING LOG Diff values being consistently around -0.21s
+        self.arrow_travel_time = time_value - observed_discrepancy
+        print(f"Nominal arrow travel time calculated: {time_value:.2f} seconds")
+        print(f"Adjusted arrow travel time for spawning (actual observed): {self.arrow_travel_time:.2f} seconds")
         
     def load_music(self, music_file):
         """
@@ -280,30 +285,37 @@ class MusicSystem:
             
     def update_keyframe_arrows(self, create_arrow_callback):
         """
-        Check if it's time to spawn arrows according to keyframes and music time.
-        
-        Parameters:
-            create_arrow_callback: Function to create and return an arrow
-        """
-        if not self.keyframes or self.current_keyframe_index >= len(self.keyframes):
-            return # No keyframes loaded or all keyframes processed
+        Check keyframes and create arrows when their time is reached.
+        Adjusts spawn time based on arrow_travel_time.
 
-        if not hasattr(self, 'arrow_travel_time') or self.arrow_travel_time <= 0:
-            print("Error: arrow_travel_time not properly set. Cannot spawn keyframe arrows accurately.")
+        Parameters:
+            create_arrow_callback: Function to call to create an arrow
+        """
+        if not self.music_playing or not self.keyframes:
             return
 
         current_music_time = self.get_music_time()
 
-        # Process all keyframes that should have spawned by now
-        while (self.current_keyframe_index < len(self.keyframes) and
-               current_music_time >= (self.keyframes[self.current_keyframe_index]['time'] - self.arrow_travel_time)):
-            
+        while self.current_keyframe_index < len(self.keyframes):
             keyframe = self.keyframes[self.current_keyframe_index]
-            arrow_type_to_spawn = keyframe.get('arrow_type') # Already validated in load_keyframes
+            
+            # Adjust keyframe time to spawn arrow earlier based on travel time
+            spawn_time = keyframe['time'] - self.arrow_travel_time
+            arrow_type_to_spawn = keyframe['arrow_type'] # Get arrow type string
 
-            print(f"Spawning arrow for keyframe {self.current_keyframe_index}: time {keyframe['time']:.2f}s, type '{arrow_type_to_spawn}', music_time: {current_music_time:.2f}s")
-            
-            # Call the provided callback to create an arrow
-            new_arrow = create_arrow_callback(arrow_type_to_spawn)
-            
-            self.current_keyframe_index += 1 
+            if current_music_time >= spawn_time:
+                print(f"Spawning arrow for keyframe {self.current_keyframe_index}: time {keyframe['time']:.2f}s, type '{arrow_type_to_spawn}', music_time: {current_music_time:.2f}s")
+                
+                # Create the arrow using the callback
+                new_arrow = create_arrow_callback(arrow_type_to_spawn)
+                
+                # Store the original keyframe target time on the arrow
+                if new_arrow:
+                    new_arrow.keyframe_target_time = keyframe['time']
+                    # The arrow_manager will add it to its list if music_system doesn't do it.
+                    # self.arrow_manager.arrows.append(new_arrow) # Ensure arrow_manager tracks it
+                
+                self.current_keyframe_index += 1
+            else:
+                # Keyframes are sorted, so no need to check further
+                break 

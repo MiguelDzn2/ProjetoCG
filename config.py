@@ -44,6 +44,7 @@ ROTATE_AMOUNT_MULTIPLIER = 1
 ARROW_SPAWN_INTERVAL = 2.0
 ARROW_START_POSITION = [-3, 0, 8]  # X, Y, Z
 ARROW_UNITS_PER_SECOND = 4.0 # Placeholder value, adjust as needed
+ARROW_COLOR = [1.0, 0.0, 0.0]  # Default arrow color (red)
 
 # Screen Configuration
 SCREEN_SIZE = [1280, 720]
@@ -221,17 +222,35 @@ NIGHTCLUB_SCALE_FACTOR = 3
 # Music and Keyframe Paths for Instruments
 INSTRUMENT_MUSIC_PATHS = {
     "miguel": "music/fitnessgram.mp3",
-    "ze": "music/track2.mp3",
-    "ana": "music/track3.mp3",
-    "brandon": "music/track4.mp3"
+    "ze": "music/fitnessgram.mp3",  # Placeholder: Using existing fitnessgram.mp3
+    "ana": "music/fitnessgram.mp3",    # Placeholder: Using existing fitnessgram.mp3
+    "brandon": "music/fitnessgram.mp3" # Placeholder: Using existing fitnessgram.mp3
 }
 
 INSTRUMENT_KEYFRAME_PATHS = {
     "miguel": "keyframes/keyframes_1.json",
-    "ze": "keyframes/keyframes_2.json",
-    "ana": "keyframes/keyframes_3.json",
-    "brandon": "keyframes/keyframes_4.json"
+    "ze": "keyframes/keyframes_1.json", # Placeholder: Using existing keyframes_1.json
+    "ana": "keyframes/keyframes_1.json",    # Placeholder: Using existing keyframes_1.json
+    "brandon": "keyframes/keyframes_1.json" # Placeholder: Using existing keyframes_1.json
 }
 
 # Selection Phase Music
-SELECTION_MUSIC_PATH = "music/selection.mp3" 
+SELECTION_MUSIC_PATH = "music/selection.mp3"
+
+# Arrow and Ring Pivot Configuration
+ARROW_RING_PIVOT_POSITION = [0.0, 0, 0.0]  # Initial position [x, y, z] of the pivot
+ARROW_RING_PIVOT_ROTATION = [0.0, 0, 0.0]  # Initial rotation [x_degrees, y_degrees, z_degrees] of the pivot
+
+# Arrow Type Constants (moved from Game class for centralized access)
+ARROW_TYPE_UP = 0
+ARROW_TYPE_LEFT = 90
+ARROW_TYPE_DOWN = 180
+ARROW_TYPE_RIGHT = 270
+ARROW_TYPE_NAMES = {
+    "up": ARROW_TYPE_UP,
+    "left": ARROW_TYPE_LEFT,
+    "down": ARROW_TYPE_DOWN,
+    "right": ARROW_TYPE_RIGHT
+}
+
+# Gameplay Mechanics 

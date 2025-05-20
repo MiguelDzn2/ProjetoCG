@@ -28,7 +28,8 @@ from config import (
     RING_POSITION, RING_INNER_RADIUS, RING_OUTER_RADIUS, RING_SCALE,
     NIGHTCLUB_OBJECT_PATH, NIGHTCLUB_POSITION, NIGHTCLUB_SCALE_FACTOR,
     MOVE_AMOUNT_MULTIPLIER, ROTATE_AMOUNT_MULTIPLIER,
-    SCREEN_SIZE
+    SCREEN_SIZE, ARROW_RING_PIVOT_POSITION, ARROW_RING_PIVOT_ROTATION,
+    ARROW_COLOR, ARROW_TYPE_UP, ARROW_TYPE_LEFT, ARROW_TYPE_DOWN, ARROW_TYPE_RIGHT, ARROW_TYPE_NAMES
 )
 from game_phases import GamePhase
 from geometry.arrow import Arrow
@@ -54,17 +55,17 @@ class Game(Base):
     Main game class that integrates all game modules and manages the game loop.
     """
     
-    # Arrow Type Constants
-    ARROW_TYPE_UP = 0
-    ARROW_TYPE_LEFT = 90
-    ARROW_TYPE_DOWN = 180
-    ARROW_TYPE_RIGHT = 270
-    ARROW_TYPE_NAMES = {
-        "up": ARROW_TYPE_UP,
-        "left": ARROW_TYPE_LEFT,
-        "down": ARROW_TYPE_DOWN,
-        "right": ARROW_TYPE_RIGHT
-    }
+    # Arrow Type Constants are now in config.py
+    # ARROW_TYPE_UP = 0
+    # ARROW_TYPE_LEFT = 90
+    # ARROW_TYPE_DOWN = 180
+    # ARROW_TYPE_RIGHT = 270
+    # ARROW_TYPE_NAMES = {
+    #     "up": ARROW_TYPE_UP,
+    #     "left": ARROW_TYPE_LEFT,
+    #     "down": ARROW_TYPE_DOWN,
+    #     "right": ARROW_TYPE_RIGHT
+    # }
     
     def __init__(self, screen_size=(512, 512), debug_mode=False):
         """Initialize the game with optional debug mode"""
@@ -99,11 +100,19 @@ class Game(Base):
         # Initialize UI manager
         self.ui_manager = UIManager(self.scene, self.camera)
         
-        # Initialize target ring
+        # Create the pivot node for arrows and ring
+        self._setup_arrow_ring_pivot()
+
+        # Setup target ring as a child of the pivot
         self._setup_target_ring()
         
-        # Initialize arrow manager
-        self.arrow_manager = ArrowManager(self.scene, self.target_ring, debug_mode=self.debug_mode)
+        # Arrow Manager - needs the pivot
+        self.arrow_manager = ArrowManager(
+            scene=self.scene, 
+            target_ring=self.target_ring, 
+            arrow_ring_pivot=self.arrow_ring_pivot,  # Pass the pivot
+            debug_mode=self.debug_mode
+        )
         
         # Load instruments
         self.instrument_loader = InstrumentLoader(self.scene)
@@ -170,16 +179,26 @@ class Game(Base):
         print("- Setas: Interagir com as setas do jogo quando chegam ao anel")
         print("\n")
     
+    def _setup_arrow_ring_pivot(self):
+        """Creates and configures the pivot node for the arrow and ring system."""
+        self.arrow_ring_pivot = MovementRig()
+        self.arrow_ring_pivot.set_position(list(ARROW_RING_PIVOT_POSITION))
+        self.arrow_ring_pivot.rotate_x(math.radians(ARROW_RING_PIVOT_ROTATION[0]))
+        self.arrow_ring_pivot.rotate_y(math.radians(ARROW_RING_PIVOT_ROTATION[1]))
+        self.arrow_ring_pivot.rotate_z(math.radians(ARROW_RING_PIVOT_ROTATION[2]))
+        self.scene.add(self.arrow_ring_pivot)
+
     def _setup_target_ring(self):
-        """Set up the target ring for gameplay"""
-        # Ring configuration from config.py: RING_INNER_RADIUS, RING_OUTER_RADIUS, RING_SCALE, RING_POSITION
+        """Set up the target ring for gameplay as a child of the pivot."""
         ring_geometry = RingGeometry(inner_radius=RING_INNER_RADIUS, outer_radius=RING_OUTER_RADIUS, segments=32)
         ring_material = SurfaceMaterial(property_dict={"baseColor": [0, 1, 0], "doubleSide": True})  # Green color
         self.target_ring = Mesh(ring_geometry, ring_material)
-        self.target_ring.set_position(RING_POSITION)
-        self.target_ring.rotate_x(0)  # Rotated to be vertical
+        # Position the ring relative to pivot (rather than in world space)
+        self.target_ring.set_position(list(RING_POSITION))
+        self.target_ring.rotate_x(0)  # No rotation needed initially - already on XY plane
         self.target_ring.scale(RING_SCALE)
-        self.scene.add(self.target_ring)
+        # Add ring to pivot instead of directly to scene
+        self.arrow_ring_pivot.add(self.target_ring)
         
         # Add debug visualization for ring if in debug mode
         if self.debug_mode:
@@ -376,24 +395,26 @@ class Game(Base):
         
         if arrow_type_str:
             arrow_type_str_lower = arrow_type_str.lower()
-            if arrow_type_str_lower in self.ARROW_TYPE_NAMES:
-                angle = self.ARROW_TYPE_NAMES[arrow_type_str_lower]
+            if arrow_type_str_lower in ARROW_TYPE_NAMES:
+                angle = ARROW_TYPE_NAMES[arrow_type_str_lower]
             else:
                 print(f"Warning: Unknown arrow_type_str '{arrow_type_str}'. Defaulting to UP (0 degrees).")
-                angle = self.ARROW_TYPE_UP
+                angle = ARROW_TYPE_UP
         else:
             # If no type specified, choose a random one
-            possible_angles = [self.ARROW_TYPE_UP, self.ARROW_TYPE_LEFT, self.ARROW_TYPE_DOWN, self.ARROW_TYPE_RIGHT]
+            possible_angles = [ARROW_TYPE_UP, ARROW_TYPE_LEFT, ARROW_TYPE_DOWN, ARROW_TYPE_RIGHT]
             angle = random.choice(possible_angles)
             print(f"Warning: create_single_arrow called without arrow_type_str. Spawning random arrow (angle: {angle}).")
         
-        # Create arrow object
-        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0], debug_mode=self.debug_mode)
-        arrow.add_to_scene(self.scene)
+        # Create arrow object using config values
+        arrow = Arrow(color=ARROW_COLOR, offset=[0, 0, 0], debug_mode=self.debug_mode, speed=ARROW_UNITS_PER_SECOND)
+        
+        # Add arrow to the pivot node
+        self.arrow_ring_pivot.add(arrow.rig)
         arrow.rotate(math.radians(angle), 'z')  # Rotate based on the determined angle
         
         # ARROW_START_POSITION is imported from config.py
-        arrow.set_position(ARROW_START_POSITION)
+        arrow.set_position(list(ARROW_START_POSITION))
         
         # Generate a unique ID for the arrow
         import uuid
@@ -404,12 +425,13 @@ class Game(Base):
         
         return arrow
     
-    def check_arrow_ring_collision(self, arrow):
+    def check_arrow_ring_collision(self, arrow, current_music_time):
         """
         Check for collision between an arrow and the target ring.
         
         Parameters:
             arrow: The arrow to check for collision
+            current_music_time: The current time in the music track for logging
             
         Returns:
             Collision value (0 = no collision, 0.5 = partial, 1 = perfect)
@@ -423,7 +445,7 @@ class Game(Base):
             return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
             
         # Get positions of ring
-        ring_pos = self.target_ring.global_position
+        ring_pos = self.target_ring.local_position
         
         # Get the inner and outer radius of the ring, adjusted by the scale factor
         inner_radius = RING_INNER_RADIUS * RING_SCALE
@@ -484,12 +506,17 @@ class Game(Base):
                 # Don't return here - let the arrow continue to be tracked as it leaves the ring
         
         # Calculate potential collision value
+        previous_potential_collision_value = getattr(arrow, 'potential_collision_value', 0)
+
         if all_corners_in_inner:
             # Arrow is completely inside the inner ring (full interception)
             if hasattr(arrow, 'potential_collision_value') and arrow.potential_collision_value != 1:
                 print(f"Arrow[{arrow.unique_id}]: Now fully inside ring (value: 1.0)")
-                # No longer trigger animation automatically when arrow is inside the ring
-                # Only trigger animations on successful key presses (below)
+                # Log timing if this is the first frame it's considered colliding and it has a target time
+                if previous_potential_collision_value == 0 and hasattr(arrow, 'keyframe_target_time'):
+                    time_diff = current_music_time - arrow.keyframe_target_time
+                    print(f"TIMING LOG: Arrow[{arrow.unique_id}] in ring at music_time: {current_music_time:.2f}s. Target: {arrow.keyframe_target_time:.2f}s. Diff: {time_diff:.2f}s")
+
             arrow.potential_collision_value = 1
         elif any_corner_in_outer:
             # Arrow is at least partially inside the ring (partial interception)
@@ -498,6 +525,10 @@ class Game(Base):
                     print(f"Arrow[{arrow.unique_id}]: Now touching outer ring (value: 0.5)")
                 else:
                     print(f"Arrow[{arrow.unique_id}]: Now partially inside ring (value: 0.5)")
+                 # Log timing if this is the first frame it's considered colliding and it has a target time
+                if previous_potential_collision_value == 0 and hasattr(arrow, 'keyframe_target_time'):
+                    time_diff = current_music_time - arrow.keyframe_target_time
+                    print(f"TIMING LOG: Arrow[{arrow.unique_id}] in ring at music_time: {current_music_time:.2f}s. Target: {arrow.keyframe_target_time:.2f}s. Diff: {time_diff:.2f}s")                   
             arrow.potential_collision_value = 0.5
         else:
             # Arrow is completely outside the ring
@@ -651,7 +682,7 @@ class Game(Base):
             # No collision registered
             return 0
     
-    def handle_arrows(self, delta_time):
+    def handle_arrows(self, delta_time, current_music_time):
         """Handle arrow movement, collision detection, and removal"""
         # Check for any arrow key press this frame
         is_arrow_key_pressed = (self.input.is_key_pressed('up') or 
@@ -699,7 +730,7 @@ class Game(Base):
                 continue
                 
             # Check for collision with ring
-            self.check_arrow_ring_collision(arrow)
+            self.check_arrow_ring_collision(arrow, current_music_time)
         
         # Remove arrows that are no longer visible
         for i in sorted(arrows_to_remove, reverse=True):
@@ -882,7 +913,8 @@ class Game(Base):
                     self.music_system.update_keyframe_arrows(self.create_single_arrow)
                 
                 # Continue handling movement and removal of existing arrows
-                self.handle_arrows(self.delta_time)
+                current_music_time = self.music_system.get_music_time()
+                self.handle_arrows(self.delta_time, current_music_time)
 
                 # --- BEGIN PENALTY LOGIC FOR PRESSING KEY WHEN NO ARROW IN RING ---
                 # Check if any gameplay arrow key was pressed down this frame

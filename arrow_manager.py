@@ -2,35 +2,80 @@ import math
 import uuid
 import random
 from geometry.arrow import Arrow
-from config import ARROW_START_POSITION, ARROW_SPAWN_INTERVAL
+import config # Import config to access ARROW_TYPE constants
+
+# Constants from config.py (consider direct import for clarity if only a few are needed)
+# Example: from config import ARROW_SPAWN_INTERVAL, ARROW_START_POSITION, ARROW_COLOR, ARROW_UNITS_PER_SECOND
+# For now, using config.X to access them.
+ARROW_SPAWN_INTERVAL = config.ARROW_SPAWN_INTERVAL
 
 class ArrowManager:
-    def __init__(self, scene, target_ring, debug_mode=False):
-        self.scene = scene
+    """Manages the creation, tracking, and lifecycle of arrows in the game."""
+    def __init__(self, scene, target_ring, arrow_ring_pivot, debug_mode=False):
+        """Initialize the ArrowManager.
+
+        Args:
+            scene: The main scene object to add arrows to.
+            target_ring: The target ring object for collision detection.
+            arrow_ring_pivot: The MovementRig that serves as the pivot for arrows and the ring.
+            debug_mode (bool): Flag to enable debug features.
+        """
+        self.scene = scene  # Keep scene reference for now, though arrows are added to pivot
         self.target_ring = target_ring
+        self.arrow_ring_pivot = arrow_ring_pivot # Store reference to the pivot
         self.arrows = []
-        self.arrow_spawn_timer = 0
+        self.arrow_spawn_timer = 0.0
         self.arrow_spawn_interval = ARROW_SPAWN_INTERVAL
         self.processed_arrow_uuids = []
         self.current_waiting_arrow_id = None
         self.debug_mode = debug_mode
         
-    def create_single_arrow(self):
-        """Creates a single arrow with random orientation"""
-        possible_angles = [0, 90, 180, 270]
-        angle = random.choice(possible_angles)
+    def create_single_arrow(self, arrow_type_str=None):
+        """Creates a single arrow with a specified or random orientation, as a child of the pivot."""
+        # Determine angle for the arrow
+        angle_degrees = self._get_arrow_angle(arrow_type_str)
+
+        arrow = Arrow(
+            color=config.ARROW_COLOR, 
+            offset=[0,0,0], # Offset is handled by ARROW_START_POSITION relative to pivot
+            debug_mode=self.debug_mode,
+            speed=config.ARROW_UNITS_PER_SECOND
+        )
         
-        arrow = Arrow(color=[1.0, 0.0, 0.0], offset=[0, 0, 0], debug_mode=self.debug_mode)
-        arrow.add_to_scene(self.scene)
-        arrow.rotate(math.radians(angle), 'z')
+        # Add arrow's rig to the arrow_ring_pivot instead of the main scene
+        self.arrow_ring_pivot.add(arrow.rig)
         
-        # Set arrow at hardcoded position
-        arrow.set_position(ARROW_START_POSITION)
+        arrow.rotate(math.radians(angle_degrees), 'z')
+        
+        # Set arrow position relative to the pivot
+        arrow.set_position(list(config.ARROW_START_POSITION))
         
         # Generate a unique ID for this arrow
         arrow.unique_id = str(uuid.uuid4())
         
+        # Add to internal tracking list
+        # self.arrows.append(arrow) # This will be done by music_system or update_arrow_spawning
+        print(f"Created Arrow[{arrow.unique_id}] at {config.ARROW_START_POSITION} relative to pivot, angle: {angle_degrees}")
         return arrow
+
+    def _get_arrow_angle(self, arrow_type_str=None):
+        """Determines the arrow's rotation angle based on type string or randomly."""
+        if arrow_type_str:
+            arrow_type_str_lower = arrow_type_str.lower()
+            if arrow_type_str_lower in config.ARROW_TYPE_NAMES:
+                return config.ARROW_TYPE_NAMES[arrow_type_str_lower]
+            else:
+                print(f"Warning: Unknown arrow_type_str '{arrow_type_str}'. Defaulting to UP (0 degrees).")
+                return config.ARROW_TYPE_UP  # Default to UP
+        else:
+            # If no type specified, choose a random one
+            possible_angles = [
+                config.ARROW_TYPE_UP, 
+                config.ARROW_TYPE_LEFT, 
+                config.ARROW_TYPE_DOWN, 
+                config.ARROW_TYPE_RIGHT
+            ]
+            return random.choice(possible_angles)
 
     def update_arrow_spawning(self, delta_time):
         """Updates the timer and creates new arrows when needed"""
@@ -39,14 +84,8 @@ class ArrowManager:
             self.arrow_spawn_timer = 0
             self.arrows.append(self.create_single_arrow())
 
-    def check_arrow_ring_collision(self, arrow, is_arrow_key_pressed):
-        """
-        Checks if an arrow is inside the ring.
-        Returns:
-        - 1: Arrow is completely inside the ring (both body and tip)
-        - 0.5: Arrow is partially inside the ring (only part of body or tip)
-        - 0: Arrow is outside the ring
-        """
+    def check_arrow_ring_collision(self, arrow):
+        """Check for collision between an arrow and the target ring, using pivot-relative positions."""
         # If arrow has been marked as ineligible for detection, immediately return 0
         if hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection:
             return 0
@@ -55,22 +94,20 @@ class ArrowManager:
         if hasattr(arrow, 'unique_id') and arrow.unique_id in self.processed_arrow_uuids:
             return arrow.collision_value if hasattr(arrow, 'collision_value') else 0
             
-        # Get positions of ring
-        ring_pos = self.target_ring.global_position
+        # Use local_position of the target_ring, which is relative to the arrow_ring_pivot
+        ring_pos = self.target_ring.local_position 
         
-        # Get the inner and outer radius of the ring, adjusted by the scale factor
+        # Ring radii are based on its geometry and scale, assumed to be correct in local space
         inner_radius = self.target_ring.geometry.inner_radius * self.target_ring.scale_factors[0]
         outer_radius = self.target_ring.geometry.outer_radius * self.target_ring.scale_factors[0]
         
-        # Get arrow's bounding rectangle
-        min_x, min_z, max_x, max_z = arrow.get_bounding_rect()
+        # Arrow's bounding rectangle should be in its local space or compatible pivot space
+        min_x, min_z, max_x, max_z = arrow.get_bounding_rect() # Assuming this gives local coords or pivot-relative
         
-        # Get arrow position
+        # Arrow's position is also local to its parent (the pivot)
         arrow_pos = arrow.rig.local_position
         
-        # IMPORTANT CORRECTION: The ring is vertical, so we need to check in the XY plane, not XZ plane
-        # For a vertical ring in the ZY plane, we use the Z coordinate of the arrow for distance calculation
-        # Calculate distance between arrow center and ring center in the XZ plane (vertical ring)
+        # Calculate distance between arrow center and ring center (all in pivot's local XZ plane)
         dx = arrow_pos[0] - ring_pos[0]
         dz = arrow_pos[2] - ring_pos[2]  # Use Z coordinate for vertical ring
         center_distance = math.sqrt(dx*dx + dz*dz)
@@ -147,7 +184,6 @@ class ArrowManager:
             
         # Only register a collision if all conditions are met
         if (arrow.potential_collision_value > 0 and 
-            is_arrow_key_pressed and 
             not arrow.collision_checked and
             not (hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection)):
             
@@ -211,7 +247,7 @@ class ArrowManager:
         collision_results = []
         for idx, distance, arrow in nearest_arrows:
             if not (hasattr(arrow, 'ineligible_for_detection') and arrow.ineligible_for_detection):
-                collision_result = self.check_arrow_ring_collision(arrow, is_arrow_key_pressed)
+                collision_result = self.check_arrow_ring_collision(arrow)
                 if collision_result > 0:
                     collision_results.append((arrow, collision_result))
         

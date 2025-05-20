@@ -7,7 +7,7 @@ from extras.movement_rig import MovementRig
 from core.matrix import Matrix
 
 class Arrow:
-    SPEED_UNITS_PER_SECOND = 2.0
+    SPEED_UNITS_PER_SECOND = 2.0 # Default speed if not provided by instance
     RESET_POSITION=10
     
     def __init__(
@@ -17,10 +17,19 @@ class Arrow:
         size=0.8,
         angle=0.0,
         axis='z',
-        debug_mode=False
+        debug_mode=False,
+        speed=None  # Add speed parameter
     ):
         # Print debug mode setting to verify it's being passed correctly
         print(f"\n==== Arrow created with debug_mode={debug_mode} ====\n")
+        
+        # Set instance-specific speed if provided, otherwise use class default
+        if speed is not None:
+            self.SPEED_UNITS_PER_SECOND = speed
+        else:
+            # Ensure self.SPEED_UNITS_PER_SECOND exists, inheriting from class if not overridden
+            if not hasattr(self, 'SPEED_UNITS_PER_SECOND'):
+                 self.SPEED_UNITS_PER_SECOND = Arrow.SPEED_UNITS_PER_SECOND
         
         # Ensure color only has 3 components for vec3 uniforms
         if len(color) > 3:
@@ -142,6 +151,7 @@ class Arrow:
         current_pos = self.rig.local_position
         arrow_stop_x = 4.0  # Preserve the original stopping point logic
         
+        # Use self.SPEED_UNITS_PER_SECOND which is now instance-specific or class default
         if current_pos[0] < arrow_stop_x:
             new_x = current_pos[0] + self.SPEED_UNITS_PER_SECOND * self.direction * delta_time
             # Ensure the arrow doesn't overshoot the arrow_stop_x
