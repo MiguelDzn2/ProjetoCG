@@ -26,7 +26,7 @@ class MusicSystem:
         self.music_file = None
         self.keyframes = []
         self.current_keyframe_index = 0
-        self.timing_adjustment = 0.9  # Default timing adjustment
+        self.timing_adjustment = 0.0 # Temporarily set to 0.0 for diagnosing arrival time issues
         self.arrow_travel_time = 0.0  # To be calculated later
         self.selection_music_playing = False
         
@@ -285,13 +285,14 @@ class MusicSystem:
             
     def update_keyframe_arrows(self, create_arrow_callback):
         """
-        Check keyframes and create arrows when their time is reached.
+        Process keyframes and trigger arrow creation based on music time.
         Adjusts spawn time based on arrow_travel_time.
 
         Parameters:
-            create_arrow_callback: Function to call to create an arrow
+            create_arrow_callback: Function to call when an arrow needs to be created.
+                                   This callback should accept an 'arrow_type' string and return the created arrow.
         """
-        if not self.music_playing or not self.keyframes:
+        if not self.music_playing or self.selection_music_playing or not self.keyframes: # Added selection_music_playing
             return
 
         current_music_time = self.get_music_time()
@@ -299,23 +300,31 @@ class MusicSystem:
         while self.current_keyframe_index < len(self.keyframes):
             keyframe = self.keyframes[self.current_keyframe_index]
             
-            # Adjust keyframe time to spawn arrow earlier based on travel time
-            spawn_time = keyframe['time'] - self.arrow_travel_time
-            arrow_type_to_spawn = keyframe['arrow_type'] # Get arrow type string
+            # Calculate the actual time an arrow needs to be spawned
+            # so it arrives at the ring at keyframe['time']
+            spawn_trigger_time = keyframe['time'] - self.arrow_travel_time
+            
+            if current_music_time >= spawn_trigger_time:
+                # Log the timing details for debugging
+                # Ensure all float values are formatted to 3 decimal places for consistent logging.
+                print(f"TIMING LOG: MusicTime={current_music_time:.3f}, "
+                      f"KeyframeTargetTime={keyframe['time']:.3f}, "
+                      f"ArrowTravelTime={self.arrow_travel_time:.3f}, "
+                      f"SpawnTriggerTime={spawn_trigger_time:.3f}, "
+                      f"Diff={(current_music_time - spawn_trigger_time):.3f}")
 
-            if current_music_time >= spawn_time:
-                print(f"Spawning arrow for keyframe {self.current_keyframe_index}: time {keyframe['time']:.2f}s, type '{arrow_type_to_spawn}', music_time: {current_music_time:.2f}s")
+                arrow_type_to_spawn = keyframe['arrow_type']
                 
-                # Create the arrow using the callback
-                new_arrow = create_arrow_callback(arrow_type_to_spawn)
-                
-                # Store the original keyframe target time on the arrow
-                if new_arrow:
-                    new_arrow.keyframe_target_time = keyframe['time']
-                    # The arrow_manager will add it to its list if music_system doesn't do it.
-                    # self.arrow_manager.arrows.append(new_arrow) # Ensure arrow_manager tracks it
+                if callable(create_arrow_callback):
+                    new_arrow = create_arrow_callback(arrow_type_str=arrow_type_to_spawn)
+                    if new_arrow:
+                        # Store the original intended arrival time on the arrow for potential use
+                        # in scoring or debugging.
+                        new_arrow.keyframe_target_time = keyframe['time']
                 
                 self.current_keyframe_index += 1
             else:
-                # Keyframes are sorted, so no need to check further
+                # Keyframes are sorted by time, so no need to check further
+                # if the current music time hasn't reached the spawn_trigger_time
+                # for the current keyframe.
                 break 
