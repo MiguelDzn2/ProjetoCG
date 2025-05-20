@@ -163,9 +163,21 @@ class PhaseManager:
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
         
-        # Get initial camera position and rotation from first waypoint
-        if len(CAMERA_WAYPOINTS) > 0:
-            first_waypoint = CAMERA_WAYPOINTS[0]
+        # Get the index of the selected instrument
+        selected_index = self.object_rigs.index(self.active_object_rig)
+        
+        # Get the instrument name based on index
+        instrument_names = ["miguel", "ze", "ana", "brandon"]
+        if selected_index < len(instrument_names):
+            selected_instrument = instrument_names[selected_index]
+            print(f"Selected instrument: {selected_instrument}")
+        else:
+            selected_instrument = "miguel"  # Default fallback
+            print(f"Invalid instrument index {selected_index}, defaulting to miguel")
+        
+        # Get instrument-specific camera waypoints
+        if selected_instrument in CAMERA_WAYPOINTS and len(CAMERA_WAYPOINTS[selected_instrument]) > 0:
+            first_waypoint = CAMERA_WAYPOINTS[selected_instrument][0]
             # Apply position and rotation from first waypoint
             self.camera_rig.set_position(first_waypoint["position"])
             
@@ -173,21 +185,18 @@ class PhaseManager:
             self.camera_rig.rotate_x(math.radians(first_waypoint["rotation"][0]))
             self.camera_rig.rotate_y(math.radians(first_waypoint["rotation"][1]))
             self.camera_rig.rotate_z(math.radians(first_waypoint["rotation"][2]))
-            print(f"Camera positioned at first waypoint: pos={first_waypoint['position']}, rot={first_waypoint['rotation']}")
+            print(f"Camera positioned at first waypoint for {selected_instrument}: pos={first_waypoint['position']}, rot={first_waypoint['rotation']}")
         else:
             # Fallback to initial position and rotation if no waypoints defined
             self.camera_rig.set_position(CAMERA_INITIAL_POSITION)
             self.camera_rig.rotate_x(math.radians(CAMERA_INITIAL_ROTATION[0]))
             self.camera_rig.rotate_y(math.radians(CAMERA_INITIAL_ROTATION[1]))
             self.camera_rig.rotate_z(math.radians(CAMERA_INITIAL_ROTATION[2]))
-            print("No waypoints found, using initial camera position and rotation")
+            print(f"No waypoints found for {selected_instrument}, using initial camera position and rotation")
         
         # Remove highlighting and reset active object
         self.remove_highlighting()
         self.active_object_rig._matrix = Matrix.make_identity()
-        
-        # Get the index of the selected instrument
-        selected_index = self.object_rigs.index(self.active_object_rig)
         
         # Set position based on which instrument was selected
         self.active_object_rig.set_position(GAMEPLAY_SELECTED_INSTRUMENT_POSITIONS[selected_index])

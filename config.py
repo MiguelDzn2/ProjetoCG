@@ -13,68 +13,106 @@ CAMERA_FINAL_POSITION = [-3, 1.2, 12.5]
 CAMERA_FINAL_ROTATION = [0, -45, 0]  # X, Y, Z rotations in degrees
 CAMERA_TRANSITION_TIME = 4.0
 
-# Camera waypoints configuration - visited after secondary position
+# Camera waypoints configuration - instrument specific
 # Each waypoint has:
 # - time: at which the transition begins (in seconds of music time)
 # - position: target XZY coordinates
 # - rotation: target XYZ Euler angles (in degrees)
-CAMERA_WAYPOINTS = [
-    {
-        "time": 0.0,
-        "position": [-6.3, 5.9, 20],
-        "rotation": [-28.9, -29, 0] 
-    },
-   {
-        "time": 10.0,
-        "position": [0, 1.2, 7],
-        "rotation": [0, -90, 0]
-    }, 
-    {
-        "time": 15.0,
-        "position": [-3, 1.2, 12.5],
-        "rotation": [0, -45, 0]
-    },
-    {
-        "time": 16.0,
-        "position": [-3, 1.2, 12.5],
-        "rotation": [0, -45, 5]
-    },
-    {
-        "time": 17.0,
-        "position": [-3, 1.2, 12.5],
-        "rotation": [0, -45, -5]
-    },
-    {
-        "time": 21.0,
-        "position": [-0.4, 2.5, 9.4],
-        "rotation": [-10, -0, 0]
-    },
-    {
-        "time": 25.0,
-        "position": [-0.4, 2, 15],
-        "rotation": [-3, -0, 0]
-    },
-    {
-        "time": 30.0,
-        "position": [-0.4, 1, 10],
-        "rotation": [-3, -0, 0]
-    },
-    {
-        "time": 40.0,
-        "position": [0, 1.2, 7],
-        "rotation": [0, -90, 0]
-    },
-    {
-        "time": 46.0,
-        "position": [-0.4, 1, 10],
-        "rotation": [-3, -0, 0]
-    },
-    {
-        "time": 55.0,
-        "position": [-3, 1.2, 12.5],
-        "rotation": [0, -45, 0]
-    }
-]
+CAMERA_WAYPOINTS = {
+    "miguel": [
+        {
+            "time": 0.0,
+            "position": [-6.3, 6.2, 20],
+            "rotation": [-28.9, -29, 0] 
+        },
+        {
+            "time": 10.0,
+            "position": [0, 1.7, 7],
+            "rotation": [0, -90, 0]
+        }, 
+        {
+            "time": 15.0,
+            "position": [-3, 1.2, 12.5],
+            "rotation": [0, -45, 0]
+        },
+        {
+            "time": 16.0,
+            "position": [-3, 1.2, 12.5],
+            "rotation": [0, -45, 5]
+        },
+        {
+            "time": 17.0,
+            "position": [-3, 1.2, 12.5],
+            "rotation": [0, -45, -5]
+        },
+        {
+            "time": 21.0,
+            "position": [-5, 2.5, 9.4],
+            "rotation": [-10, -0, 0]
+        },
+        {
+            "time": 25.0,
+            "position": [-0.4, 2, 15],
+            "rotation": [-3, -0, 0]
+        },
+        {
+            "time": 30.0,
+            "position": [-0.4, 2, 10],
+            "rotation": [-3, -0, 0]
+        },
+        {
+            "time": 40.0,
+            "position": [0, 2.2, 12],
+            "rotation": [0, -60, 0]
+        },
+        {
+            "time": 46.0,
+            "position": [-0.4, 4, 10],
+            "rotation": [-3, -0, 0]
+        },
+        {
+            "time": 55.0,
+            "position": [-3, 2.3, 12.5],
+            "rotation": [0, -45, 0]
+        }
+    ],
+    "ze": [
+        {
+            "time": 0.0,
+            "position": [-6.3, 5.9, 20],
+            "rotation": [-28.9, -29, 0] 
+        },
+        {
+            "time": 10.0,
+            "position": [0, 1.2, 7],
+            "rotation": [0, -90, 0]
+        }
+    ],
+    "ana": [
+        {
+            "time": 0.0,
+            "position": [-6.3, 5.9, 20],
+            "rotation": [-28.9, -29, 0] 
+        },
+        {
+            "time": 10.0,
+            "position": [0, 1.2, 7],
+            "rotation": [0, -90, 0]
+        }
+    ],
+    "brandon": [
+        {
+            "time": 0.0,
+            "position": [-6.3, 5.9, 20],
+            "rotation": [-28.9, -29, 0] 
+        },
+        {
+            "time": 10.0,
+            "position": [0, 1.2, 7],
+            "rotation": [0, -90, 0]
+        }
+    ]
+}
 
 # Movement Configuration
 MOVE_AMOUNT_MULTIPLIER = 2

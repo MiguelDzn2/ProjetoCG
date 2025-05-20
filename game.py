@@ -164,7 +164,9 @@ class Game(Base):
         self.target_waypoint = None
         
         # Log the number of camera waypoints found
-        print(f"Found {len(CAMERA_WAYPOINTS)} camera waypoint(s)")
+        print(f"Loaded camera waypoints for {len(CAMERA_WAYPOINTS)} instruments")
+        for instrument, waypoints in CAMERA_WAYPOINTS.items():
+            print(f"  - {instrument}: {len(waypoints)} waypoints")
         
         # Set up debug visualization if in debug mode
         if self.debug_mode:
@@ -389,22 +391,37 @@ class Game(Base):
         # Get current music time from music system
         current_music_time = self.music_system.get_music_time()
         
+        # Get the selected instrument name
+        instrument_names = ["miguel", "ze", "ana", "brandon"]
+        if hasattr(self, 'highlighted_index') and self.highlighted_index < len(instrument_names):
+            selected_instrument = instrument_names[self.highlighted_index]
+        else:
+            selected_instrument = "miguel"  # Default fallback
+            
+        # Get the appropriate waypoints for the selected instrument
+        if selected_instrument in CAMERA_WAYPOINTS:
+            waypoints = CAMERA_WAYPOINTS[selected_instrument]
+        else:
+            # If no waypoints for this instrument, do nothing
+            print(f"No camera waypoints defined for {selected_instrument}")
+            return
+            
         # If no waypoints, do nothing
-        if len(CAMERA_WAYPOINTS) == 0:
+        if len(waypoints) == 0:
             return
             
         # Find the current target waypoint based on music time
         current_target_index = 0
-        for i, waypoint in enumerate(CAMERA_WAYPOINTS):
+        for i, waypoint in enumerate(waypoints):
             if current_music_time <= waypoint["time"]:
                 current_target_index = i
                 break
-            if i == len(CAMERA_WAYPOINTS) - 1:  # Last waypoint
+            if i == len(waypoints) - 1:  # Last waypoint
                 current_target_index = i
         
         # If we're at or past the last waypoint, stay at the final position
-        if current_target_index == len(CAMERA_WAYPOINTS) - 1 and current_music_time >= CAMERA_WAYPOINTS[-1]["time"]:
-            final_waypoint = CAMERA_WAYPOINTS[-1]
+        if current_target_index == len(waypoints) - 1 and current_music_time >= waypoints[-1]["time"]:
+            final_waypoint = waypoints[-1]
             self.camera_rig._matrix = Matrix.make_identity()
             self.camera_rig.set_position(final_waypoint["position"])
             self.camera_rig.rotate_x(math.radians(final_waypoint["rotation"][0]))
@@ -413,7 +430,7 @@ class Game(Base):
             return
             
         # Get the current target waypoint and the previous waypoint
-        target_waypoint = CAMERA_WAYPOINTS[current_target_index]
+        target_waypoint = waypoints[current_target_index]
         if current_target_index == 0:
             # For the first waypoint, use its own position as the start
             start_waypoint = {
@@ -422,7 +439,7 @@ class Game(Base):
                 "rotation": target_waypoint["rotation"]
             }
         else:
-            start_waypoint = CAMERA_WAYPOINTS[current_target_index - 1]
+            start_waypoint = waypoints[current_target_index - 1]
         
         # Calculate interpolation factor (0 to 1)
         start_time = start_waypoint["time"]
@@ -457,7 +474,7 @@ class Game(Base):
         # Debug output when reaching a waypoint
         if not hasattr(self, '_last_target_index') or self._last_target_index != current_target_index:
             self._last_target_index = current_target_index
-            print(f"Moving towards waypoint {current_target_index} (target time: {target_waypoint['time']:.2f}s)")
+            print(f"Moving towards waypoint {current_target_index} for {selected_instrument} (target time: {target_waypoint['time']:.2f}s)")
             print(f"Target position: {target_waypoint['position']}, rotation: {target_waypoint['rotation']}")
     
     def calculate_arrow_travel_time(self):
