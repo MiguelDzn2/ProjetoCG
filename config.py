@@ -48,6 +48,31 @@ CAMERA_WAYPOINTS = [
         "time": 21.0,
         "position": [-0.4, 2.5, 9.4],
         "rotation": [-10, -0, 0]
+    },
+    {
+        "time": 25.0,
+        "position": [-0.4, 2, 15],
+        "rotation": [-3, -0, 0]
+    },
+    {
+        "time": 30.0,
+        "position": [-0.4, 1, 10],
+        "rotation": [-3, -0, 0]
+    },
+    {
+        "time": 40.0,
+        "position": [0, 1.2, 7],
+        "rotation": [0, -90, 0]
+    },
+    {
+        "time": 46.0,
+        "position": [-0.4, 1, 10],
+        "rotation": [-3, -0, 0]
+    },
+    {
+        "time": 55.0,
+        "position": [-3, 1.2, 12.5],
+        "rotation": [0, -45, 0]
     }
 ]
 

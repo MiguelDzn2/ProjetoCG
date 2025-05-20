@@ -823,13 +823,13 @@ class Game(Base):
                     # Ensure it's added to processed_arrow_uuids if it has an ID, as it's now fully handled
                     if hasattr(arrow, 'unique_id') and arrow.unique_id not in self.processed_arrow_uuids:
                         self.processed_arrow_uuids.append(arrow.unique_id)
+                    
+                    # Only show MISS message for unscored arrows that we're penalizing
+                    if not self.debug_mode:
+                        self.ui_manager.update_collision_text("MISS!")
                 # If it wasn't scored (even if already penalized), still update UI text and reset streak if applicable
                 elif not hasattr(arrow, 'scored') or not arrow.scored:
                     self.ui_manager.update_score(0, is_perfect=False) # Reset streak (no points change if already penalized)
-                
-                # Only show MISS if not in debug mode (to avoid overwriting camera info)
-                if not self.debug_mode:
-                    self.ui_manager.update_collision_text("MISS!")
         
         # Process all arrows for collision
         for arrow in self.arrows:
