@@ -131,7 +131,7 @@ class Game(Base):
         self.camera_animation_time = 0
         self.active_waypoint_index = -1
         self.waypoint_transition_start_time = 0
-        self.waypoint_transition_duration = 4.0  # Each waypoint transition takes 4 seconds
+        self.waypoint_transition_duration = CAMERA_TRANSITION_TIME  # Initial transition uses config value
         self.start_position = list(CAMERA_FINAL_POSITION)
         self.start_rotation = list(CAMERA_FINAL_ROTATION)
         self.target_position = None
@@ -314,6 +314,36 @@ class Game(Base):
         # Get current music time from music system
         current_music_time = self.music_system.get_music_time()
         
+        # Special case for the first waypoint - if we're beyond the initial transition but
+        # haven't started a waypoint transition yet, and we're past the time for the first waypoint
+        if self.active_waypoint_index == -1 and len(CAMERA_WAYPOINTS) > 0:
+            first_waypoint = CAMERA_WAYPOINTS[0]
+            if current_music_time >= first_waypoint["time"]:
+                print(f"Starting camera transition to first waypoint at music time {current_music_time:.2f}s")
+                
+                # Store starting values for this transition
+                self.start_position = list(CAMERA_FINAL_POSITION)
+                self.start_rotation = list(CAMERA_FINAL_ROTATION)
+                
+                # Update state for first waypoint
+                self.active_waypoint_index = 0
+                self.waypoint_transition_start_time = current_music_time
+                self.target_waypoint = first_waypoint
+                self.target_position = list(first_waypoint["position"])
+                self.target_rotation = list(first_waypoint["rotation"])
+                
+                # Calculate duration for this transition based on time to next waypoint
+                if len(CAMERA_WAYPOINTS) > 1:
+                    next_time = CAMERA_WAYPOINTS[1]["time"]
+                    self.waypoint_transition_duration = next_time - first_waypoint["time"]
+                    print(f"Dynamic transition duration for first waypoint: {self.waypoint_transition_duration:.2f}s")
+                else:
+                    # Use a default duration if there's only one waypoint
+                    self.waypoint_transition_duration = 4.0
+                    print(f"Only one waypoint, using default duration: {self.waypoint_transition_duration:.2f}s")
+                
+                print(f"Camera transition: {self.start_position} → {self.target_position}, rotation: {self.start_rotation} → {self.target_rotation}")
+        
         # Check if we need to start a transition to a new waypoint
         next_waypoint_index = self.active_waypoint_index + 1
         if next_waypoint_index < len(CAMERA_WAYPOINTS):
@@ -339,6 +369,16 @@ class Game(Base):
                 self.target_waypoint = next_waypoint
                 self.target_position = list(next_waypoint["position"])
                 self.target_rotation = list(next_waypoint["rotation"])
+                
+                # Calculate duration for this transition based on time to next waypoint
+                if next_waypoint_index + 1 < len(CAMERA_WAYPOINTS):
+                    next_time = CAMERA_WAYPOINTS[next_waypoint_index + 1]["time"]
+                    self.waypoint_transition_duration = next_time - next_waypoint["time"]
+                    print(f"Dynamic transition duration: {self.waypoint_transition_duration:.2f}s")
+                else:
+                    # Use a default duration for the last waypoint
+                    self.waypoint_transition_duration = 4.0
+                    print(f"Last waypoint using default duration: {self.waypoint_transition_duration:.2f}s")
                 
                 print(f"Camera transition: {self.start_position} → {self.target_position}, rotation: {self.start_rotation} → {self.target_rotation}")
         

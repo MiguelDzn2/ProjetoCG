@@ -24,38 +24,38 @@ CAMERA_WAYPOINTS = [
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
     },
+   {
+        "time": 9.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    }, 
+    {
+        "time": 10.0,
+        "position": [-3.8, 4.2, 16.4],
+        "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
+    },
+    {
+        "time": 11.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
     {
         "time": 12.0,
+        "position": [-3.8, 4.2, 16.4],
+        "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
+    },
+    {
+        "time": 13.0,
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
     },
     {
-        "time": 16.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+        "time": 14.0,
+        "position": [-3.8, 4.2, 16.4],
+        "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
     },
-        {
-        "time": 20.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
-    },
-        {
-        "time": 24.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
-    },
-        {
-        "time": 28.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
-    },
-        {
-        "time": 32.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
-    },
-        {
-        "time": 36.0,
+    {
+        "time": 15.0,
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
     },
