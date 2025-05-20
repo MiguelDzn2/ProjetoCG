@@ -261,7 +261,7 @@ NIGHTCLUB_SCALE_FACTOR = 3
 
 # Music and Keyframe Paths for Instruments
 INSTRUMENT_MUSIC_PATHS = {
-    "miguel": "music/fitnessgram.mp3",
+    "miguel": "music/Mike_Oldfield__Tubular_bells.mp3",
     "ze": "music/fitnessgram.mp3",  # Placeholder: Using existing fitnessgram.mp3
     "ana": "music/fitnessgram.mp3",    # Placeholder: Using existing fitnessgram.mp3
     "brandon": "music/fitnessgram.mp3" # Placeholder: Using existing fitnessgram.mp3
@@ -278,8 +278,8 @@ INSTRUMENT_KEYFRAME_PATHS = {
 SELECTION_MUSIC_PATH = "music/selection.mp3"
 
 # Arrow and Ring Pivot Configuration
-ARROW_RING_PIVOT_POSITION = [-1.10, -2.22, -15]  # Initial position [x, z, y] of the pivot
-ARROW_RING_PIVOT_ROTATION = [0, 1, 0]  # Initial rotation [x_degrees, y_degrees, z_degrees] of the pivot
+ARROW_RING_PIVOT_POSITION = [-1.10, -3.2, -15]  # Initial position [x, z, y] of the pivot
+ARROW_RING_PIVOT_ROTATION = [0, 0, 0]  # Initial rotation [x_degrees, y_degrees, z_degrees] of the pivot
 
 # Arrow Type Constants (moved from Game class for centralized access)
 ARROW_TYPE_UP = 0
