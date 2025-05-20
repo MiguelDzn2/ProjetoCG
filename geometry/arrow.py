@@ -63,12 +63,28 @@ class Arrow:
         
         # Create the body (rectangle)
         body_geometry = RectangleGeometry(width=body_width, height=body_height)
-        body_material = SurfaceMaterial(property_dict={"baseColor": color})
+        # Use a brighter color for better visibility (scale up the color values)
+        bright_color = [min(c * 2.0, 1.0) for c in color]  # Make color twice as bright
+        body_material = SurfaceMaterial(property_dict={"baseColor": bright_color})
+        # Make arrow always visible with these settings
+        body_material._setting_dict["depthTest"] = False
+        body_material._setting_dict["blendMode"] = "additive"
+        # Set very high rendering order to render after everything else
+        body_material._setting_dict["renderOrder"] = 9999
+        # Make it visible from both sides
+        body_material._setting_dict["doubleSide"] = True
         self.body_mesh = Mesh(body_geometry, body_material)
         
         # Create the tip (triangle)
         tip_geometry = PolygonGeometry(sides=3, radius=tip_radius)
-        tip_material = SurfaceMaterial(property_dict={"baseColor": color})
+        tip_material = SurfaceMaterial(property_dict={"baseColor": bright_color})
+        # Make arrow always visible with these settings
+        tip_material._setting_dict["depthTest"] = False  
+        tip_material._setting_dict["blendMode"] = "additive"
+        # Set very high rendering order to render after everything else
+        tip_material._setting_dict["renderOrder"] = 9999
+        # Make it visible from both sides
+        tip_material._setting_dict["doubleSide"] = True
         self.tip_mesh = Mesh(tip_geometry, tip_material)
         self.tip_mesh.rotate_z(math.pi/2)  # Make triangle point up
         
@@ -243,13 +259,16 @@ class Arrow:
             color = color[:3]
             print(f"Warning: Arrow color change had more than 3 components. Truncated to RGB: {color}")
         
+        # Make the color brighter for better visibility
+        bright_color = [min(c * 2.0, 1.0) for c in color]  # Make color twice as bright
+        
         # Change body color
         if hasattr(self, 'body_mesh') and self.body_mesh:
-            self.body_mesh.material.set_properties({"baseColor": color})
+            self.body_mesh.material.set_properties({"baseColor": bright_color})
             
         # Change tip color
         if hasattr(self, 'tip_mesh') and self.tip_mesh:
-            self.tip_mesh.material.set_properties({"baseColor": color})
+            self.tip_mesh.material.set_properties({"baseColor": bright_color})
             
     def get_bounding_rect(self):
         """

@@ -15,6 +15,12 @@ class SurfaceMaterial(BasicMaterial):
         self._setting_dict["wireframe"] = False
         # Set line thickness for wireframe rendering
         self._setting_dict["lineWidth"] = 1
+        # Use depth testing? (default: True)
+        self._setting_dict["depthTest"] = True
+        # Blend mode (normal, additive, etc.)
+        self._setting_dict["blendMode"] = "normal"
+        # Render order (higher numbers render later/on top)
+        self._setting_dict["renderOrder"] = 0
         self.set_properties(property_dict)
 
     def update_render_settings(self):
@@ -27,6 +33,18 @@ class SurfaceMaterial(BasicMaterial):
         else:
             GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
         GL.glLineWidth(self._setting_dict["lineWidth"])
+        
+        # Handle depth testing
+        if self._setting_dict["depthTest"]:
+            GL.glEnable(GL.GL_DEPTH_TEST)
+        else:
+            GL.glDisable(GL.GL_DEPTH_TEST)
+            
+        # Handle blend mode
+        if self._setting_dict["blendMode"] == "additive":
+            GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE)
+        else:  # normal blending
+            GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
 
     def set_properties(self, property_dict):
         """
