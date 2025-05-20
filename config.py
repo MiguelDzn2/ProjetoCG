@@ -20,51 +20,51 @@ CAMERA_TRANSITION_TIME = 4.0
 # - rotation: target XYZ Euler angles (in degrees)
 CAMERA_WAYPOINTS = [
     {
-        "time": 8.0,
+        "time": 35.0,
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
     },
    {
-        "time": 9.0,
+        "time": 36.0,
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
     }, 
     {
-        "time": 10.0,
+        "time": 37.0,
         "position": [-3.8, 4.2, 16.4],
         "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
     },
     {
-        "time": 11.0,
+        "time": 38.0,
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
     },
     {
-        "time": 12.0,
+        "time": 39.0,
         "position": [-3.8, 4.2, 16.4],
         "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
     },
     {
-        "time": 13.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
-    },
-    {
-        "time": 14.0,
-        "position": [-3.8, 4.2, 16.4],
-        "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
-    },
-    {
-        "time": 15.0,
-        "position": [0.3, 6.6, 16.5],
-        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
-    },
-        {
         "time": 40.0,
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
     },
-        {
+    {
+        "time": 41.0,
+        "position": [-3.8, 4.2, 16.4],
+        "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
+    },
+    {
+        "time": 42.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+    {
+        "time": 43.0,
+        "position": [0.3, 6.6, 16.5],
+        "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
+    },
+    {
         "time": 44.0,
         "position": [0.3, 6.6, 16.5],
         "rotation": [-45, 0, 0]  # Converted from math.pi/12, -math.pi/2
