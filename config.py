@@ -74,6 +74,11 @@ CAMERA_WAYPOINTS = {
             "time": 55.0,
             "position": [-3, 2.3, 12.5],
             "rotation": [0, -45, 0]
+        },
+        {
+            "time": 72.0,
+            "position": [-1, 13.4, 26.4],
+            "rotation": [-12.2, 1.9, 0]
         }
     ],
     "ze": [

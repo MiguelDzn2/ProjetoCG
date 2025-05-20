@@ -68,10 +68,35 @@ class Game(Base):
     # }
     
     def __init__(self, screen_size=(512, 512), debug_mode=False):
-        """Initialize the game with optional debug mode"""
-        super().__init__(screen_size=screen_size)
+        """
+        Initialize the Game class.
+        
+        Parameters:
+            screen_size: The size of the screen (width, height)
+            debug_mode: Whether to run in debug mode
+        """
+        super().__init__(screen_size)
+        
+        # Store screen dimensions
+        self.screen_width = screen_size[0]
+        self.screen_height = screen_size[1]
+        
+        # Debug mode toggle
         self.debug_mode = debug_mode
-        print(f"\n==== Game initialized with debug_mode = {self.debug_mode} ====\n")
+        self.debug_camera_active = False
+        self.debug_camera = None
+        self.debug_paused = False
+        self.debug_pause_timer = 0
+        self.debug_pause_arrow = None
+        self.debug_pause_duration = 2.0  # seconds to pause in debug mode
+        
+        # Add a message timer for empty miss message
+        self.empty_miss_message_timer = 0
+        self.empty_miss_message_duration = 0.5  # 1/2 second duration for empty miss message
+        self.empty_miss_message_active = False
+        
+        # Camera animation state
+        self.camera_animation_angle = 0
         
         # Initialize game state
         self.current_phase = GamePhase.SELECTION
@@ -80,15 +105,6 @@ class Game(Base):
         self.current_waiting_arrow_id = None
         self.arrows = []
         self.gameplay_key_press_consumed_by_hit_this_frame = False
-        
-        # Initialize debug pause state
-        self.debug_paused = False
-        self.debug_pause_duration = 3.0  # Pause for 3 seconds
-        self.debug_pause_timer = 0
-        self.debug_pause_arrow = None
-        
-        # Debug camera toggle flag
-        self.debug_camera_active = False
         
         # Flag to control arrow/ring visibility
         self.arrow_ring_visible = False
@@ -676,7 +692,7 @@ class Game(Base):
                        (not hasattr(arrow, 'penalized_as_miss') or not arrow.penalized_as_miss):
                         print(f"Arrow[{arrow.unique_id if hasattr(arrow, 'unique_id') else 'N/A'}]: Penalizing -25 for MISS (exited ring).")
                         self.ui_manager.update_score(-25, is_perfect=False)
-                        self.ui_manager.update_collision_text("MISS!")
+                        self._update_collision_text("MISS!")
                         arrow.penalized_as_miss = True
                     
                     print(f"Arrow[{arrow.unique_id if hasattr(arrow, 'unique_id') else 'N/A'}]: Triggering miss animation after completely exiting ring")
@@ -743,7 +759,7 @@ class Game(Base):
                 score_value *= multiplier
                 self.ui_manager.update_score(score_value, is_perfect=True)
                 self.ui_manager.add_arrow_to_streak(arrow.unique_id)
-                self.ui_manager.update_collision_text("PERFECT!")
+                self._update_collision_text("PERFECT!")
                 
                 # Trigger random animation only on perfect hit
                 self.animation_manager.trigger_random_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
@@ -751,7 +767,7 @@ class Game(Base):
                 # Partial hit - update score, don't trigger falling animation
                 print(f"DEBUG: Partial hit score. Arrow ID: {arrow.unique_id if hasattr(arrow, 'unique_id') else 'N/A'}, collision_value: {arrow.collision_value:.2f}, score_value: {score_value}")
                 self.ui_manager.update_score(score_value, is_perfect=False)
-                self.ui_manager.update_collision_text("HIT!")
+                self._update_collision_text("HIT!")
                 
                 # For partial hits, trigger a random animation similar to perfect hits
                 self.animation_manager.trigger_random_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
@@ -771,7 +787,7 @@ class Game(Base):
                 self.debug_pause_timer = 0
                 self.debug_pause_arrow = arrow
                 pause_message = f"PAUSED: {collision_type} Hit (Press SPACE to resume)"
-                self.ui_manager.update_collision_text(pause_message)
+                self._update_collision_text(pause_message)
                 print(f"Game paused for {self.debug_pause_duration} seconds to inspect collision")
                 
             return arrow.collision_value
@@ -843,7 +859,7 @@ class Game(Base):
                     
                     # Only show MISS message for unscored arrows that we're penalizing
                     if not self.debug_mode:
-                        self.ui_manager.update_collision_text("MISS!")
+                        self._update_collision_text("MISS!")
                 # If it wasn't scored (even if already penalized), still update UI text and reset streak if applicable
                 elif not hasattr(arrow, 'scored') or not arrow.scored:
                     self.ui_manager.update_score(0, is_perfect=False) # Reset streak (no points change if already penalized)
@@ -965,7 +981,7 @@ class Game(Base):
             if self.debug_paused and self.input.is_key_down('space'):
                 self.debug_paused = False
                 self.debug_pause_arrow = None
-                self.ui_manager.update_collision_text(" ")
+                self._update_collision_text(" ")
                 print("Debug pause canceled by user")
             
             # Update camera position and rotation text
@@ -1030,6 +1046,25 @@ class Game(Base):
             # Update the dedicated debug info display
             self.ui_manager.update_debug_info(debug_text)
     
+    def _update_collision_text(self, text):
+        """
+        Helper method to update collision text and manage timers.
+        Messages like "EMPTY MISS!" or "MISS!" will be cleared after 0.5 seconds.
+        """
+        # First update the actual text
+        self.ui_manager.update_collision_text(text)
+        
+        # Check if this is a miss message that should use the timer
+        if text.strip() == "EMPTY MISS!" or text.strip() == "MISS!":
+            # Start the timer for this message
+            self.empty_miss_message_active = True
+            self.empty_miss_message_timer = 0
+        elif text.strip() != "":
+            # Any other non-empty message should cancel the timer
+            self.empty_miss_message_active = False
+            self.empty_miss_message_timer = 0
+        # For empty/space messages, don't change the timer state
+    
     def update(self):
         """Update game logic (called every frame)"""
         if self.current_phase == GamePhase.SELECTION:
@@ -1061,13 +1096,21 @@ class Game(Base):
             if not self.debug_mode:
                 self.update_camera_animation()
             
+            # Check for empty miss message timer
+            if self.empty_miss_message_active:
+                self.empty_miss_message_timer += self.delta_time
+                if self.empty_miss_message_timer >= self.empty_miss_message_duration:
+                    self.empty_miss_message_active = False
+                    self.empty_miss_message_timer = 0
+                    self._update_collision_text(" ")
+            
             # Check for debug pause state
             if self.debug_mode and self.debug_paused:
                 self.debug_pause_timer += self.delta_time
                 
                 # Display pause info
                 pause_text = f"GAME PAUSED - Resume in {max(0, self.debug_pause_duration - self.debug_pause_timer):.1f}s"
-                self.ui_manager.update_collision_text(pause_text)
+                self._update_collision_text(pause_text)
                 
                 # Resume after pause duration or if space is pressed
                 if self.debug_pause_timer >= self.debug_pause_duration or self.input.is_key_down('space'):
@@ -1077,7 +1120,7 @@ class Game(Base):
                     if self.debug_mode:
                         self.update_camera_debug_text()
                     # Always clear the collision text
-                    self.ui_manager.update_collision_text(" ")
+                    self._update_collision_text(" ")
                     print("Debug pause ended - game resumed")
             else:
                 # Only process game updates if not paused and arrow-ring system is visible
@@ -1119,7 +1162,7 @@ class Game(Base):
                         self.ui_manager.update_score(-50, is_perfect=False)
                         # Show penalty message (only in non-debug mode)
                         if not self.debug_mode:
-                            self.ui_manager.update_collision_text("EMPTY MISS!")
+                            self._update_collision_text("EMPTY MISS!")
                 # --- END PENALTY LOGIC ---
             
             # Render scene with active camera (main or debug)
