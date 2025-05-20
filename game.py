@@ -138,9 +138,8 @@ class Game(Base):
         self.target_rotation = None
         self.target_waypoint = None
         
-        # Validate CAMERA_WAYPOINTS at initialization
-        if len(CAMERA_WAYPOINTS) != 10:
-            print(f"Warning: Expected 10 camera waypoints, but found {len(CAMERA_WAYPOINTS)}")
+        # Log the number of camera waypoints found
+        print(f"Found {len(CAMERA_WAYPOINTS)} camera waypoint(s)")
         
         # Set up debug visualization if in debug mode
         if self.debug_mode:
@@ -267,161 +266,79 @@ class Game(Base):
     
     def update_camera_animation(self):
         """Update camera position based on animation time and waypoints"""
-        # During the first 0.1 seconds, use initial position without interpolation
-        if self.camera_animation_time < 0.1:
-            self.camera_rig._matrix = Matrix.make_identity()
-            self.camera_rig.set_position(CAMERA_INITIAL_POSITION)
-            # Convert degrees to radians when applying rotations
-            if CAMERA_INITIAL_ROTATION[0] != 0: 
-                self.camera_rig.rotate_x(math.radians(CAMERA_INITIAL_ROTATION[0]))
-            if CAMERA_INITIAL_ROTATION[1] != 0: 
-                self.camera_rig.rotate_y(math.radians(CAMERA_INITIAL_ROTATION[1]))
-            if CAMERA_INITIAL_ROTATION[2] != 0: 
-                self.camera_rig.rotate_z(math.radians(CAMERA_INITIAL_ROTATION[2]))
-            return
-        
-        # Initial transition from initial to final/secondary position
-        initial_transition_end_time = CAMERA_TRANSITION_TIME + 0.1
-        if self.camera_animation_time < initial_transition_end_time:
-            # During transition, interpolate between initial and final positions
-            t = (self.camera_animation_time - 0.1) / CAMERA_TRANSITION_TIME  # Normalized time (0 to 1)
-            
-            # Linear interpolation for position and rotation
-            new_position = [
-                CAMERA_INITIAL_POSITION[0] + (CAMERA_FINAL_POSITION[0] - CAMERA_INITIAL_POSITION[0]) * t,
-                CAMERA_INITIAL_POSITION[1] + (CAMERA_FINAL_POSITION[1] - CAMERA_INITIAL_POSITION[1]) * t,
-                CAMERA_INITIAL_POSITION[2] + (CAMERA_FINAL_POSITION[2] - CAMERA_INITIAL_POSITION[2]) * t
-            ]
-            
-            new_rotation = [
-                CAMERA_INITIAL_ROTATION[0] + (CAMERA_FINAL_ROTATION[0] - CAMERA_INITIAL_ROTATION[0]) * t,
-                CAMERA_INITIAL_ROTATION[1] + (CAMERA_FINAL_ROTATION[1] - CAMERA_INITIAL_ROTATION[1]) * t,
-                CAMERA_INITIAL_ROTATION[2] + (CAMERA_FINAL_ROTATION[2] - CAMERA_INITIAL_ROTATION[2]) * t
-            ]
-            
-            # Apply new transforms
-            self.camera_rig._matrix = Matrix.make_identity()
-            self.camera_rig.set_position(new_position)
-            
-            # Apply all rotations - convert from degrees to radians for the rotation methods
-            self.camera_rig.rotate_x(math.radians(new_rotation[0]))
-            self.camera_rig.rotate_y(math.radians(new_rotation[1]))
-            self.camera_rig.rotate_z(math.radians(new_rotation[2]))
-            return
-        
-        # After initial transition, handle waypoint transitions
-        
         # Get current music time from music system
         current_music_time = self.music_system.get_music_time()
         
-        # Special case for the first waypoint - if we're beyond the initial transition but
-        # haven't started a waypoint transition yet, and we're past the time for the first waypoint
-        if self.active_waypoint_index == -1 and len(CAMERA_WAYPOINTS) > 0:
-            first_waypoint = CAMERA_WAYPOINTS[0]
-            if current_music_time >= first_waypoint["time"]:
-                print(f"Starting camera transition to first waypoint at music time {current_music_time:.2f}s")
-                
-                # Store starting values for this transition
-                self.start_position = list(CAMERA_FINAL_POSITION)
-                self.start_rotation = list(CAMERA_FINAL_ROTATION)
-                
-                # Update state for first waypoint
-                self.active_waypoint_index = 0
-                self.waypoint_transition_start_time = current_music_time
-                self.target_waypoint = first_waypoint
-                self.target_position = list(first_waypoint["position"])
-                self.target_rotation = list(first_waypoint["rotation"])
-                
-                # Calculate duration for this transition based on time to next waypoint
-                if len(CAMERA_WAYPOINTS) > 1:
-                    next_time = CAMERA_WAYPOINTS[1]["time"]
-                    self.waypoint_transition_duration = next_time - first_waypoint["time"]
-                    print(f"Dynamic transition duration for first waypoint: {self.waypoint_transition_duration:.2f}s")
-                else:
-                    # Use a default duration if there's only one waypoint
-                    self.waypoint_transition_duration = 4.0
-                    print(f"Only one waypoint, using default duration: {self.waypoint_transition_duration:.2f}s")
-                
-                print(f"Camera transition: {self.start_position} → {self.target_position}, rotation: {self.start_rotation} → {self.target_rotation}")
-        
-        # Check if we need to start a transition to a new waypoint
-        next_waypoint_index = self.active_waypoint_index + 1
-        if next_waypoint_index < len(CAMERA_WAYPOINTS):
-            next_waypoint = CAMERA_WAYPOINTS[next_waypoint_index]
+        # If no waypoints, do nothing
+        if len(CAMERA_WAYPOINTS) == 0:
+            return
             
-            # Start transition to next waypoint when music time reaches waypoint time
-            if current_music_time >= next_waypoint["time"]:
-                print(f"Starting camera transition to waypoint {next_waypoint_index} at music time {current_music_time:.2f}s")
-                
-                # Store starting values for this transition
-                if self.active_waypoint_index < 0:
-                    # First waypoint after initial transition
-                    self.start_position = list(CAMERA_FINAL_POSITION)
-                    self.start_rotation = list(CAMERA_FINAL_ROTATION)
-                else:
-                    # Previous waypoint's target values
-                    self.start_position = list(self.target_waypoint["position"])
-                    self.start_rotation = list(self.target_waypoint["rotation"])
-                
-                # Update state for new waypoint
-                self.active_waypoint_index = next_waypoint_index
-                self.waypoint_transition_start_time = current_music_time
-                self.target_waypoint = next_waypoint
-                self.target_position = list(next_waypoint["position"])
-                self.target_rotation = list(next_waypoint["rotation"])
-                
-                # Calculate duration for this transition based on time to next waypoint
-                if next_waypoint_index + 1 < len(CAMERA_WAYPOINTS):
-                    next_time = CAMERA_WAYPOINTS[next_waypoint_index + 1]["time"]
-                    self.waypoint_transition_duration = next_time - next_waypoint["time"]
-                    print(f"Dynamic transition duration: {self.waypoint_transition_duration:.2f}s")
-                else:
-                    # Use a default duration for the last waypoint
-                    self.waypoint_transition_duration = 4.0
-                    print(f"Last waypoint using default duration: {self.waypoint_transition_duration:.2f}s")
-                
-                print(f"Camera transition: {self.start_position} → {self.target_position}, rotation: {self.start_rotation} → {self.target_rotation}")
+        # Find the current target waypoint based on music time
+        current_target_index = 0
+        for i, waypoint in enumerate(CAMERA_WAYPOINTS):
+            if current_music_time <= waypoint["time"]:
+                current_target_index = i
+                break
+            if i == len(CAMERA_WAYPOINTS) - 1:  # Last waypoint
+                current_target_index = i
         
-        # If we have an active waypoint transition, update camera position/rotation
-        if self.active_waypoint_index >= 0 and hasattr(self, 'target_position') and hasattr(self, 'start_position'):
-            # Calculate how far we are through the current transition (0 to 1)
-            transition_elapsed = current_music_time - self.waypoint_transition_start_time
-            t = min(transition_elapsed / self.waypoint_transition_duration, 1.0)  # Clamped to [0,1]
+        # If we're at or past the last waypoint, stay at the final position
+        if current_target_index == len(CAMERA_WAYPOINTS) - 1 and current_music_time >= CAMERA_WAYPOINTS[-1]["time"]:
+            final_waypoint = CAMERA_WAYPOINTS[-1]
+            self.camera_rig._matrix = Matrix.make_identity()
+            self.camera_rig.set_position(final_waypoint["position"])
+            self.camera_rig.rotate_x(math.radians(final_waypoint["rotation"][0]))
+            self.camera_rig.rotate_y(math.radians(final_waypoint["rotation"][1]))
+            self.camera_rig.rotate_z(math.radians(final_waypoint["rotation"][2]))
+            return
             
-            if t < 1.0:  # Still transitioning
-                # Linear interpolation for position
-                new_position = [
-                    self.start_position[0] + (self.target_position[0] - self.start_position[0]) * t,
-                    self.start_position[1] + (self.target_position[1] - self.start_position[1]) * t,
-                    self.start_position[2] + (self.target_position[2] - self.start_position[2]) * t
-                ]
-                
-                # Linear interpolation for rotation
-                new_rotation = [
-                    self.start_rotation[0] + (self.target_rotation[0] - self.start_rotation[0]) * t,
-                    self.start_rotation[1] + (self.target_rotation[1] - self.start_rotation[1]) * t,
-                    self.start_rotation[2] + (self.target_rotation[2] - self.start_rotation[2]) * t
-                ]
-                
-                # Apply new transforms
-                self.camera_rig._matrix = Matrix.make_identity()
-                self.camera_rig.set_position(new_position)
-                
-                # Apply all rotations - convert from degrees to radians for the rotation methods
-                self.camera_rig.rotate_x(math.radians(new_rotation[0]))
-                self.camera_rig.rotate_y(math.radians(new_rotation[1]))
-                self.camera_rig.rotate_z(math.radians(new_rotation[2]))
-            elif t >= 1.0:
-                # Transition complete, position camera exactly at target
-                self.camera_rig._matrix = Matrix.make_identity()
-                self.camera_rig.set_position(self.target_position)
-                self.camera_rig.rotate_x(math.radians(self.target_rotation[0]))
-                self.camera_rig.rotate_y(math.radians(self.target_rotation[1]))
-                self.camera_rig.rotate_z(math.radians(self.target_rotation[2]))
-                
-                # If we've reached the final waypoint, log completion
-                if self.active_waypoint_index == len(CAMERA_WAYPOINTS) - 1:
-                    print(f"Completed all camera waypoints at music time {current_music_time:.2f}s")
+        # Get the current target waypoint and the previous waypoint
+        target_waypoint = CAMERA_WAYPOINTS[current_target_index]
+        if current_target_index == 0:
+            # For the first waypoint, use its own position as the start
+            start_waypoint = {
+                "time": 0,
+                "position": target_waypoint["position"],
+                "rotation": target_waypoint["rotation"]
+            }
+        else:
+            start_waypoint = CAMERA_WAYPOINTS[current_target_index - 1]
+        
+        # Calculate interpolation factor (0 to 1)
+        start_time = start_waypoint["time"]
+        end_time = target_waypoint["time"]
+        if end_time == start_time:  # Handle case where times are the same
+            t = 1.0
+        else:
+            t = (current_music_time - start_time) / (end_time - start_time)
+            t = max(0.0, min(1.0, t))  # Clamp between 0 and 1
+        
+        # Interpolate position
+        new_position = [
+            start_waypoint["position"][0] + (target_waypoint["position"][0] - start_waypoint["position"][0]) * t,
+            start_waypoint["position"][1] + (target_waypoint["position"][1] - start_waypoint["position"][1]) * t,
+            start_waypoint["position"][2] + (target_waypoint["position"][2] - start_waypoint["position"][2]) * t
+        ]
+        
+        # Interpolate rotation
+        new_rotation = [
+            start_waypoint["rotation"][0] + (target_waypoint["rotation"][0] - start_waypoint["rotation"][0]) * t,
+            start_waypoint["rotation"][1] + (target_waypoint["rotation"][1] - start_waypoint["rotation"][1]) * t,
+            start_waypoint["rotation"][2] + (target_waypoint["rotation"][2] - start_waypoint["rotation"][2]) * t
+        ]
+        
+        # Apply the interpolated transforms
+        self.camera_rig._matrix = Matrix.make_identity()
+        self.camera_rig.set_position(new_position)
+        self.camera_rig.rotate_x(math.radians(new_rotation[0]))
+        self.camera_rig.rotate_y(math.radians(new_rotation[1]))
+        self.camera_rig.rotate_z(math.radians(new_rotation[2]))
+        
+        # Debug output when reaching a waypoint
+        if not hasattr(self, '_last_target_index') or self._last_target_index != current_target_index:
+            self._last_target_index = current_target_index
+            print(f"Moving towards waypoint {current_target_index} (target time: {target_waypoint['time']:.2f}s)")
+            print(f"Target position: {target_waypoint['position']}, rotation: {target_waypoint['rotation']}")
     
     def calculate_arrow_travel_time(self):
         """Calculate how long it takes an arrow to travel from spawn to target ring"""

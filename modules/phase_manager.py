@@ -16,7 +16,8 @@ from config import (
     SELECTION_PHASE_BACKGROUND_POSITION, SELECTION_PHASE_BACKGROUND_WIDTH,
     SELECTION_PHASE_BACKGROUND_HEIGHT, SELECTION_PHASE_BACKGROUND_IMAGE,
     GAMEPLAY_PHASE_POSITIONS, GAMEPLAY_PHASE_ROTATIONS,
-    GAMEPLAY_SELECTED_INSTRUMENT_POSITION, GAMEPLAY_SELECTED_INSTRUMENT_POSITIONS
+    GAMEPLAY_SELECTED_INSTRUMENT_POSITION, GAMEPLAY_SELECTED_INSTRUMENT_POSITIONS,
+    CAMERA_WAYPOINTS
 )
 from geometry.rectangle import RectangleGeometry
 from core_ext.mesh import Mesh
@@ -162,16 +163,24 @@ class PhaseManager:
         # Reset camera transform first
         self.camera_rig._matrix = Matrix.make_identity()
         
-        # Apply hardcoded position and rotation for camera
-        self.camera_rig.set_position(CAMERA_INITIAL_POSITION)
-        
-        # Apply rotations if needed
-        if CAMERA_INITIAL_ROTATION[0] != 0:
-            self.camera_rig.rotate_x(CAMERA_INITIAL_ROTATION[0])
-        if CAMERA_INITIAL_ROTATION[1] != 0:
-            self.camera_rig.rotate_y(CAMERA_INITIAL_ROTATION[1])
-        if CAMERA_INITIAL_ROTATION[2] != 0:
-            self.camera_rig.rotate_z(CAMERA_INITIAL_ROTATION[2])
+        # Get initial camera position and rotation from first waypoint
+        if len(CAMERA_WAYPOINTS) > 0:
+            first_waypoint = CAMERA_WAYPOINTS[0]
+            # Apply position and rotation from first waypoint
+            self.camera_rig.set_position(first_waypoint["position"])
+            
+            # Apply rotations if needed (convert degrees to radians)
+            self.camera_rig.rotate_x(math.radians(first_waypoint["rotation"][0]))
+            self.camera_rig.rotate_y(math.radians(first_waypoint["rotation"][1]))
+            self.camera_rig.rotate_z(math.radians(first_waypoint["rotation"][2]))
+            print(f"Camera positioned at first waypoint: pos={first_waypoint['position']}, rot={first_waypoint['rotation']}")
+        else:
+            # Fallback to initial position and rotation if no waypoints defined
+            self.camera_rig.set_position(CAMERA_INITIAL_POSITION)
+            self.camera_rig.rotate_x(math.radians(CAMERA_INITIAL_ROTATION[0]))
+            self.camera_rig.rotate_y(math.radians(CAMERA_INITIAL_ROTATION[1]))
+            self.camera_rig.rotate_z(math.radians(CAMERA_INITIAL_ROTATION[2]))
+            print("No waypoints found, using initial camera position and rotation")
         
         # Remove highlighting and reset active object
         self.remove_highlighting()
