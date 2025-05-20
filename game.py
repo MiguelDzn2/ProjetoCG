@@ -87,6 +87,9 @@ class Game(Base):
         self.debug_pause_timer = 0
         self.debug_pause_arrow = None
         
+        # Debug camera toggle flag
+        self.debug_camera_active = False
+        
         # Set up core framework
         self.renderer = Renderer()
         self.scene = Scene()
@@ -96,6 +99,10 @@ class Game(Base):
         self.camera_rig = MovementRig()
         self.camera_rig.add(self.camera)
         self.scene.add(self.camera_rig)
+        
+        # Set up debug camera (positioned to view main camera and pivot)
+        if debug_mode:
+            self._setup_debug_camera()
         
         # Initialize UI manager
         self.ui_manager = UIManager(self.scene, self.camera)
@@ -108,6 +115,10 @@ class Game(Base):
         
         # Setup target ring as a child of the pivot
         self._setup_target_ring()
+        
+        # Initialize visual indicators for debug camera view
+        if debug_mode:
+            self._setup_debug_visual_indicators()
         
         # Arrow Manager - needs the pivot
         self.arrow_manager = ArrowManager(
@@ -286,6 +297,81 @@ class Game(Base):
         self.debug_text_mesh.set_position([0, 2, -3])  # Position at top of screen
         self.camera.add(self.debug_text_mesh)  # Add to camera so it's always visible
     
+    def _setup_debug_camera(self):
+        """Set up a secondary camera for debug purposes"""
+        # Create debug camera
+        self.debug_camera = Camera(aspect_ratio=1280/720)
+        
+        # Create debug camera rig
+        self.debug_camera_rig = MovementRig()
+        self.debug_camera_rig.add(self.debug_camera)
+        self.scene.add(self.debug_camera_rig)
+        
+        # Position debug camera to see the main camera and pivot
+        # Position is up and back from the scene
+        self.debug_camera_rig.set_position([0, 15, 20])
+        self.debug_camera_rig.rotate_x(math.radians(-30))  # Look down at the scene
+
+    def _setup_debug_visual_indicators(self):
+        """Add visual indicators for the main camera and pivot point"""
+        # Create a visual indicator for the camera
+        from geometry.rectangle import RectangleGeometry
+        from material.surface import SurfaceMaterial
+        
+        # Camera visual indicator (blue box)
+        camera_geo = RectangleGeometry(width=1, height=1)
+        camera_mat = SurfaceMaterial(property_dict={"baseColor": [0, 0, 1], "doubleSide": True, "wireframe": True})
+        self.camera_indicator = Mesh(camera_geo, camera_mat)
+        
+        # Position at the main camera's position
+        self.camera_rig.add(self.camera_indicator)
+        
+        # Pivot visual indicator (red box)
+        pivot_geo = RectangleGeometry(width=0.5, height=0.5)
+        pivot_mat = SurfaceMaterial(property_dict={"baseColor": [1, 0, 0], "doubleSide": True, "wireframe": True})
+        self.pivot_indicator = Mesh(pivot_geo, pivot_mat)
+        
+        # Add to arrow_ring_pivot to show its position
+        self.arrow_ring_pivot.add(self.pivot_indicator)
+        
+        # Add text labels
+        from extras.text_texture import TextTexture
+        from material.texture import TextureMaterial
+        
+        # Camera label
+        camera_label_texture = TextTexture(
+            text="Main Camera",
+            system_font_name="Arial",
+            font_size=12,
+            font_color=(0, 0, 255),
+            background_color=(0, 0, 0, 128),
+            transparent=True,
+            image_width=200,
+            image_height=30
+        )
+        camera_label_mat = TextureMaterial(texture=camera_label_texture, property_dict={"doubleSide": True})
+        camera_label_geo = RectangleGeometry(width=2, height=0.3)
+        self.camera_label = Mesh(camera_label_geo, camera_label_mat)
+        self.camera_label.set_position([0, 1, 0])  # Position above the camera indicator
+        self.camera_indicator.add(self.camera_label)
+        
+        # Pivot label
+        pivot_label_texture = TextTexture(
+            text="Arrow-Ring Pivot",
+            system_font_name="Arial",
+            font_size=12,
+            font_color=(255, 0, 0),
+            background_color=(0, 0, 0, 128),
+            transparent=True,
+            image_width=200,
+            image_height=30
+        )
+        pivot_label_mat = TextureMaterial(texture=pivot_label_texture, property_dict={"doubleSide": True})
+        pivot_label_geo = RectangleGeometry(width=2, height=0.3)
+        self.pivot_label = Mesh(pivot_label_geo, pivot_label_mat)
+        self.pivot_label.set_position([0, 1, 0])  # Position above the pivot indicator
+        self.pivot_indicator.add(self.pivot_label)
+
     def update_camera_animation(self):
         """Update camera position based on animation time and waypoints"""
         # Get current music time from music system
@@ -767,42 +853,85 @@ class Game(Base):
         
         # Camera controls only available in debug mode
         if self.debug_mode:
-            # Camera rotation with I, J, K, L keys
-            if self.input.is_key_pressed('i'):
-                self.camera_rig.rotate_x(rotate_amount)  # Look up
-                # Update rotation tracking
-                if hasattr(self.camera_rig, 'x_rotation'):
-                    self.camera_rig.x_rotation += rotate_amount * (180/math.pi)
-            if self.input.is_key_pressed('k'):
-                self.camera_rig.rotate_x(-rotate_amount) # Look down
-                # Update rotation tracking
-                if hasattr(self.camera_rig, 'x_rotation'):
-                    self.camera_rig.x_rotation -= rotate_amount * (180/math.pi)
-            if self.input.is_key_pressed('j'):
-                self.camera_rig.rotate_y(rotate_amount)  # Turn left
-                # y rotation is tracked in the rotate_y method
-            if self.input.is_key_pressed('l'):
-                self.camera_rig.rotate_y(-rotate_amount) # Turn right
-                # y rotation is tracked in the rotate_y method
+            # Toggle debug camera view with N key
+            if self.input.is_key_down('n'):
+                self.debug_camera_active = not self.debug_camera_active
+                print(f"Debug camera {'activated' if self.debug_camera_active else 'deactivated'}")
                 
-            # Add Z rotation controls with O and P keys
-            if self.input.is_key_pressed('o'):
-                self.camera_rig.rotate_z(rotate_amount)  # Roll left
-                # z rotation is tracked in the rotate_z method
-            if self.input.is_key_pressed('p'):
-                self.camera_rig.rotate_z(-rotate_amount) # Roll right
-                # z rotation is tracked in the rotate_z method
+            # Debug camera controls with Shift + navigation keys
+            if self.debug_camera_active and self.input.is_key_pressed('left_shift'):
+                # Debug camera rotation with I, J, K, L keys
+                if self.input.is_key_pressed('i'):
+                    self.debug_camera_rig.rotate_x(rotate_amount)
+                if self.input.is_key_pressed('k'):
+                    self.debug_camera_rig.rotate_x(-rotate_amount)
+                if self.input.is_key_pressed('j'):
+                    self.debug_camera_rig.rotate_y(rotate_amount)
+                if self.input.is_key_pressed('l'):
+                    self.debug_camera_rig.rotate_y(-rotate_amount)
+                if self.input.is_key_pressed('o'):
+                    self.debug_camera_rig.rotate_z(rotate_amount)
+                if self.input.is_key_pressed('p'):
+                    self.debug_camera_rig.rotate_z(-rotate_amount)
+                
+                # Debug camera position movement with W, A, S, D keys
+                if self.input.is_key_pressed('w'):
+                    self.debug_camera_rig.translate(0, 0, -move_amount)
+                if self.input.is_key_pressed('s'):
+                    self.debug_camera_rig.translate(0, 0, move_amount)
+                if self.input.is_key_pressed('a'):
+                    self.debug_camera_rig.translate(-move_amount, 0, 0)
+                if self.input.is_key_pressed('d'):
+                    self.debug_camera_rig.translate(move_amount, 0, 0)
+                
+                # Additional movement for up/down
+                if self.input.is_key_pressed('e'):
+                    self.debug_camera_rig.translate(0, move_amount, 0)  # Move up
+                if self.input.is_key_pressed('q'):
+                    self.debug_camera_rig.translate(0, -move_amount, 0)  # Move down
+                
+                # Update position text
+                debug_pos = self.debug_camera_rig.global_position
+                print(f"Debug camera position: {debug_pos[0]:.1f}, {debug_pos[1]:.1f}, {debug_pos[2]:.1f}")
             
-            # Camera position movement with W, A, S, D keys
-            if self.input.is_key_pressed('w'):
-                self.camera_rig.translate(0, 0, -move_amount)  # Move forward
-            if self.input.is_key_pressed('s'):
-                self.camera_rig.translate(0, 0, move_amount)   # Move backward
-            if self.input.is_key_pressed('a'):
-                self.camera_rig.translate(-move_amount, 0, 0)  # Move left
-            if self.input.is_key_pressed('d'):
-                self.camera_rig.translate(move_amount, 0, 0)   # Move right
+            # Main camera controls continue as before (only when debug camera is not active or shift not pressed)
+            if not self.debug_camera_active or not self.input.is_key_pressed('left_shift'):
+                # Camera rotation with I, J, K, L keys
+                if self.input.is_key_pressed('i'):
+                    self.camera_rig.rotate_x(rotate_amount)  # Look up
+                    # Update rotation tracking
+                    if hasattr(self.camera_rig, 'x_rotation'):
+                        self.camera_rig.x_rotation += rotate_amount * (180/math.pi)
+                if self.input.is_key_pressed('k'):
+                    self.camera_rig.rotate_x(-rotate_amount) # Look down
+                    # Update rotation tracking
+                    if hasattr(self.camera_rig, 'x_rotation'):
+                        self.camera_rig.x_rotation -= rotate_amount * (180/math.pi)
+                if self.input.is_key_pressed('j'):
+                    self.camera_rig.rotate_y(rotate_amount)  # Turn left
+                    # y rotation is tracked in the rotate_y method
+                if self.input.is_key_pressed('l'):
+                    self.camera_rig.rotate_y(-rotate_amount) # Turn right
+                    # y rotation is tracked in the rotate_y method
+                    
+                # Add Z rotation controls with O and P keys
+                if self.input.is_key_pressed('o'):
+                    self.camera_rig.rotate_z(rotate_amount)  # Roll left
+                    # z rotation is tracked in the rotate_z method
+                if self.input.is_key_pressed('p'):
+                    self.camera_rig.rotate_z(-rotate_amount) # Roll right
+                    # z rotation is tracked in the rotate_z method
                 
+                # Camera position movement with W, A, S, D keys
+                if self.input.is_key_pressed('w'):
+                    self.camera_rig.translate(0, 0, -move_amount)  # Move forward
+                if self.input.is_key_pressed('s'):
+                    self.camera_rig.translate(0, 0, move_amount)   # Move backward
+                if self.input.is_key_pressed('a'):
+                    self.camera_rig.translate(-move_amount, 0, 0)  # Move left
+                if self.input.is_key_pressed('d'):
+                    self.camera_rig.translate(move_amount, 0, 0)   # Move right
+            
             # Allow immediate resume from pause with spacebar
             if self.debug_paused and self.input.is_key_down('space'):
                 self.debug_paused = False
@@ -822,18 +951,20 @@ class Game(Base):
             self.animation_manager.start_falling_animation(self.active_object_rig, self.highlighted_index, self.object_meshes)
         # For other animations (Q, W, E, R, T, Y), only start if nothing is currently animating
         elif not is_animating:
-            if self.input.is_key_down('q'):
-                self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'x', 1)
-            elif self.input.is_key_down('e'):
-                self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'x', -1)
-            elif self.input.is_key_down('w'):
-                self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'y', 1)
-            elif self.input.is_key_down('r'):
-                self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'y', -1)
-            elif self.input.is_key_down('t'):
-                self.animation_manager.start_jump_animation(self.active_object_rig, [-1, 0, 0])
-            elif self.input.is_key_down('y'):
-                self.animation_manager.start_jump_animation(self.active_object_rig, [1, 0, 0])
+            # Keep the original animation controls but only if shift is not pressed or debug camera not active
+            if not self.debug_mode or not self.debug_camera_active or not self.input.is_key_pressed('left_shift'):
+                if self.input.is_key_down('q'):
+                    self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'x', 1)
+                elif self.input.is_key_down('e'):
+                    self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'x', -1)
+                elif self.input.is_key_down('w'):
+                    self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'y', 1)
+                elif self.input.is_key_down('r'):
+                    self.animation_manager.start_rotation_animation(self.active_object_rig, self.highlighted_index, self.object_meshes, 'y', -1)
+                elif self.input.is_key_down('t'):
+                    self.animation_manager.start_jump_animation(self.active_object_rig, [-1, 0, 0])
+                elif self.input.is_key_down('y'):
+                    self.animation_manager.start_jump_animation(self.active_object_rig, [1, 0, 0])
 
         # Update animations if active
         if self.animation_manager.is_rotating:
@@ -959,5 +1090,8 @@ class Game(Base):
                             self.ui_manager.update_collision_text("EMPTY MISS!")
                 # --- END PENALTY LOGIC ---
             
-            # Render scene with current camera
-            self.renderer.render(self.scene, self.camera) 
+            # Render scene with active camera (main or debug)
+            if self.debug_mode and self.debug_camera_active:
+                self.renderer.render(self.scene, self.debug_camera)
+            else:
+                self.renderer.render(self.scene, self.camera) 
