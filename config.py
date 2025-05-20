@@ -21,18 +21,33 @@ CAMERA_TRANSITION_TIME = 4.0
 CAMERA_WAYPOINTS = [
     {
         "time": 0.0,
-        "position": [0, 1.2, 7],
-        "rotation": [0, -90, 0]  # Converted from math.pi/12, -math.pi/2
+        "position": [-6.3, 5.9, 20],
+        "rotation": [-28.9, -29, 0] 
     },
    {
         "time": 10.0,
-        "position": [-3, 1.2, 12.5],
-        "rotation": [0, -45, 0]  # Converted from math.pi/12, -math.pi/2
+        "position": [0, 1.2, 7],
+        "rotation": [0, -90, 0]
     }, 
     {
         "time": 15.0,
-        "position": [-3.8, 4.2, 16.4],
-        "rotation": [-42.7, -40, 5.3]  # Converted from math.pi/12, -math.pi/2
+        "position": [-3, 1.2, 12.5],
+        "rotation": [0, -45, 0]
+    },
+    {
+        "time": 16.0,
+        "position": [-3, 1.2, 12.5],
+        "rotation": [0, -45, 5]
+    },
+    {
+        "time": 17.0,
+        "position": [-3, 1.2, 12.5],
+        "rotation": [0, -45, -5]
+    },
+    {
+        "time": 21.0,
+        "position": [-0.4, 2.5, 9.4],
+        "rotation": [-10, -0, 0]
     }
 ]
 
