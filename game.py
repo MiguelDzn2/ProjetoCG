@@ -90,6 +90,9 @@ class Game(Base):
         # Debug camera toggle flag
         self.debug_camera_active = False
         
+        # Flag to control arrow/ring visibility
+        self.arrow_ring_visible = False
+        
         # Set up core framework
         self.renderer = Renderer()
         self.scene = Scene()
@@ -107,13 +110,13 @@ class Game(Base):
         # Initialize UI manager
         self.ui_manager = UIManager(self.scene, self.camera)
         
-        # Create the pivot node for arrows and ring
+        # Create the arrow-ring pivot (but don't make visible yet)
         self._setup_arrow_ring_pivot()
         
         # Calculate initial arrow travel time
         self.calculate_arrow_travel_time()
-        
-        # Setup target ring as a child of the pivot
+
+        # Setup target ring (invisible until gameplay phase)
         self._setup_target_ring()
         
         # Initialize visual indicators for debug camera view
@@ -199,8 +202,9 @@ class Game(Base):
         self.arrow_ring_pivot.rotate_x(math.radians(ARROW_RING_PIVOT_ROTATION[0]))
         self.arrow_ring_pivot.rotate_y(math.radians(ARROW_RING_PIVOT_ROTATION[1]))
         self.arrow_ring_pivot.rotate_z(math.radians(ARROW_RING_PIVOT_ROTATION[2]))
-        # Add to camera instead of scene, so the pivot moves with the camera
-        self.camera.add(self.arrow_ring_pivot)
+        
+        # Initialize but don't add to camera yet - will be added after selection phase
+        # self.camera.add(self.arrow_ring_pivot)
 
     def _setup_target_ring(self):
         """Set up the target ring for gameplay as a child of the pivot."""
@@ -211,7 +215,8 @@ class Game(Base):
         self.target_ring.set_position(list(RING_POSITION))
         self.target_ring.rotate_x(0)  # No rotation needed initially - already on XY plane
         self.target_ring.scale(RING_SCALE)
-        # Add ring to pivot instead of directly to scene
+        
+        # Add ring to pivot (but pivot is not in scene yet, so ring will not be visible)
         self.arrow_ring_pivot.add(self.target_ring)
         
         # Add debug visualization for ring if in debug mode
@@ -371,6 +376,13 @@ class Game(Base):
         self.pivot_label = Mesh(pivot_label_geo, pivot_label_mat)
         self.pivot_label.set_position([0, 1, 0])  # Position above the pivot indicator
         self.pivot_indicator.add(self.pivot_label)
+
+    def _make_arrow_ring_visible(self):
+        """Makes the arrow-ring pivot and its children visible by adding to camera"""
+        if not self.arrow_ring_visible:
+            self.camera.add(self.arrow_ring_pivot)
+            self.arrow_ring_visible = True
+            print("Arrow and ring system now visible")
 
     def update_camera_animation(self):
         """Update camera position based on animation time and waypoints"""
@@ -1013,6 +1025,9 @@ class Game(Base):
                 # Synchronize active object with PhaseManager
                 self.active_object_rig = self.phase_manager.active_object_rig
                 
+                # Make the arrow and ring visible now that we're in gameplay phase
+                self._make_arrow_ring_visible()
+                
                 # Load and play music for the selected instrument
                 self.music_system.load_track_for_instrument(selected_index)
                 self.music_system.play_music()
@@ -1048,8 +1063,8 @@ class Game(Base):
                     self.ui_manager.update_collision_text(" ")
                     print("Debug pause ended - game resumed")
             else:
-                # Only process game updates if not paused
-                if self.music_system.music_playing:
+                # Only process game updates if not paused and arrow-ring system is visible
+                if self.music_system.music_playing and self.arrow_ring_visible:
                     # Dynamically update the arrow travel time based on current camera and pivot position
                     self.music_system.update_arrow_travel_time()
                     
@@ -1069,7 +1084,7 @@ class Game(Base):
 
                 any_gameplay_arrow_key_down_this_frame = up_key_down or down_key_down or left_key_down or right_key_down
 
-                if any_gameplay_arrow_key_down_this_frame and not self.gameplay_key_press_consumed_by_hit_this_frame:
+                if any_gameplay_arrow_key_down_this_frame and not self.gameplay_key_press_consumed_by_hit_this_frame and self.arrow_ring_visible:
                     # Check if any active, scorable arrow is currently inside the ring.
                     # This is still needed to differentiate between a key press that *could* have hit something
                     # (but was the wrong key) vs. a key press when nothing was hittable.
