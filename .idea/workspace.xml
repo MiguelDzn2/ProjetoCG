@@ -2,10 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="521edee1-4b10-4efa-a4f1-b72044df097e" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/geometry/brandonOBJ.obj" beforeDir="false" afterPath="$PROJECT_DIR$/geometry/brandonOBJ.obj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/geometry/brandoninstrument.py" beforeDir="false" afterPath="$PROJECT_DIR$/geometry/brandoninstrument.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/images/brandonJPG.jpg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/projeto.py" beforeDir="false" afterPath="$PROJECT_DIR$/projeto.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/music_system.py" beforeDir="false" afterPath="$PROJECT_DIR$/modules/music_system.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -23,15 +21,15 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/brand/OneDrive/Documentos/GitHub&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "FinalBranch",
+    "last_opened_file_path": "C:/Users/brand/OneDrive/Documentos/GitHub",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -50,6 +48,7 @@
       <updated>1745921356568</updated>
       <workItem from="1745921357794" duration="26000" />
       <workItem from="1745926464277" duration="2000" />
+      <workItem from="1748127932557" duration="14000" />
     </task>
     <servers />
   </component>

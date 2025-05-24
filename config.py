@@ -155,18 +155,34 @@ CAMERA_WAYPOINTS = {
             "rotation": [0, -90, 0]
         }
     ],
-    "brandon": [
-        {
-            "time": 0.0,
-            "position": [-6.3, 5.9, 20],
-            "rotation": [-28.9, -29, 0] 
-        },
-        {
-            "time": 10.0,
-            "position": [0, 1.2, 7],
-            "rotation": [0, -90, 0]
-        }
-    ]
+    "brandon":[
+       {"time": 0.0, "position": [5, 4, 18], "rotation": [-7, 20, 0]},     # Far right, looking toward stage
+        {"time": 8.0, "position": [8, 4, 15], "rotation": [-7, 15, 0]},      # Moving along right side
+        {"time": 16.0, "position": [5, 2.5, 15], "rotation": [-5, 0, 0]},   # Approaching center
+        {"time": 24.0, "position": [0, 2, 15], "rotation": [0, -20, 0]},       # Center front, facing stage
+        {"time": 29.0, "position": [0, 2, 15], "rotation": [0, -23, 10]},       # Slight tilt right
+        {"time": 35.0, "position": [0, 2, 15], "rotation": [0, -17, -10]},      # Slight tilt left
+        
+        {"time": 40.0, "position": [0, 2, 14], "rotation": [0, 0, 5]},       # Slight tilt right
+        {"time": 45.0, "position": [0, 2, 13], "rotation": [0, 0, -5]},      # Slight tilt left
+        
+        {"time": 50.0, "position": [0, 2, 17], "rotation": [0, -5, 5]},       # Slight tilt right
+        {"time": 55.0, "position": [0, 2, 15], "rotation": [0, -2, -5]},      # Slight tilt left
+        
+        {"time": 64.0, "position": [0, 2, 14], "rotation": [5, -0, 5]},       # Slight tilt right
+        {"time": 70.0, "position": [0, 2, 13], "rotation": [-5, -0, -5]},      # Slight tilt left
+        
+        {"time": 75.0, "position": [0, 2, 17], "rotation": [0, -10, 5]},       # Slight tilt right
+        {"time": 78.0, "position": [0, 2, 15], "rotation": [0, -10, -5]},      # Slight tilt left
+        
+        {"time": 84.0, "position": [0, 2, 14], "rotation": [5, -10, 5]},       # Slight tilt right
+        {"time": 89.0, "position": [0, 2, 13], "rotation": [-5, -10, -5]},      # Slight tilt left
+
+        {"time": 94.0, "position": [0, 2, 15], "rotation": [0, -15, 0]},
+        {"time": 100.0,"position": [0, 2, 14],"rotation": [10, -35, 0]},
+        {"time": 120.0, "position": [0, 0.9, 12], "rotation": [7, 0, 0]},
+
+    ],
 }
 
 # Movement Configuration
@@ -209,7 +225,7 @@ SELECTION_PHASE_SPOTLIGHT_COLORS = [
     [1.0, 1.0, 1.0],  # White for Miguel's spotlight
     [1.0, 1.0, 1.0],  # White for Ze's spotlight
     [1.0, 1.0, 1.0],  # White for Ana's spotlight
-    [1.0, 1.0, 1.0]   # White for Brandon's spotlight 
+    [1.0, 1.0, 1.0]   # White for Brandon's spotlight
 ]
 SELECTION_PHASE_SPOTLIGHT_BRIGHTNESS_MULTIPLIER = 1.5  # For highlighted object
 
@@ -357,14 +373,14 @@ INSTRUMENT_MUSIC_PATHS = {
     "miguel": "music/Mike_Oldfield__Tubular_bells.mp3",
     "ze": "music/midwestindigo.mp3",
     "ana": "music/fitnessgram.mp3",    # Placeholder: Using existing fitnessgram.mp3
-    "brandon": "music/fitnessgram.mp3" # Placeholder: Using existing fitnessgram.mp3
+    "brandon": "music/Llorarás Oscar de León.mp3" # Placeholder: Using existing fitnessgram.mp3
 }
 
 INSTRUMENT_KEYFRAME_PATHS = {
     "miguel": "keyframes/keyframes_1.json",
     "ze": "keyframes/keyframes_2.json",
     "ana": "keyframes/keyframes_1.json",    # Placeholder: Using existing keyframes_3.json
-    "brandon": "keyframes/keyframes_1.json" # Placeholder: Using existing keyframes_4.json
+    "brandon": "keyframes/keyframes_lloraras.json" # Placeholder: Using existing keyframes_4.json
 }
 
 # Selection Phase Music
@@ -386,4 +402,4 @@ ARROW_TYPE_NAMES = {
     "right": ARROW_TYPE_RIGHT
 }
 
-# Gameplay Mechanics 
+# Gameplay Mechanics

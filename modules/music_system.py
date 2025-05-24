@@ -85,7 +85,7 @@ class MusicSystem:
         try:
             print(f"Attempting to load music file: {music_file}")
             pygame.mixer.music.load(music_file)
-            pygame.mixer.music.set_volume(0.2)  # Set volume to 20%
+
             self.music_loaded = True
             self.music_file = music_file
             print(f"Successfully loaded music file: {music_file}")
@@ -270,6 +270,11 @@ class MusicSystem:
             music_loaded = self.load_music(track_info["music"])
             keyframes_loaded = self.load_keyframes(track_info["keyframes"])
             
+            # Se for o instrumento do Brandon (índice 3), aumentar o volume
+            if music_loaded and instrument_index == 3:  # Brandon's instrument
+                pygame.mixer.music.set_volume(3)  
+                print(f"Volume aumentado para o instrumento do Brandon: x3")
+            
             if music_loaded and keyframes_loaded:
                 print(f"Loaded music track and keyframes for instrument {instrument_index}")
                 return True
@@ -374,4 +379,3 @@ class MusicSystem:
             # Music has finished playing
             self.music_playing = False
             print("Music track has finished playing")
-            return True 
