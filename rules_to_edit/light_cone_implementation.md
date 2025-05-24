@@ -164,4 +164,6 @@ Once a `SpotLight` with a visual cone is created:
 *   Add a `set_color(new_color)` method that updates both `_color` and the `visual_cone.material`'s `baseColor` uniform.
 *   Add a `set_cone_opacity(new_opacity)` method.
 *   Add a `set_cone_visible(is_visible)` method to dynamically show/hide the cone.
-*   Consider a more efficient way to update the cone's angle/radius in `set_angle` rather than full recreation, perhaps by applying a scale transformation if the geometry was initially built with unit dimensions, or by having an update method in `ConeGeometry`. 
+*   Consider a more efficient way to update the cone's angle/radius in `set_angle` rather than full recreation, perhaps by applying a scale transformation if the geometry was initially built with unit dimensions, or by having an update method in `ConeGeometry`.
+
+

@@ -30,7 +30,6 @@ This rule provides quick access to important project source files.
 @geometry/arrow.py
 @geometry/ring.py
 @geometry/nightClub.py
-@geometry/cone.py
 
 ## Core Framework Files
 
@@ -50,11 +49,10 @@ This rule provides quick access to important project source files.
 
 @extras/movement_rig.py
 @extras/text_texture.py
-@geometry/rectangle.py
+@geometry/rectangle.py # Often used for UI or simple planes
 
 ## Light System
 
-@light/light.py
 @light/ambient.py
 @light/directional.py
 @light/spotlight.py
@@ -64,11 +62,4 @@ This rule provides quick access to important project source files.
 
 @pyproject.toml
 @poetry.lock
-@requirements.txt
 
-## Documentation
-
-@arrow_implementation.md
-@uniform_explanation.md
-@phase_explanation.md
-@README.md 

@@ -158,7 +158,7 @@ The game relies on several supporting systems:
    - Centralizes configuration for easy tuning
 
 3. **Game Phases** (`game_phases.py`)
-   - Defines the GamePhase enumeration (SELECTION, GAMEPLAY)
+   - Defines the GamePhase enumeration (SELECTION, GAMEPLAY, END_SCREEN)
 
 ### Light System
 

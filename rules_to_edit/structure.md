@@ -153,7 +153,7 @@ The game relies on several supporting systems:
    - Centralizes configuration for easy tuning
 
 3. **Game Phases** (`game_phases.py`)
-   - Defines the GamePhase enumeration (SELECTION, GAMEPLAY)
+   - Defines the GamePhase enumeration (SELECTION, GAMEPLAY, END_SCREEN)
 
 ### Light System
 
@@ -206,4 +206,5 @@ The project follows several architectural patterns:
 5. **Input Observer**: Input events trigger appropriate responses
 6. **Transformation Hierarchy**: Parent-child relationships for transformations
 7. **UI Elements**: Using `TextTexture` and basic geometry for on-screen display
-8. **Singleton-like Managers**: Specialized managers for different aspects of the game 
+8. **Singleton-like Managers**: Specialized managers for different aspects of the game
+

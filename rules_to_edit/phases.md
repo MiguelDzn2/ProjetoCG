@@ -4,9 +4,10 @@ This document details the different phases implemented in the Computer Graphics 
 
 ## Phase Overview
 
-The project implements a state machine with two distinct phases:
+The project implements a state machine with three distinct phases:
 1. **Selection Phase**: Allows the user to select one of four 3D instrument models
 2. **Gameplay Phase**: Provides an interactive environment to control the selected instrument
+3. **End Screen Phase**: Displays the final score and options to restart or return to selection
 
 Each phase has its own:
 - Camera positioning and orientation
@@ -16,11 +17,12 @@ Each phase has its own:
 
 ## Phase Implementation
 
-The phases are defined in the `game_phases.py` file using an `Enum` class called `GamePhase` with two states:
+The phases are defined in the `game_phases.py` file using an `Enum` class called `GamePhase` with three states:
 ```python
 class GamePhase(Enum):
     SELECTION = auto()
     GAMEPLAY = auto()
+    END_SCREEN = auto()
 ```
 
 The phase management is now handled by the `PhaseManager` class in `modules/phase_manager.py`, which:
@@ -65,8 +67,8 @@ The Gameplay Phase allows the user to control the selected instrument model and 
   - Score display shown via UIManager
   - Streak counter shown via UIManager
   - Collision status display ("HIT", "MISS", "PERFECT") shown via UIManager
-- **Target Ring**: A green ring is placed in the scene for gameplay interaction
-- **Arrows**: Arrows spawn periodically based on music keyframes and move towards the target ring
+- **Target Ring**: A green ring is placed in the scene for gameplay interaction. The ring is created with a pivot point and is tied to the camera for proper positioning and movement
+- **Arrows**: Arrows spawn periodically based on music keyframes and move towards the target ring. Each arrow is created with a pivot point and is tied to the camera coordinate system for consistent positioning and movement
 - **Nightclub Elements**: Visual elements for nightclub scene are added
 
 ### Controls
@@ -87,6 +89,37 @@ The Gameplay Phase allows the user to control the selected instrument model and 
 - `ArrowManager`: Manages arrow creation, movement, and lifecycle
 - `UIManager.show_ui_for_gameplay_phase()`: Sets up score, streak, and collision displays
 
+## End Screen Phase
+
+### Purpose
+The End Screen Phase is triggered when the gameplay ends (typically when the music finishes). It displays the final score and provides options for the player to either restart the current level or return to the Selection Phase.
+
+### Visual Setup
+- **Camera Position**: Maintains the current gameplay camera position
+- **UI Elements**:
+  - Final score display prominently shown
+  - "Replay" option with 'R' key indicator
+  - "Return to Selection" option with 'C' key indicator
+  - Background overlay to focus attention on the end screen
+- **Game State**: All gameplay elements (arrows, animations) are paused or stopped
+
+### Controls
+- **R Key**: Restart the current level (return to Gameplay Phase with the same instrument)
+- **C Key**: Return to Selection Phase to choose a different instrument
+
+### Implementation Details
+- `Game._transition_to_end_screen()`: Handles the transition from Gameplay to End Screen
+- `Game.handle_end_screen_input()`: Processes input during the end screen phase
+- `UIManager.show_ui_for_end_screen()`: Creates and displays the end screen UI elements
+- `UIManager.update_end_screen()`: Updates the final score display
+- `UIManager.hide_end_screen()`: Removes end screen elements when transitioning away
+
+### Transition Triggers
+The End Screen Phase is triggered when:
+1. The music track finishes playing during gameplay
+2. The game detects that the gameplay session has ended
+3. The system automatically transitions from `GamePhase.GAMEPLAY` to `GamePhase.END_SCREEN`
+
 ## Phase Transition
 
 The transition from Selection to Gameplay Phase occurs when:
@@ -102,16 +135,29 @@ The transition from Selection to Gameplay Phase occurs when:
    - Updating the current_phase variable
    - Setting up UI elements through the UIManager
 
-There is no implemented transition from Gameplay back to Selection Phase.
+### Transitions to End Screen Phase
+
+The transition from Gameplay to End Screen Phase occurs when:
+1. The music track finishes playing
+2. `Game._transition_to_end_screen()` is called automatically
+3. The current phase is updated to `GamePhase.END_SCREEN`
+4. `UIManager.show_ui_for_end_screen()` displays the final score and options
+
+### Transitions from End Screen Phase
+
+From the End Screen Phase, players can:
+1. **Restart Gameplay**: Press 'R' key to return to `GamePhase.GAMEPLAY` with the same selected instrument
+2. **Return to Selection**: Press 'C' key to return to `GamePhase.SELECTION` to choose a different instrument
 
 ## Collaboration Between Components
 
 The phase system interacts with other components:
-1. **UIManager**: Controls which UI elements are visible in each phase
-2. **MusicSystem**: Activated during transition to Gameplay phase
+1. **UIManager**: Controls which UI elements are visible in each phase, including end screen display
+2. **MusicSystem**: Activated during transition to Gameplay phase and triggers End Screen when music finishes
 3. **AnimationManager**: Controls instrument animations in Gameplay phase
 4. **ArrowManager**: Manages arrows in Gameplay phase
 5. **InstrumentLoader**: Provides the instrument objects that are positioned by the PhaseManager
+6. **Game**: Manages overall phase transitions and handles phase-specific input processing
 
 ## Future Phase Considerations
 
@@ -122,4 +168,5 @@ Potential improvements to the phase system:
 4. Introduce additional interactions within each phase
 5. Implement more complex Nightclub scene elements
 6. Refine arrow spawning logic and collision detection
-7. Add pause and game over phases 
+7. Add pause and game over phases
+
