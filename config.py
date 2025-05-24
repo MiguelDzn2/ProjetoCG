@@ -84,13 +84,63 @@ CAMERA_WAYPOINTS = {
     "ze": [
         {
             "time": 0.0,
-            "position": [-6.3, 5.9, 20],
+            "position": [-6.3, 6.2, 20],
             "rotation": [-28.9, -29, 0] 
         },
         {
             "time": 10.0,
-            "position": [0, 1.2, 7],
+            "position": [0, 1.7, 7],
             "rotation": [0, -90, 0]
+        }, 
+        {
+            "time": 15.0,
+            "position": [-3, 1.2, 12.5],
+            "rotation": [0, -45, 0]
+        },
+        {
+            "time": 16.0,
+            "position": [-3, 1.2, 12.5],
+            "rotation": [0, -45, 5]
+        },
+        {
+            "time": 17.0,
+            "position": [-3, 1.2, 12.5],
+            "rotation": [0, -45, -5]
+        },
+        {
+            "time": 21.0,
+            "position": [-5, 2.5, 9.4],
+            "rotation": [-10, -0, 0]
+        },
+        {
+            "time": 25.0,
+            "position": [-0.4, 2, 15],
+            "rotation": [-3, -0, 0]
+        },
+        {
+            "time": 30.0,
+            "position": [-0.4, 2, 10],
+            "rotation": [-3, -0, 0]
+        },
+        {
+            "time": 40.0,
+            "position": [0, 2.2, 12],
+            "rotation": [0, -60, 0]
+        },
+        {
+            "time": 46.0,
+            "position": [-0.4, 4, 10],
+            "rotation": [-3, -0, 0]
+        },
+        {
+            "time": 55.0,
+            "position": [-3, 2.3, 12.5],
+            "rotation": [0, -45, 0]
+        },
+        {
+            "time": 72.0,
+            "position": [-1, 13.4, 26.4],
+            "rotation": [-12.2, 1.9, 0]
         }
     ],
     "ana": [
@@ -305,16 +355,16 @@ NIGHTCLUB_SCALE_FACTOR = 3
 # Music and Keyframe Paths for Instruments
 INSTRUMENT_MUSIC_PATHS = {
     "miguel": "music/Mike_Oldfield__Tubular_bells.mp3",
-    "ze": "music/fitnessgram.mp3",  # Placeholder: Using existing fitnessgram.mp3
+    "ze": "music/midwestindigo.mp3",
     "ana": "music/fitnessgram.mp3",    # Placeholder: Using existing fitnessgram.mp3
     "brandon": "music/fitnessgram.mp3" # Placeholder: Using existing fitnessgram.mp3
 }
 
 INSTRUMENT_KEYFRAME_PATHS = {
     "miguel": "keyframes/keyframes_1.json",
-    "ze": "keyframes/keyframes_1.json", # Placeholder: Using existing keyframes_1.json
-    "ana": "keyframes/keyframes_1.json",    # Placeholder: Using existing keyframes_1.json
-    "brandon": "keyframes/keyframes_1.json" # Placeholder: Using existing keyframes_1.json
+    "ze": "keyframes/keyframes_2.json",
+    "ana": "keyframes/keyframes_1.json",    # Placeholder: Using existing keyframes_3.json
+    "brandon": "keyframes/keyframes_1.json" # Placeholder: Using existing keyframes_4.json
 }
 
 # Selection Phase Music
