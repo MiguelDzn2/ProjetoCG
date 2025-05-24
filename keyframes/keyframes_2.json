@@ -1,5 +1,22 @@
 [
-  { "time": 16.377273, "arrow_type": "left" },
-  { "time": 16.895879, "arrow_type": "up" },
-  { "time": 17.413792, "arrow_type": "up" }
+  {
+    "time": 15.602145,
+    "arrow_type": "left"
+  },
+  {
+    "time": 15.852623,
+    "arrow_type": "right"
+  },
+  {
+    "time": 16.370518,
+    "arrow_type": "left"
+  },
+  {
+    "time": 16.888203,
+    "arrow_type": "right"
+  },
+  {
+    "time": 17.404798,
+    "arrow_type": "left"
+  }
 ]
