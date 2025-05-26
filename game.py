@@ -67,19 +67,22 @@ class Game(Base):
     #     "right": ARROW_TYPE_RIGHT
     # }
     
-    def __init__(self, screen_size=(512, 512), debug_mode=False):
+    def __init__(self, screen_size=(512, 512), debug_mode=False, fullscreen=False, fullscreen_resolution=None):
         """
         Initialize the Game class.
         
         Parameters:
             screen_size: The size of the screen (width, height)
             debug_mode: Whether to run in debug mode
+            fullscreen: Whether to run in fullscreen mode
+            fullscreen_resolution: Specific resolution for fullscreen (None for native)
         """
-        super().__init__(screen_size)
+        super().__init__(screen_size, fullscreen, fullscreen_resolution)
         
-        # Store screen dimensions
-        self.screen_width = screen_size[0]
-        self.screen_height = screen_size[1]
+        # Store screen dimensions (use actual screen size in case of fullscreen)
+        actual_size = self.actual_screen_size
+        self.screen_width = actual_size[0]
+        self.screen_height = actual_size[1]
         
         # Debug mode toggle
         self.debug_mode = debug_mode
@@ -112,7 +115,7 @@ class Game(Base):
         # Set up core framework
         self.renderer = Renderer()
         self.scene = Scene()
-        self.camera = Camera(aspect_ratio=1280/720)
+        self.camera = Camera(aspect_ratio=self.screen_width/self.screen_height)
         
         # Set up camera rig for movement
         self.camera_rig = MovementRig()
@@ -199,11 +202,27 @@ class Game(Base):
         """Initialize the game"""
         # Just print instructions - all initialization is already done in __init__
         self._print_instructions()
+        
+    def toggle_fullscreen_mode(self):
+        """Toggle fullscreen mode and update camera aspect ratio"""
+        new_size = self.toggle_fullscreen()
+        
+        # Update stored screen dimensions
+        self.screen_width = new_size[0]
+        self.screen_height = new_size[1]
+        
+        # Update camera aspect ratio
+        self.camera.aspect_ratio = self.screen_width / self.screen_height
+        
+        print(f"Screen mode changed to: {self.screen_width}x{self.screen_height}")
+        return new_size
     
     def _print_instructions(self):
         """Print game instructions to console"""
         print("\nInstruções de Controlo:")
-        print("Fase de Seleção:")
+        print("Geral:")
+        print("- F11: Alternar entre modo janela e ecrã completo")
+        print("\nFase de Seleção:")
         print("- Setas Esquerda/Direita: Selecionar objeto")
         print("- Enter: Confirmar seleção e passar para fase de jogo")
         print("\nFase de Jogo:")
@@ -1067,6 +1086,10 @@ class Game(Base):
     
     def update(self):
         """Update game logic (called every frame)"""
+        # Handle fullscreen toggle (F11 key) - works in all phases
+        if self.input.is_key_down('f11'):
+            self.toggle_fullscreen_mode()
+        
         if self.current_phase == GamePhase.SELECTION:
             # Handle input for selection phase
             phase_changed, selected_index = self.phase_manager.handle_selection_input(self.input)

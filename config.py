@@ -212,6 +212,8 @@ ARROW_COLOR = [1.0, 0.0, 0.0]  # Default arrow color (red)
 
 # Screen Configuration
 SCREEN_SIZE = [1280, 720]
+FULLSCREEN_ENABLED = False  # Set to True to enable fullscreen mode
+FULLSCREEN_RESOLUTION = None  # None for native resolution, or [width, height] for specific resolution
 
 # Selection Phase Configuration
 SELECTION_PHASE_OBJECTS_Y = 100  # Y coordinate for all objects in selection phase

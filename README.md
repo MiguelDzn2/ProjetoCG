@@ -81,6 +81,9 @@ ProjetoCG/
 
 ## 🎯 Controls
 
+### General Controls
+- **F11**: Toggle between windowed and fullscreen mode
+
 ### Selection Phase
 - **←/→ Arrow Keys**: Navigate between instruments
 - **Enter**: Confirm selection and start gameplay
@@ -123,6 +126,12 @@ poetry run python main.py
 
 # Run in debug mode for manual camera control
 poetry run python main.py --debug
+
+# Run in fullscreen mode
+poetry run python main.py --fullscreen
+
+# Force windowed mode (overrides config setting)
+poetry run python main.py --windowed
 ```
 
 ### Option 2: Using pip
@@ -146,6 +155,12 @@ python main.py
 
 # Run in debug mode
 python main.py --debug
+
+# Run in fullscreen mode
+python main.py --fullscreen
+
+# Force windowed mode (overrides config setting)
+python main.py --windowed
 ```
 
 ## 📦 Dependencies
@@ -154,6 +169,24 @@ python main.py --debug
 - **PyOpenGL-accelerate** (3.1.9): Acceleration support for PyOpenGL
 - **numpy** (2.2.3): Numerical computing and matrix operations
 - **pygame** (2.6.1): Audio playback and system integration
+
+## ⚙️ Configuration
+
+### Fullscreen Settings
+You can configure fullscreen behavior in `config.py`:
+
+```python
+# Screen Configuration
+SCREEN_SIZE = [1280, 720]                    # Windowed mode resolution
+FULLSCREEN_ENABLED = False                   # Set to True for fullscreen by default
+FULLSCREEN_RESOLUTION = None                 # None for native resolution, or [width, height]
+```
+
+**Fullscreen Options:**
+- **Native Resolution**: Set `FULLSCREEN_RESOLUTION = None` to use your monitor's native resolution
+- **Custom Resolution**: Set `FULLSCREEN_RESOLUTION = [1920, 1080]` for a specific fullscreen resolution
+- **Runtime Toggle**: Press F11 during gameplay to switch between windowed and fullscreen modes
+- **Command Line**: Use `--fullscreen` or `--windowed` flags to override config settings
 
 ## 🎵 Customization Guide
 
