@@ -12,6 +12,8 @@ CAMERA_INITIAL_ROTATION = [0, -90, 0]  # X, Y, Z rotations in degrees
 CAMERA_FINAL_POSITION = [-3, 1.2, 12.5]
 CAMERA_FINAL_ROTATION = [0, -45, 0]  # X, Y, Z rotations in degrees
 CAMERA_TRANSITION_TIME = 4.0
+FULLSCREEN_ENABLED = False  # Set to True to enable fullscreen
+FULLSCREEN_RESOLUTION = None  # None for native resolution, or [width, height] for specific resolution
 
 # Camera waypoints configuration - instrument specific
 # Each waypoint has:

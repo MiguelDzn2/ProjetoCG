@@ -73,19 +73,22 @@ class Game(Base):
     #     "right": ARROW_TYPE_RIGHT
     # }
 
-    def __init__(self, screen_size=(512, 512), debug_mode=False):
+    def __init__(self, screen_size=(512, 512), debug_mode=False, fullscreen=False, fullscreen_resolution=None):
         """
         Initialize the Game class.
         
         Parameters:
             screen_size: The size of the screen (width, height)
             debug_mode: Whether to run in debug mode
+            fullscreen: Whether to run in fullscreen mode
+            fullscreen_resolution: Specific resolution for
         """
-        super().__init__(screen_size)
-        
-        # Store screen dimensions
-        self.screen_width = screen_size[0]
-        self.screen_height = screen_size[1]
+        super().__init__(screen_size, fullscreen, fullscreen_resolution)
+
+        # Store screen dimensions (use actual screen size in case of fullscreen)
+        actual_size = self.actual_screen_size
+        self.screen_width = actual_size[0]
+        self.screen_height = actual_size[1]
         
         # Debug mode toggle
         self.debug_mode = debug_mode
@@ -118,7 +121,7 @@ class Game(Base):
         # Set up core framework
         self.renderer = Renderer()
         self.scene = Scene()
-        self.camera = Camera(aspect_ratio=1280/720)
+        self.camera = Camera(aspect_ratio=self.screen_width / self.screen_height)
 
         # Setup club-style lights before adding objects
         self._setup_lights()
@@ -199,9 +202,20 @@ class Game(Base):
         # Load and play selection music
         self.music_system.load_selection_music()
         self.music_system.play_selection_music()
-    
-    
-    
+
+    def toggle_fullscreen_mode(self):
+        """Toggle fullscreen mode and update camera aspect ratio"""
+        new_size = self.toggle_fullscreen()
+
+        # Update stored screen dimensions
+        self.screen_width = new_size[0]
+        self.screen_height = new_size[1]
+
+        # Update camera aspect ratio
+        self.camera.aspect_ratio = self.screen_width / self.screen_height
+
+        print(f"Screen mode changed to: {self.screen_width}x{self.screen_height}")
+        return new_size
     
     def apply_realistic_lighting_to_instruments(self, num_light_sources=config.NUM_SCENE_LIGHTS):
         """
@@ -1248,6 +1262,10 @@ class Game(Base):
 
     def update(self):
         """Update game logic (called every frame)"""
+        # Handle fullscreen toggle (F11 key) - works in all phases
+        if self.input.is_key_down('f11'):
+            self.toggle_fullscreen_mode()
+
         if self.current_phase == GamePhase.SELECTION:
             # Handle input for selection phase
             phase_changed, selected_index = self.phase_manager.handle_selection_input(self.input)

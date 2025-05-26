@@ -6,18 +6,39 @@ from core.utils import Utils
 
 
 class Base:
-    def __init__(self, screen_size=(512, 512)):
+    def __init__(self, screen_size=(512, 512), fullscreen=False, fullscreen_resolution=None):
         # Initialize all pygame modules
         pygame.init()
         # Indicate rendering details
         display_flags = pygame.DOUBLEBUF | pygame.OPENGL
+
+        # Add fullscreen flag if requested
+        if fullscreen:
+            display_flags |= pygame.FULLSCREEN
+
         # Initialize buffers to perform antialiasing
         pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS, 1)
         pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES, 4)
         # Use a core OpenGL profile for cross-platform compatibility
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
+
+        # Determine the resolution to use
+        if fullscreen and fullscreen_resolution is not None:
+            # Use specified fullscreen resolution
+            resolution = fullscreen_resolution
+        elif fullscreen:
+            # Use native desktop resolution
+            info = pygame.display.Info()
+            resolution = (info.current_w, info.current_h)
+        else:
+            # Use windowed mode with specified screen_size
+            resolution = screen_size
+
         # Create and display the window
-        self._screen = pygame.display.set_mode(screen_size, display_flags)
+        self._screen = pygame.display.set_mode(resolution, display_flags)
+
+        # Store actual screen dimensions for use by the application
+        self._actual_screen_size = self._screen.get_size()
         # Set the text that appears in the title bar of the window
         pygame.display.set_caption("Graphics Window")
         # Determine if main loop is active
@@ -54,6 +75,34 @@ class Base:
     def update(self):
         """ Implement by extending class """
         pass
+
+    @property
+    def actual_screen_size(self):
+        return self._actual_screen_size
+
+    def toggle_fullscreen(self):
+        """Toggle between fullscreen and windowed mode"""
+        # Get current display flags
+        current_flags = self._screen.get_flags()
+
+        if current_flags & pygame.FULLSCREEN:
+            # Currently fullscreen, switch to windowed
+            display_flags = pygame.DOUBLEBUF | pygame.OPENGL
+            # Use the original screen size for windowed mode
+            resolution = (1280, 720)  # Default windowed size
+        else:
+            # Currently windowed, switch to fullscreen
+            display_flags = pygame.DOUBLEBUF | pygame.OPENGL | pygame.FULLSCREEN
+            # Use native desktop resolution
+            info = pygame.display.Info()
+            resolution = (info.current_w, info.current_h)
+
+        # Recreate the display
+        self._screen = pygame.display.set_mode(resolution, display_flags)
+        self._actual_screen_size = self._screen.get_size()
+
+        return self._actual_screen_size
+
 
     def run(self):
         # Startup #
