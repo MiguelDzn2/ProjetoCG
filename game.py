@@ -18,6 +18,7 @@ from core_ext.mesh import Mesh
 from core_ext.renderer import Renderer
 from core_ext.scene import Scene
 from core.matrix import Matrix
+from material.phong import PhongMaterial
 
 # Project modules
 from arrow_manager import ArrowManager
@@ -34,6 +35,7 @@ from config import (
 from game_phases import GamePhase
 from geometry.arrow import Arrow
 from geometry.ring import RingGeometry
+from material.phong import PhongMaterial
 from material.surface import SurfaceMaterial
 import geometry.nightClub as nightclub
 from geometry.parametric import ParametricGeometry
@@ -49,6 +51,8 @@ from modules.ui_manager import UIManager
 from extras.axes import AxesHelper
 from extras.grid import GridHelper
 from extras.movement_rig import MovementRig
+
+import config
 
 class Game(Base):
     """
@@ -66,7 +70,7 @@ class Game(Base):
     #     "down": ARROW_TYPE_DOWN,
     #     "right": ARROW_TYPE_RIGHT
     # }
-    
+
     def __init__(self, screen_size=(512, 512), debug_mode=False):
         """
         Initialize the Game class.
@@ -113,6 +117,9 @@ class Game(Base):
         self.renderer = Renderer()
         self.scene = Scene()
         self.camera = Camera(aspect_ratio=1280/720)
+
+        # Setup club-style lights before adding objects
+        self._setup_lights()
         
         # Set up camera rig for movement
         self.camera_rig = MovementRig()
@@ -141,8 +148,8 @@ class Game(Base):
         
         # Arrow Manager - needs the pivot
         self.arrow_manager = ArrowManager(
-            scene=self.scene, 
-            target_ring=self.target_ring, 
+            scene=self.scene,
+            target_ring=self.target_ring,
             arrow_ring_pivot=self.arrow_ring_pivot,  # Pass the pivot
             debug_mode=self.debug_mode
         )
@@ -150,6 +157,8 @@ class Game(Base):
         # Load instruments
         self.instrument_loader = InstrumentLoader(self.scene)
         self.object_rigs, self.object_meshes = self.instrument_loader.load_instruments(debug_mode=self.debug_mode)
+        self.apply_realistic_lighting_to_instruments(num_light_sources=7)
+
         
         # Initialize phase manager
         self.phase_manager = PhaseManager(self.scene, self.camera_rig, self.ui_manager)
@@ -178,12 +187,6 @@ class Game(Base):
         self.target_position = None
         self.target_rotation = None
         self.target_waypoint = None
-        
-        # Log the number of camera waypoints found
-        print(f"Loaded camera waypoints for {len(CAMERA_WAYPOINTS)} instruments")
-        for instrument, waypoints in CAMERA_WAYPOINTS.items():
-            print(f"  - {instrument}: {len(waypoints)} waypoints")
-        
         # Set up debug visualization if in debug mode
         if self.debug_mode:
             self._setup_debug_visualization()
@@ -195,6 +198,23 @@ class Game(Base):
         self.music_system.load_selection_music()
         self.music_system.play_selection_music()
     
+    
+    
+    
+    def apply_realistic_lighting_to_instruments(self, num_light_sources=config.NUM_SCENE_LIGHTS):
+        """
+        Apply realistic Phong lighting to all instrument meshes, similar to the NightClub.
+        """
+        for mesh in self.object_meshes:
+            texture = getattr(mesh._material, 'texture', None)
+            if texture is not None:
+                material = PhongMaterial(
+                    texture=texture,
+                    number_of_light_sources=num_light_sources,
+                    property_dict=config.NIGHTCLUB_MATERIAL_PROPERTIES.copy()
+                )
+                mesh._material = material
+
     def initialize(self):
         """Initialize the game"""
         # Just print instructions - all initialization is already done in __init__
@@ -241,13 +261,23 @@ class Game(Base):
         if self.debug_mode:
             self._add_ring_debug_visualization()
     
+    def _setup_lights(self):
+        """Adiciona as luzes globais da configuração à cena e adiciona uma luz branca com uma esfera grande branca."""
+        print(f"[DEBUG] Number of lights in config: {len(config.SCENE_LIGHTS)}")
+        for idx, light in enumerate(config.SCENE_LIGHTS):
+            print(f"[GAME] Adding light {idx}: {light} (type: {type(light)})")
+            self.scene.add(light)
+
+
+
     def _setup_nightclub(self):
         """Set up nightclub elements"""
         self.nightClub = nightclub.NightClub(
             self.scene, 
             NIGHTCLUB_OBJECT_PATH, 
             NIGHTCLUB_POSITION, 
-            NIGHTCLUB_SCALE_FACTOR
+            NIGHTCLUB_SCALE_FACTOR,
+            num_lights=config.NUM_SCENE_LIGHTS  # Use o número global de luzes
         )
         self.nightClub_rig = self.nightClub.get_rig()
         self.scene.add(self.nightClub_rig)
@@ -514,12 +544,12 @@ class Game(Base):
         distance = abs(ring_x - arrow_start_x)
         
         self.arrow_travel_time = distance / ARROW_UNITS_PER_SECOND
-        
-        print(f"Arrow travel time calculated: {self.arrow_travel_time:.2f} seconds")
-        print(f"  Arrow local position: {ARROW_START_POSITION}")
-        print(f"  Ring local position: {RING_POSITION}")
-        print(f"  Distance: {distance}, Speed: {ARROW_UNITS_PER_SECOND} units/sec")
-        
+
+        #print(f"Arrow travel time calculated: {self.arrow_travel_time:.2f} seconds")
+        #print(f"  Arrow local position: {ARROW_START_POSITION}")
+        #print(f"  Ring local position: {RING_POSITION}")
+        #print(f"  Distance: {distance}, Speed: {ARROW_UNITS_PER_SECOND} units/sec")
+ 
         return self.arrow_travel_time
     
     def create_single_arrow(self, arrow_type_str=None):
@@ -1065,25 +1095,59 @@ class Game(Base):
             self.empty_miss_message_timer = 0
         # For empty/space messages, don't change the timer state
     
+    def _add_instrument_and_club_lights(self, selected_index):
+        """
+        Adds a spotlight above the selected instrument and additional club lights (red and blue) to the scene.
+        Updates config.SCENE_LIGHTS and NUM_SCENE_LIGHTS accordingly.
+        """
+        from light.point import PointLight
+        import config
+        # Spotlight above instrument
+        instrument_pos = self.active_object_rig.global_position if hasattr(self.active_object_rig, 'global_position') else [0,0,0]
+        spotlight_pos = [instrument_pos[0], instrument_pos[1]+5, instrument_pos[2]]
+        spotlight = PointLight(position=spotlight_pos, color=[1.0, 1.0, 1.0])
+        self.scene.add(spotlight)
+        self.stage_spotlight = spotlight
+        config.SCENE_LIGHTS.append(spotlight)
+        # Club lights (red and blue) - more for richer effect
+        club_lights = [
+            PointLight(position=[4, 3, 12], color=[1.0, 0.1, 0.1]),
+            PointLight(position=[-4, 3, 12], color=[1.0, 0.1, 0.1]),
+            PointLight(position=[4, 3, 6], color=[0.1, 0.1, 1.0]),
+            PointLight(position=[-4, 3, 6], color=[0.1, 0.1, 1.0]),
+            # Extra red and blue lights
+            PointLight(position=[6, 2, 10], color=[1.0, 0.1, 0.1]),
+            PointLight(position=[-6, 2, 10], color=[1.0, 0.1, 0.1]),
+            PointLight(position=[6, 2, 8], color=[0.1, 0.1, 1.0]),
+            PointLight(position=[-6, 2, 8], color=[0.1, 0.1, 1.0]),
+            PointLight(position=[2, 4, 14], color=[1.0, 0.1, 0.1]),
+            PointLight(position=[-2, 4, 14], color=[0.1, 0.1, 1.0]),
+        ]
+        for light in club_lights:
+            self.scene.add(light)
+            config.SCENE_LIGHTS.append(light)
+        config.NUM_SCENE_LIGHTS = len(config.SCENE_LIGHTS)
+        # Update instrument materials for new lights
+        self.apply_realistic_lighting_to_instruments(num_light_sources=config.NUM_SCENE_LIGHTS)
+
     def update(self):
         """Update game logic (called every frame)"""
         if self.current_phase == GamePhase.SELECTION:
             # Handle input for selection phase
             phase_changed, selected_index = self.phase_manager.handle_selection_input(self.input)
-            
+
             if phase_changed:
                 self.current_phase = GamePhase.GAMEPLAY
                 self.highlighted_index = selected_index
                 # Synchronize active object with PhaseManager
                 self.active_object_rig = self.phase_manager.active_object_rig
-                
                 # Make the arrow and ring visible now that we're in gameplay phase
                 self._make_arrow_ring_visible()
-                
                 # Load and play music for the selected instrument
                 self.music_system.load_track_for_instrument(selected_index)
                 self.music_system.play_music()
-                
+                # Add all lights for the instrument and club
+                self._add_instrument_and_club_lights(selected_index)
             # Render scene with current camera
             self.renderer.render(self.scene, self.camera)
             
@@ -1170,11 +1234,13 @@ class Game(Base):
                     print("Music has finished - transitioning to end screen")
                     self._transition_to_end_screen()
             
-            # Render scene with active camera (main or debug)
-            if self.debug_mode and self.debug_camera_active:
-                self.renderer.render(self.scene, self.debug_camera)
-            else:
-                self.renderer.render(self.scene, self.camera)
+           ############
+
+                # Render scene with active camera (main or debug)
+                if self.debug_mode and self.debug_camera_active:
+                    self.renderer.render(self.scene, self.debug_camera)
+                else:
+                    self.renderer.render(self.scene, self.camera)
                 
         elif self.current_phase == GamePhase.END_SCREEN:
             # Handle input for end screen
@@ -1264,4 +1330,4 @@ class Game(Base):
         
         # Load and play selection music
         self.music_system.load_selection_music()
-        self.music_system.play_selection_music() 
+        self.music_system.play_selection_music()

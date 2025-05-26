@@ -76,7 +76,7 @@ def parse_mtl(mtl_filepath):
                                    materials[current_material]['texture'] = potential_path_alt_2
                               else:
                                    # Se ainda não encontrado, guarda o caminho relativo original
-                                   print(f"Warning: Texture '{texture_path_relative}' for material '{current_material}' not found directly. Using relative path: {texture_path_relative}")
+                                   #print(f"Warning: Texture '{texture_path_relative}' for material '{current_material}' not found directly. Using relative path: {texture_path_relative}")
                                    materials[current_material]['texture'] = texture_path_relative # Ou um caminho padrão?
 
     except FileNotFoundError:
@@ -108,7 +108,7 @@ def load_multimaterial_from_object(obj_filepath): # <--- NOME ALTERADO AQUI
                     # Constrói o caminho completo para o MTL
                     mtl_rel_path = " ".join(parts[1:])
                     mtl_filename = os.path.abspath(os.path.join(obj_dir, mtl_rel_path))
-                    print(f"Found MTL reference: {mtl_rel_path} -> Resolved to: {mtl_filename}")
+                    #print(f"Found MTL reference: {mtl_rel_path} -> Resolved to: {mtl_filename}")
                 elif parts[0] == 'v':
                     vertices.append(list(map(float, parts[1:4])))
                 elif parts[0] == 'vt':
@@ -122,7 +122,7 @@ def load_multimaterial_from_object(obj_filepath): # <--- NOME ALTERADO AQUI
                     # print(f"Switching to material: {current_material}") # Log opcional
                 elif parts[0] == 'f':
                     if current_material is None: # Segurança, embora tenhamos um padrão
-                         print("Warning: Face defined before 'usemtl'. Assigning to default.")
+                         #print("Warning: Face defined before 'usemtl'. Assigning to default.")
                          current_material = "default_material"
                          if current_material not in material_groups:
                               material_groups[current_material] = {'faces': []}
@@ -157,7 +157,7 @@ def load_multimaterial_from_object(obj_filepath): # <--- NOME ALTERADO AQUI
 
 
     if not mtl_filename or not os.path.exists(mtl_filename):
-        print(f"Warning: MTL file '{mtl_filename}' not found or not specified. Object might render without textures.")
+        #print(f"Warning: MTL file '{mtl_filename}' not found or not specified. Object might render without textures.")
         material_textures = {} # Sem texturas
     else:
         # Parsear o arquivo MTL

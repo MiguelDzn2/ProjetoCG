@@ -378,10 +378,41 @@ INSTRUMENT_INITIAL_POSITIONS = {
     "brandon": [3, 0, 0]
 }
 
+# --- Lighting Configuration (for whole project) ---
+from light.ambient import AmbientLight
+from light.directional import DirectionalLight
+from light.point import PointLight
+
+# Lista de luzes para a cena principal (ordem importa!)
+SCENE_LIGHTS = [
+    DirectionalLight(direction=[-1, -1, -1], color=[1.0, 0.9, 0.8]),  # Luz direcional
+    PointLight(position=[2, 5, 8], color=[1.0, 0.5, 0.5]),             # Luz pontual vermelha
+    PointLight(position=[-2, 5, 8], color=[0.5, 1.0, 0.5]),            # Luz pontual verde
+    PointLight(position=[0, 5, 10], color=[0.5, 0.5, 1.0]),            # Luz pontual azul
+    PointLight(position=[0, 8, 5], color=[1.0, 1.0, 0.5]),             # Luz pontual amarela
+    PointLight(position=[0, 2, 15], color=[1.0, 0.0, 1.0]),            # Luz pontual magenta
+    # Luzes adicionais vermelhas
+    PointLight(position=[4, 3, 12], color=[1.0, 0.1, 0.1]),
+    PointLight(position=[-4, 3, 12], color=[1.0, 0.1, 0.1]),
+    # Luzes adicionais azuis
+    PointLight(position=[4, 3, 6], color=[0.1, 0.1, 1.0]),
+    PointLight(position=[-4, 3, 6], color=[0.1, 0.1, 1.0]),
+]
+# (Não adicionar spotlight branca ou luzes de palco aqui. Elas são adicionadas dinamicamente após a seleção do instrumento.)
+
+NUM_SCENE_LIGHTS = len(SCENE_LIGHTS)  # Agora só as luzes globais, sem as de palco
+
 # NightClub Configuration
 NIGHTCLUB_OBJECT_PATH = "geometry/nightClub.obj"
 NIGHTCLUB_POSITION = [0, -2.5, 10]
 NIGHTCLUB_SCALE_FACTOR = 3
+
+# NightClub material properties
+NIGHTCLUB_MATERIAL_PROPERTIES = {
+    "baseColor": [0.4, 0.4, 0.4],
+    "specularStrength": 1.5,
+    "shininess": 32.0
+}
 
 # Music and Keyframe Paths for Instruments
 INSTRUMENT_MUSIC_PATHS = {
@@ -394,7 +425,7 @@ INSTRUMENT_MUSIC_PATHS = {
 INSTRUMENT_KEYFRAME_PATHS = {
     "miguel": "keyframes/keyframes_1.json",
     "ze": "keyframes/keyframes_2.json",
-    "ana": "keyframes/keyframes_3.json",    
+    "ana": "keyframes/keyframes_3.json",
     "brandon": "keyframes/keyframes_lloraras.json" # Placeholder: Using existing keyframes_4.json
 }
 

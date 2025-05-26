@@ -97,10 +97,12 @@ class Renderer:
             mesh.material.uniform_dict["projectionMatrix"].data = camera.projection_matrix
             # If material uses light data, add lights from list
             if "light0" in mesh.material.uniform_dict.keys():
+                # Remove debug prints for cleaner output
                 for light_number in range(len(light_list)):
                     light_name = "light" + str(light_number)
-                    light_instance = light_list[light_number]
-                    mesh.material.uniform_dict[light_name].data = light_instance
+                    if light_name in mesh.material.uniform_dict:
+                        light_instance = light_list[light_number]
+                        mesh.material.uniform_dict[light_name].data = light_instance
             # Add camera position if needed (specular lighting)
             if "viewPosition" in mesh.material.uniform_dict.keys():
                 mesh.material.uniform_dict["viewPosition"].data = camera.global_position

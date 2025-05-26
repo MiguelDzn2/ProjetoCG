@@ -69,8 +69,8 @@ class MusicSystem:
         # Adjust the travel time used for spawning to this observed actual travel time.
         observed_discrepancy = 0.21  # Seconds, from TIMING LOG Diff values being consistently around -0.21s
         self.arrow_travel_time = time_value - observed_discrepancy
-        print(f"Nominal arrow travel time calculated: {time_value:.2f} seconds")
-        print(f"Adjusted arrow travel time for spawning (actual observed): {self.arrow_travel_time:.2f} seconds")
+        #print(f"Nominal arrow travel time calculated: {time_value:.2f} seconds")
+        #print(f"Adjusted arrow travel time for spawning (actual observed): {self.arrow_travel_time:.2f} seconds")
         
     def load_music(self, music_file):
         """
@@ -352,7 +352,7 @@ class MusicSystem:
                 self.arrow_travel_time = new_travel_time
                 
                 # Log the change
-                print(f"Arrow travel time updated dynamically: {old_travel_time:.2f}s -> {self.arrow_travel_time:.2f}s")
+                #print(f"Arrow travel time updated dynamically: {old_travel_time:.2f}s -> {self.arrow_travel_time:.2f}s")
                 
                 # Adjust the timing based on observed discrepancy, if applicable
                 observed_discrepancy = 0.21  # Seconds, hardcoded to match existing adjustment
