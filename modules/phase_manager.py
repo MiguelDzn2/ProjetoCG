@@ -17,7 +17,7 @@ from config import (
     SELECTION_PHASE_BACKGROUND_HEIGHT, SELECTION_PHASE_BACKGROUND_IMAGE,
     GAMEPLAY_PHASE_POSITIONS, GAMEPLAY_PHASE_ROTATIONS,
     GAMEPLAY_SELECTED_INSTRUMENT_POSITION, GAMEPLAY_SELECTED_INSTRUMENT_POSITIONS,
-    CAMERA_WAYPOINTS
+    CAMERA_WAYPOINTS, SELECTION_PHASE_LIGHTS
 )
 from geometry.rectangle import RectangleGeometry
 from core_ext.mesh import Mesh
@@ -100,48 +100,29 @@ class PhaseManager:
             rig.set_position(SELECTION_PHASE_POSITIONS[i])
             # Reset the scale (as highlight_selected_object changes it)
             rig.scale(1)  # Scale back to 1
-        
-        # Remove any existing lights from previous phases or runs
-        for obj in self.scene.descendant_list[:]:
-            if isinstance(obj, AmbientLight) or isinstance(obj, DirectionalLight) or isinstance(obj, SpotLight):
-                self.scene.remove(obj)
-        
-        # Add ambient light for general illumination
-        ambient_light = AmbientLight(color=[0.7, 0.7, 0.7])  # Increased for texture visibility
-        self.scene.add(ambient_light)
-        
-        # Add an ambient light beneath the game title
-        title_ambient_light = AmbientLight(color=[0.05, 0.05, 0.15])  # Kept low
-        title_ambient_light.set_position([0, 108, 0])
-        self.scene.add(title_ambient_light)
-        
-        # Add directional light for overall directionality
-        directional_light = DirectionalLight(color=[0.3, 0.3, 0.3], direction=[-1, -1, -1])
-        self.scene.add(directional_light)
-        
-        # Add spotlights above each selectable object
-        self.spotlights = []
-        for i, position in enumerate(SELECTION_PHASE_POSITIONS):
-            # Position the spotlight above the object
-            spotlight_pos = [position[0], position[1] + SELECTION_PHASE_SPOTLIGHT_Y_OFFSET, position[2]]
-            # Direct it downward toward the object
-            spotlight_dir = [0, -1, 0]
-            # Create the spotlight with a color matching the instrument
-            spotlight = SpotLight(
-                color=SELECTION_PHASE_SPOTLIGHT_COLORS[i],
-                position=spotlight_pos,
-                direction=spotlight_dir,
-                angle=35,                  # Cone angle (degrees)
-                attenuation=(1, 0.01, 0.005),  # Standard attenuation
-                cone_visible=True,         # Ensure cone is visible
-                cone_opacity=0.35,         # Increased opacity for cones
-                cone_height=4.0            # Visual height of the cone
-            )
-            self.scene.add(spotlight)
-            
-            # Store the spotlight for later use
-            self.spotlights.append(spotlight)
-        
+
+        # Add lights based on configuration
+        for light_cfg in SELECTION_PHASE_LIGHTS:
+            if light_cfg['type'] == 'ambient':
+                light = AmbientLight(color=light_cfg['color'])
+                if 'position' in light_cfg:
+                    light.set_position(light_cfg['position'])
+                self.scene.add(light)
+            elif light_cfg['type'] == 'directional':
+                light = DirectionalLight(color=light_cfg['color'], direction=light_cfg['direction'])
+                self.scene.add(light)
+            elif light_cfg['type'] == 'spot':
+                light = SpotLight(
+                    color=light_cfg.get('color', [1,1,1]),
+                    position=light_cfg.get('position', [0,10,0]),
+                    direction=light_cfg.get('direction', [0,-1,0]),
+                    angle=light_cfg.get('angle', 30),
+                    cone_visible=light_cfg.get('cone_visible', True),
+                    cone_opacity=light_cfg.get('cone_opacity', 0.5),
+                    cone_height=light_cfg.get('cone_height', 8.0)
+                )
+                self.scene.add(light)
+
         # Apply highlighting to the currently selected object
         self.highlight_selected_object()
         
@@ -319,4 +300,5 @@ class PhaseManager:
             selected_index = self.setup_gameplay_phase()
             phase_changed = True
             
-        return phase_changed, self.highlighted_index 
+        return phase_changed, self.highlighted_index
+

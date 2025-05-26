@@ -20,9 +20,6 @@ class Arrow:
         debug_mode=False,
         speed=None  # Add speed parameter
     ):
-        # Print debug mode setting to verify it's being passed correctly
-        print(f"\n==== Arrow created with debug_mode={debug_mode} ====\n")
-        
         # Set instance-specific speed if provided, otherwise use class default
         if speed is not None:
             self.SPEED_UNITS_PER_SECOND = speed
@@ -34,7 +31,6 @@ class Arrow:
         # Ensure color only has 3 components for vec3 uniforms
         if len(color) > 3:
             color = color[:3]
-            print(f"Warning: Arrow color had more than 3 components. Truncated to RGB: {color}")
         
         self.attribute_dict = {
             "vertexPosition": None,
@@ -109,9 +105,7 @@ class Arrow:
         
         # Create debug visualization if in debug mode - Do this after position and rotation
         if self.debug_mode:
-            print(f"\n==== Creating debug visualization for arrow ====\n")
             result = self.create_debug_rect_visualization()
-            print(f"\n==== Debug visualization created: {result} ====\n")
 
     def add_to_scene(self, scene):
         """Add the arrow to the scene and create a separate debug box if in debug mode"""
@@ -161,7 +155,6 @@ class Arrow:
             # Update direct debug box position to match new collision bounds
             if hasattr(self, 'direct_debug_box') and self.direct_debug_box:
                 try:
-                    print("\n=== Updating direct debug box position ===")
                     # Get updated bounding rect
                     min_x, min_z, max_x, max_z = self.get_bounding_rect()
                     center_x = (min_x + max_x) / 2
@@ -172,7 +165,6 @@ class Arrow:
                     
                     # Update corner markers
                     if hasattr(self, 'direct_corner_markers'):
-                        print("Updating corner marker positions")
                         corners = [
                             (min_x, min_z),  # Bottom-left
                             (max_x, min_z),  # Bottom-right
@@ -184,7 +176,7 @@ class Arrow:
                             if i < len(self.direct_corner_markers):
                                 self.direct_corner_markers[i].set_position([x, current_pos[1] + 0.04, z])
                 except Exception as e:
-                    print(f"Error updating direct debug visualization: {e}")
+                    pass
         else:
             # Mark the arrow as not visible once it reaches or passes arrow_stop_x
             self.is_visible = False
@@ -192,7 +184,6 @@ class Arrow:
             # Remove direct debug box if it exists
             if hasattr(self, 'direct_debug_box') and self.direct_debug_box and hasattr(self, 'scene') and self.scene:
                 try:
-                    print("\n=== Removing debug visualization ===")
                     self.scene.remove(self.direct_debug_box)
                     self.direct_debug_box = None
                     
@@ -202,15 +193,13 @@ class Arrow:
                             self.scene.remove(marker)
                         self.direct_corner_markers = []
                 except Exception as e:
-                    print(f"Error removing direct debug visualization: {e}")
+                    pass
         
         # Update standard debug visualization if enabled
         if self.debug_mode and self.debug_rect_mesh is not None:
             try:
-                print("\n=== Updating standard debug visualization ===")
                 self.update_debug_rect_visualization()
             except Exception as e:
-                print(f"Error updating debug visualization: {e}")
                 # If we encounter errors, disable debug visualization to prevent crashes
                 self.debug_mode = False
 
@@ -241,7 +230,6 @@ class Arrow:
         # Ensure color only has 3 components for vec3 uniforms
         if len(color) > 3:
             color = color[:3]
-            print(f"Warning: Arrow color change had more than 3 components. Truncated to RGB: {color}")
         
         # Change body color
         if hasattr(self, 'body_mesh') and self.body_mesh:
@@ -330,8 +318,6 @@ class Arrow:
     def create_debug_rect_visualization(self):
         """Creates a visual representation of the bounding rectangle when in debug mode"""
         try:
-            print(f"\n==== Inside create_debug_rect_visualization method ====\n")
-            
             # Get current bounding rect
             min_x, min_z, max_x, max_z = self.get_bounding_rect()
             
@@ -340,11 +326,7 @@ class Arrow:
             width = (max_x - min_x) * 1.5  # 50% wider
             height = (max_z - min_z) * 1.5  # 50% taller
             
-            print(f"Bounding box: min_x={min_x:.2f}, min_z={min_z:.2f}, max_x={max_x:.2f}, max_z={max_z:.2f}")
-            print(f"Debug visualization dimensions: width={width:.2f}, height={height:.2f}")
-            
             if width <= 0 or height <= 0:
-                print(f"Warning: Invalid bounding box dimensions: {width}x{height}")
                 width = 0.5  # Use fixed size if calculations are wrong
                 height = 0.5
             
@@ -376,18 +358,11 @@ class Arrow:
             # Add it to the rig
             self.rig.add(self.debug_rect_mesh)
             
-            print(f"Debug bounding box created: width={width:.2f}, height={height:.2f}, " +
-                  f"pos=[{center_x:.2f}, {arrow_pos[1] + 0.1:.2f}, {center_z:.2f}]")
-            
             # Create corner markers with bright white color
             self.create_bright_corner_markers(min_x, min_z, max_x, max_z)
             
             return True
         except Exception as e:
-            print(f"Error creating debug visualization: {e}")
-            print(f"Error type: {type(e)}")
-            import traceback
-            traceback.print_exc()
             self.debug_rect_mesh = None
             self.debug_corner_markers = []
             return False
@@ -432,10 +407,8 @@ class Arrow:
                 self.rig.add(corner_mesh)
                 self.debug_corner_markers.append(corner_mesh)
                 
-            print(f"Created {len(self.debug_corner_markers)} bright corner markers")
             return True
         except Exception as e:
-            print(f"Error creating corner markers: {e}")
             self.debug_corner_markers = []
             return False
     
@@ -444,7 +417,6 @@ class Arrow:
         if not self.debug_mode or self.debug_rect_mesh is None:
             return
         
-        print("\n=== Inside update_debug_rect_visualization ===")
         # Remove previous debug meshes
         try:
             # Keep track of whether we need to recreate the debug rect
@@ -452,28 +424,24 @@ class Arrow:
             
             # Try to remove existing debug visualization
             if self.debug_rect_mesh is not None:
-                print("Removing existing debug rect mesh")
                 self.rig.remove(self.debug_rect_mesh)
                 self.debug_rect_mesh = None
             
             # Remove corner markers if they exist
             if hasattr(self, 'debug_corner_markers'):
-                print("Removing existing corner markers")
                 for marker in self.debug_corner_markers:
                     self.rig.remove(marker)
                 self.debug_corner_markers = []
         except Exception as e:
-            print(f"Warning: Error removing debug visualization: {e}")
+            pass
         
         # Get current bounding rect
         min_x, min_z, max_x, max_z = self.get_bounding_rect()
         width = max_x - min_x
         height = max_z - min_z
         
-        print("Creating new debug rect visualization")
         # Create a new rectangle with updated dimensions
         debug_geometry = RectangleGeometry(width=width, height=height)
-        print("Setting material color for debug rect")
         debug_material = SurfaceMaterial(
             property_dict={
                 "baseColor": [1.0, 0.0, 0.0],  # Red
@@ -496,11 +464,9 @@ class Arrow:
         self.debug_rect_mesh.set_position([center_x, arrow_pos[1], center_z])
         
         # Add to rig
-        print("Adding new debug rect mesh to rig")
         self.rig.add(self.debug_rect_mesh)
         
         # Update corner markers
-        print("Updating corner markers")
         self.update_corner_markers(min_x, min_z, max_x, max_z)
 
     def update_corner_markers(self, min_x, min_z, max_x, max_z):
@@ -525,7 +491,6 @@ class Arrow:
                     marker = self.debug_corner_markers[i]
                     marker.set_position([x, self.rig.local_position[1] + 0.02, z])  # Slightly above bounding box
         except Exception as e:
-            print(f"Warning: Error updating corner markers: {e}")
             # If we encounter errors with corner markers, just create new ones
             try:
                 # First try to clean up existing markers if any
@@ -539,18 +504,15 @@ class Arrow:
                 # Then create new markers
                 self.create_bright_corner_markers(min_x, min_z, max_x, max_z)
             except Exception as inner_e:
-                print(f"Failed to recreate corner markers: {inner_e}")
                 # If recreation fails, disable debug to prevent further errors
                 self.debug_mode = False
 
     def create_direct_debug_box(self):
         """Create a debug box visualization directly in the scene for clearer collision viz"""
         if not hasattr(self, 'scene') or not self.scene:
-            print("Error: Cannot create direct debug box - no scene reference")
             return False
             
         try:
-            print("\n=== Creating direct debug box visualization ===")
             # Get current bounding rect
             min_x, min_z, max_x, max_z = self.get_bounding_rect()
             width = max_x - min_x
@@ -560,12 +522,6 @@ class Arrow:
             current_pos = self.rig.global_position  # Use global position for debug visualization
             center_x = (min_x + max_x) / 2
             center_z = (min_z + max_z) / 2
-            
-            # Debug output
-            print(f"Debug Box: Width={width}, Height={height}")
-            print(f"Arrow Position: {current_pos}")
-            print(f"Bounding Rect: ({min_x}, {min_z}) to ({max_x}, {max_z})")
-            print(f"Center relative to arrow: ({center_x}, {center_z})")
             
             # Create a rectangle geometry for the debug box
             from geometry.rectangle import RectangleGeometry
@@ -602,19 +558,14 @@ class Arrow:
             
             return True
         except Exception as e:
-            print(f"Error creating direct debug box: {e}")
-            import traceback
-            traceback.print_exc()
             return False
             
     def create_direct_corner_markers(self, min_x, min_z, max_x, max_z):
         """Create bright markers at the corners of the bounding rectangle"""
         if not hasattr(self, 'scene') or not self.scene:
-            print("Error: Cannot create corner markers - no scene reference")
             return []
             
         try:
-            print("\n=== Creating direct corner markers ===")
             corner_markers = []
             
             # Get arrow's current global position for proper placement
@@ -663,14 +614,8 @@ class Arrow:
                 # Add to scene and to our list
                 self.scene.add(marker)
                 corner_markers.append(marker)
-                
-                print(f"Added corner marker {i} at position {pos}, color {color}")
             
             return corner_markers
         except Exception as e:
-            print(f"Error creating corner markers: {e}")
-            import traceback
-            traceback.print_exc()
             return []
-
 

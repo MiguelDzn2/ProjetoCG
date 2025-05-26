@@ -244,6 +244,12 @@ SELECTION_PHASE_SPOTLIGHT_COLORS = [
 ]
 SELECTION_PHASE_SPOTLIGHT_BRIGHTNESS_MULTIPLIER = 1.5  # For highlighted object
 
+# Luzes da fase de seleção (editável para facilitar ajustes no jogo)
+SELECTION_PHASE_LIGHTS = [
+    {'type': 'ambient','color': [1, 1, 1],},
+
+]
+
 # Gameplay Phase Configuration
 # Position of the selected instrument in gameplay phase based on which instrument is selected
 GAMEPLAY_SELECTED_INSTRUMENT_POSITIONS = [
@@ -382,6 +388,20 @@ INSTRUMENT_INITIAL_POSITIONS = {
 from light.ambient import AmbientLight
 from light.directional import DirectionalLight
 from light.point import PointLight
+
+# --- Club Lights Configuration ---
+CLUB_LIGHTS_CONFIG = [
+    {'type': 'point', 'position': [4, 3, 12], 'color': [1.0, 0.1, 0.1]},
+    {'type': 'point', 'position': [-4, 3, 12], 'color': [1.0, 0.1, 0.1]},
+    {'type': 'point', 'position': [4, 3, 6], 'color': [0.1, 0.1, 1.0]},
+    {'type': 'point', 'position': [-4, 3, 6], 'color': [0.1, 0.1, 1.0]},
+    {'type': 'point', 'position': [6, 2, 10], 'color': [1.0, 0.1, 0.1]},
+    {'type': 'point', 'position': [-6, 2, 10], 'color': [1.0, 0.1, 0.1]},
+    {'type': 'point', 'position': [6, 2, 8], 'color': [0.1, 0.1, 1.0]},
+    {'type': 'point', 'position': [-6, 2, 8], 'color': [0.1, 0.1, 1.0]},
+    {'type': 'point', 'position': [2, 4, 14], 'color': [1.0, 0.1, 0.1]},
+    {'type': 'point', 'position': [-2, 4, 14], 'color': [0.1, 0.1, 1.0]},
+]
 
 # Lista de luzes para a cena principal (ordem importa!)
 SCENE_LIGHTS = [

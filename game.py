@@ -30,7 +30,8 @@ from config import (
     NIGHTCLUB_OBJECT_PATH, NIGHTCLUB_POSITION, NIGHTCLUB_SCALE_FACTOR,
     MOVE_AMOUNT_MULTIPLIER, ROTATE_AMOUNT_MULTIPLIER,
     SCREEN_SIZE, ARROW_RING_PIVOT_POSITION, ARROW_RING_PIVOT_ROTATION,
-    ARROW_COLOR, ARROW_TYPE_UP, ARROW_TYPE_LEFT, ARROW_TYPE_DOWN, ARROW_TYPE_RIGHT, ARROW_TYPE_NAMES
+    ARROW_COLOR, ARROW_TYPE_UP, ARROW_TYPE_LEFT, ARROW_TYPE_DOWN, ARROW_TYPE_RIGHT, ARROW_TYPE_NAMES,
+    CLUB_LIGHTS_CONFIG
 )
 from game_phases import GamePhase
 from geometry.arrow import Arrow
@@ -53,6 +54,7 @@ from extras.grid import GridHelper
 from extras.movement_rig import MovementRig
 
 import config
+from light.spotlight import SpotLight
 
 class Game(Base):
     """
@@ -169,10 +171,9 @@ class Game(Base):
         
         # Initialize animation manager
         self.animation_manager = AnimationManager()
-        
-        # Initialize nightclub elements
-        self._setup_nightclub()
-        
+
+
+
         # Initialize music system after other components, passing self for travel time calculations
         self.music_system = MusicSystem(self.arrow_manager, self)
         self.music_system.set_arrow_travel_time(self.arrow_travel_time)
@@ -193,6 +194,7 @@ class Game(Base):
             
         # Set up the selection phase initially
         self.phase_manager.setup_selection_phase()
+        self._setup_nightclub()
         
         # Load and play selection music
         self.music_system.load_selection_music()
@@ -1014,6 +1016,18 @@ class Game(Base):
                 self._update_collision_text(" ")
                 print("Debug pause canceled by user")
             
+            # Print camera position/rotation when 'z' is pressed in debug mode
+            if self.debug_mode and self.input.is_key_down('z'):
+                pos = self.camera_rig.global_position
+                rot = {'x': 0, 'y': 0, 'z': 0}
+                if hasattr(self.camera_rig, 'get_rotation_values'):
+                    try:
+                        rot = self.camera_rig.get_rotation_values()
+                    except Exception as e:
+                        print(f"Warning: Could not get camera rotation values: {e}")
+                print(f"[DEBUG] Camera position: {pos}")
+                print(f"[DEBUG] Camera rotation: x={rot['x']:.1f}, y={rot['y']:.1f}, z={rot['z']:.1f}")
+
             # Update camera position and rotation text
             self.update_camera_debug_text()
         
@@ -1097,36 +1111,138 @@ class Game(Base):
     
     def _add_instrument_and_club_lights(self, selected_index):
         """
-        Adds a spotlight above the selected instrument and additional club lights (red and blue) to the scene.
+        Adds a spotlight (cone) above the selected instrument and additional club lights (red and blue) to the scene.
         Updates config.SCENE_LIGHTS and NUM_SCENE_LIGHTS accordingly.
         """
         from light.point import PointLight
+        from light.spotlight import SpotLight
         import config
-        # Spotlight above instrument
-        instrument_pos = self.active_object_rig.global_position if hasattr(self.active_object_rig, 'global_position') else [0,0,0]
-        spotlight_pos = [instrument_pos[0], instrument_pos[1]+5, instrument_pos[2]]
-        spotlight = PointLight(position=spotlight_pos, color=[1.0, 1.0, 1.0])
-        self.scene.add(spotlight)
-        self.stage_spotlight = spotlight
-        config.SCENE_LIGHTS.append(spotlight)
-        # Club lights (red and blue) - more for richer effect
-        club_lights = [
-            PointLight(position=[4, 3, 12], color=[1.0, 0.1, 0.1]),
-            PointLight(position=[-4, 3, 12], color=[1.0, 0.1, 0.1]),
-            PointLight(position=[4, 3, 6], color=[0.1, 0.1, 1.0]),
-            PointLight(position=[-4, 3, 6], color=[0.1, 0.1, 1.0]),
-            # Extra red and blue lights
-            PointLight(position=[6, 2, 10], color=[1.0, 0.1, 0.1]),
-            PointLight(position=[-6, 2, 10], color=[1.0, 0.1, 0.1]),
-            PointLight(position=[6, 2, 8], color=[0.1, 0.1, 1.0]),
-            PointLight(position=[-6, 2, 8], color=[0.1, 0.1, 1.0]),
-            PointLight(position=[2, 4, 14], color=[1.0, 0.1, 0.1]),
-            PointLight(position=[-2, 4, 14], color=[0.1, 0.1, 1.0]),
+
+        # --- REMOVER SPOTLIGHTS ANTIGAS DO PALCO ---
+        # Remove todas as spotlights do palco (tipo 'spot') de config.SCENE_LIGHTS
+        config.SCENE_LIGHTS = [l for l in config.SCENE_LIGHTS if not (isinstance(l, dict) and l.get('type') == 'spot')]
+
+        # --- ADICIONAR NOVAS SPOTLIGHTS NAS POSIÇÕES FORNECIDAS ---
+        # Lista de novas posições e rotações (em graus)
+        spotlight_positions = [
+            [-7.21698701862984, 4.928511851837558, -0.6073268863647217],
+            [-4.986155896087541, 4.868752277619777, -0.7998954717871312],
+            [-1.9533682197738156, 5.380082110683982, -1.0704958573105676],
+            [1.8773201053877389, 5.774606710158709, -0.9373510888349028],
+            [7.082863874789052, 4.792583972357618, -0.9088764737523667],  # swapped
+            [4.967669762490225, 4.920853630300564, -0.8159968286065371],  # swapped
         ]
-        for light in club_lights:
-            self.scene.add(light)
-            config.SCENE_LIGHTS.append(light)
-        config.NUM_SCENE_LIGHTS = len(config.SCENE_LIGHTS)
+        spotlight_rotations = [
+            [-16.7, -182.0, 4.9],
+            [32.5, -185.6, 14.5],
+            [26.3, -176.8, 14.5],
+            [36.4, -211.2, 14.5],
+            [192.3, 14.5, -176.1],
+            [162.1, 14.5, -193.0],
+        ]
+        # Parâmetros comuns
+        GAMEPLAY_STAGE_SPOTLIGHT_ANGLE = 35
+        GAMEPLAY_STAGE_SPOTLIGHT_CONE_VISIBLE = True
+        GAMEPLAY_STAGE_SPOTLIGHT_CONE_OPACITY = 0.3
+        GAMEPLAY_STAGE_SPOTLIGHT_CONE_HEIGHT = 6.0*1.5
+        spotlight_colors = [
+            [1.0, 1.0, 0.0],  # Amarelo
+            [0.0, 0.3, 1.0],  # Azul
+            [0.7, 0.0, 1.0],  # Roxo
+            [1.0, 0.0, 0.0],  # Vermelho
+            [0.0, 1.0, 0.3],  # Verde
+            [1.0, 0.5, 0.0],  # Laranja
+        ]
+        # Função para converter rotação (Euler) para vetor direção
+        def euler_to_direction(rot):
+            x, y, z = [math.radians(a) for a in rot]
+            # Aproximação: direção para onde a luz "aponta" (eixo -Y após rotação)
+            # Calcula direção a partir de rotação Y (pan) e X (tilt)
+            dx = -math.sin(y) * math.cos(x)
+            dy = -math.sin(x)
+            dz = -math.cos(y) * math.cos(x)
+            return [dx, dy, dz]
+        # Adiciona cada spotlight
+        for idx, (pos, rot) in enumerate(zip(spotlight_positions, spotlight_rotations)):
+            direction = euler_to_direction(rot)
+            color = spotlight_colors[idx % len(spotlight_colors)]
+            config.SCENE_LIGHTS.append({
+                'type': 'spot',
+                'position': pos,
+                'direction': direction,
+                'color': color,
+                'angle': GAMEPLAY_STAGE_SPOTLIGHT_ANGLE,
+                'cone_visible': GAMEPLAY_STAGE_SPOTLIGHT_CONE_VISIBLE,
+                'cone_opacity': GAMEPLAY_STAGE_SPOTLIGHT_CONE_OPACITY,
+                'cone_height': GAMEPLAY_STAGE_SPOTLIGHT_CONE_HEIGHT,
+            })
+
+        # --- ADICIONAR MAIS SPOTLIGHTS NO TETO, OLHANDO PARA BAIXO ---
+        ceiling_spot_positions = [
+            [7.428386230207616, 9.049601387018035, 4.420478861462583],
+            [7.354607446030524, 9.045509630842568, 9.906287954076939],
+            [7.362761262447847, 8.997636773826597, 15.373255763914205],
+            [-7.404068039596516, 8.999680189306126, 15.364185052161773],
+            [-7.2869757429590765, 9.007714012161665, 9.933383057144113],
+            [-7.306921517572361, 9.038629001809, 4.358351745685813],
+        ]
+        ceiling_spot_rotations = [
+            [-90, 0, 0],   # Olhando para baixo
+            [-90, 0, 0],
+            [-90, 0, 0],
+            [-90, 0, 0],
+            [-90, 0, 0],
+            [-90, 0, 0],
+        ]
+        ceiling_spot_colors = [
+            [1.0, 1.0, 0.0],  # Amarelo
+            [0.0, 0.3, 1.0],  # Azul
+            [0.7, 0.0, 1.0],  # Roxo
+            [1.0, 0.0, 0.0],  # Vermelho
+            [0.0, 1.0, 0.3],  # Verde
+            [1.0, 0.5, 0.0],  # Laranja
+        ]
+        for idx, (pos, rot) in enumerate(zip(ceiling_spot_positions, ceiling_spot_rotations)):
+            # Forçar direção para baixo no eixo Y global
+            direction = [0, -1, 0]
+            color = ceiling_spot_colors[idx % len(ceiling_spot_colors)]
+            config.SCENE_LIGHTS.append({
+                'type': 'spot',
+                'position': pos,
+                'direction': direction,
+                'color': color,
+                'angle': GAMEPLAY_STAGE_SPOTLIGHT_ANGLE,
+                'cone_visible': GAMEPLAY_STAGE_SPOTLIGHT_CONE_VISIBLE,
+                'cone_opacity': GAMEPLAY_STAGE_SPOTLIGHT_CONE_OPACITY,
+                'cone_height': GAMEPLAY_STAGE_SPOTLIGHT_CONE_HEIGHT,
+            })
+
+        # Add club lights from config (CLUB_LIGHTS_CONFIG) if not already present
+        for light_cfg in config.CLUB_LIGHTS_CONFIG:
+            if light_cfg not in config.SCENE_LIGHTS:
+                config.SCENE_LIGHTS.append(light_cfg)
+        # Now instantiate and add to scene (only if not already present)
+        for light_cfg in config.SCENE_LIGHTS:
+            if isinstance(light_cfg, dict):
+                if light_cfg['type'] == 'spot':
+                    spot = SpotLight(
+                        position=light_cfg['position'],
+                        direction=light_cfg['direction'],
+                        color=light_cfg['color'],
+                        angle=light_cfg['angle'],
+                        cone_visible=light_cfg['cone_visible'],
+                        cone_opacity=light_cfg['cone_opacity'],
+                        cone_height=light_cfg['cone_height']
+                    )
+                    self.scene.add(spot)
+                    self.stage_spotlight = spot
+                elif light_cfg['type'] == 'point':
+                    pt = PointLight(
+                        position=light_cfg['position'],
+                        color=light_cfg['color']
+                    )
+                    self.scene.add(pt)
+        config.NUM_SCENE_LIGHTS = len([l for l in config.SCENE_LIGHTS if isinstance(l, dict) or hasattr(l, 'light_type')])
         # Update instrument materials for new lights
         self.apply_realistic_lighting_to_instruments(num_light_sources=config.NUM_SCENE_LIGHTS)
 
