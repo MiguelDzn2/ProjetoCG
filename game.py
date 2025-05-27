@@ -1177,6 +1177,7 @@ class Game(Base):
             dz = -math.cos(y) * math.cos(x)
             return [dx, dy, dz]
         # Adiciona cada spotlight
+        self.animated_spotlights = []  # Store references to animated spotlights
         for idx, (pos, rot) in enumerate(zip(spotlight_positions, spotlight_rotations)):
             direction = euler_to_direction(rot)
             color = spotlight_colors[idx % len(spotlight_colors)]
@@ -1250,6 +1251,7 @@ class Game(Base):
                     )
                     self.scene.add(spot)
                     self.stage_spotlight = spot
+                    self.animated_spotlights.append(spot)  # Add to animated list
                 elif light_cfg['type'] == 'point':
                     pt = PointLight(
                         position=light_cfg['position'],
@@ -1259,6 +1261,26 @@ class Game(Base):
         config.NUM_SCENE_LIGHTS = len([l for l in config.SCENE_LIGHTS if isinstance(l, dict) or hasattr(l, 'light_type')])
         # Update instrument materials for new lights
         self.apply_realistic_lighting_to_instruments(num_light_sources=config.NUM_SCENE_LIGHTS)
+
+    def _animate_spotlights(self, t):
+        """Animates the direction of each spotlight in a small circle."""
+        if not hasattr(self, 'animated_spotlights'):
+            return
+        for idx, spot in enumerate(self.animated_spotlights):
+            # Only animate if the object is a SpotLight
+            if hasattr(spot, 'set_direction'):
+                # Wobble parameters
+                base_dir = np.array([0, -1, 0], dtype=float)
+                angle = 0.15  # max angle in radians (~8.5 deg)
+                phase = idx * 1.2  # phase offset per light
+                dx = math.sin(t + phase) * angle
+                dz = math.cos(t + phase) * angle
+                new_dir = [dx, -1, dz]
+                # Normalize direction
+                norm = np.linalg.norm(new_dir)
+                if norm > 0:
+                    new_dir = [c / norm for c in new_dir]
+                spot.set_direction(new_dir)
 
     def update(self):
         """Update game logic (called every frame)"""
@@ -1368,7 +1390,8 @@ class Game(Base):
                     print("Music has finished - transitioning to end screen")
                     self._transition_to_end_screen()
             
-           ############
+                # Animate spotlights
+                self._animate_spotlights(time.time())
 
                 # Render scene with active camera (main or debug)
                 if self.debug_mode and self.debug_camera_active:
